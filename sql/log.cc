@@ -71,6 +71,7 @@
 #ifdef WITH_WSREP
 #include "wsrep_trans_observer.h"
 #include "wsrep_status.h"
+#include "wsrep_encryption.h"
 #endif /* WITH_WSREP */
 
 #ifdef HAVE_REPLICATION

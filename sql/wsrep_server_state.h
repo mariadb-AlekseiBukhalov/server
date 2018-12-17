@@ -16,6 +16,9 @@
 #ifndef WSREP_SERVER_STATE_H
 #define WSREP_SERVER_STATE_H
 
+/* wsrep feature services */
+#include "wsrep_encryption.h"
+
 /* wsrep-lib */
 #include "wsrep/server_state.hpp"
 #include "wsrep/provider.hpp"
@@ -88,6 +91,7 @@ private:
   Wsrep_condition_variable m_cond;
   Wsrep_server_service m_service;
   static wsrep::provider::services m_provider_services;
+  Wsrep_encryption_service m_encryption_service;
   static Wsrep_server_state* m_instance;
   static std::unique_ptr<wsrep::provider_options> m_options;
   // Sysvars for provider plugin. We keep these here because

@@ -261,6 +261,7 @@ static PSI_thread_info wsrep_threads[]=
 #endif /* HAVE_PSI_INTERFACE */
 
 my_bool wsrep_inited= 0; // initialized ?
+enum enum_wsrep_startup_state wsrep_startup_state= WSREP_STARTUP_STATE_NONE;
 
 static wsrep_uuid_t node_uuid= WSREP_UUID_UNDEFINED;
 static char         cluster_uuid_str[40]= { 0, };
@@ -990,33 +991,30 @@ void wsrep_thr_init()
   DBUG_VOID_RETURN;
 }
 
-void wsrep_init_startup (bool sst_first)
+int wsrep_init_startup (bool sst_first)
 {
-  if (wsrep_init()) unireg_abort(1);
-
-  /*
-    Pre-initialize global_system_variables.table_plugin with a dummy engine
-    (placeholder) required during the initialization of wsrep threads (THDs).
-    (see: plugin_thdvar_init())
-    Note: This only needs to be done for rsync & mariabackup based SST methods.
-    In case of mysqldump SST method, the wsrep threads are created after the
-    server plugins & global system variables are initialized.
-  */
-  if (wsrep_before_SE())
-    wsrep_plugins_pre_init();
+  if (wsrep_init())
+  {
+    wsrep_startup_state= WSREP_STARTUP_STATE_MUST_ABORT;
+    return 1;
+  }
 
   /* Skip replication start if dummy wsrep provider is loaded */
   if (!wsrep_provider || !*wsrep_provider ||
-      !strcasecmp(wsrep_provider, WSREP_NONE)) return;
+      !strcasecmp(wsrep_provider, WSREP_NONE)) return 0;
 
   /* Skip replication start if no cluster address */
-  if (!wsrep_cluster_address_exists()) return;
+  if (!wsrep_cluster_address_exists()) return 0;
 
   /*
     Read value of wsrep_new_cluster before wsrep_start_replication(),
     the value is reset to FALSE inside wsrep_start_replication.
   */
-  if (!wsrep_start_replication(wsrep_cluster_address)) unireg_abort(1);
+  if (!wsrep_start_replication(wsrep_cluster_address))
+  {
+    wsrep_startup_state= WSREP_STARTUP_STATE_MUST_ABORT;
+    return 1;
+  }
 
   wsrep_create_rollbacker();
   wsrep_create_appliers(1);
@@ -1049,6 +1047,8 @@ void wsrep_init_startup (bool sst_first)
     WSREP_ERROR("Wsrep startup was interrupted");
     unireg_abort(1);
   }
+
+  return 0;
 }
 
 
