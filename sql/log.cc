@@ -9024,7 +9024,7 @@ MYSQL_BIN_LOG::queue_for_group_commit(group_commit_entry *orig_entry)
       wsrep_run_commit_hook(entry->thd, entry->all))
   {
     /*  Release commit order here */
-    if (wsrep_ordered_commit(entry->thd, entry->all))
+    if (!is_preparing_xa(entry->thd) && wsrep_ordered_commit(entry->thd, entry->all))
       result= -2;
 
     /* return -3, if this is leader */
@@ -11612,6 +11612,11 @@ static bool write_empty_xa_prepare(THD *thd, binlog_cache_mngr *cache_mngr)
 int TC_LOG_BINLOG::unlog_xa_prepare(THD *thd, bool all)
 {
   DBUG_ASSERT(is_preparing_xa(thd));
+#ifdef WITH_WSREP
+  DBUG_ASSERT(!wsrep_emulate_bin_log);
+  if (WSREP(thd) && thd->wsrep_applier && !opt_log_slave_updates)
+    return 0;
+#endif /* WITH_WSREP */
 
   binlog_cache_mngr *cache_mngr= thd->binlog_setup_trx_data();
   int cookie= 0;

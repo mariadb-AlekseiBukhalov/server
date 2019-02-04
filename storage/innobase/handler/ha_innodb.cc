@@ -18836,7 +18836,7 @@ void lock_wait_wsrep_kill(trx_t *bf_trx, my_thread_id thd_id, trx_id_t trx_id)
         default:
           break;
         case TRX_STATE_PREPARED:
-          if (!wsrep_is_wsrep_xid(&vtrx->xid))
+          if (!vtrx->is_wsrep())
             break;
           /* fall through */
         case TRX_STATE_ACTIVE:

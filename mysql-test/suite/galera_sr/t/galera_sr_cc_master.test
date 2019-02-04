@@ -76,7 +76,6 @@ SELECT COUNT(*) AS EXPECT_0 FROM mysql.wsrep_streaming_log;
 --source include/galera_wait_ready.inc
 --let $wait_condition = SELECT COUNT(*) = 0 FROM mysql.wsrep_streaming_log
 --source include/wait_condition.inc
-SELECT * FROM mysql.wsrep_streaming_log;
 SELECT COUNT(*) AS EXPECT_0 FROM mysql.wsrep_streaming_log;
 
 # Repeat transaction to confirm no locks are left from previous transaction

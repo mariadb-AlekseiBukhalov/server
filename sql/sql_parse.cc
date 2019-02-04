@@ -1360,9 +1360,14 @@ dispatch_command_return do_command(THD *thd, bool blocking)
       in wsrep_before_command().
     */
     WSREP_LOG_THD(thd, "enter found BF aborted");
-    DBUG_ASSERT(!thd->mdl_context.has_transactional_locks());
-    DBUG_ASSERT(!thd->get_stmt_da()->is_set());
-    /* We let COM_QUIT and COM_STMT_CLOSE to execute even if wsrep aborted. */
+    DBUG_ASSERT(!thd->mdl_context.has_transactional_locks() ||
+                thd->transaction->xid_state.is_explicit_XA());
+    /*
+       We let COM_QUIT and COM_STMT_CLOSE to execute even if wsrep aborted.
+       XA statements need to go through as well, so that the transaction
+       transitions to XA_ROLLLBACK_ONLY state, and is explicitly rolled
+       back by the client.
+    */
     if (command == COM_STMT_EXECUTE)
     {
       WSREP_DEBUG("PS BF aborted at do_command");
@@ -1370,9 +1375,11 @@ dispatch_command_return do_command(THD *thd, bool blocking)
     }
     if (command != COM_STMT_CLOSE   &&
 	command != COM_STMT_EXECUTE &&
-        command != COM_QUIT)
+        command != COM_QUIT &&
+        !thd->transaction->xid_state.is_explicit_XA())
     {
-      my_error(ER_LOCK_DEADLOCK, MYF(0));
+      wsrep_override_error(thd, ER_LOCK_DEADLOCK);
+
       WSREP_DEBUG("Deadlock error for: %s", thd->query());
       thd->reset_killed();
       thd->mysys_var->abort     = 0;
@@ -2426,8 +2433,7 @@ resume:
       if (wsrep_current_error(thd) && !wsrep_command_no_result(command))
       {
         /* todo: Pass wsrep client state current error to override */
-        wsrep_override_error(thd, wsrep_current_error(thd),
-                             wsrep_current_error_status(thd));
+        wsrep_override_error(thd, wsrep_current_error(thd));
         WSREP_LOG_THD(thd, "leave");
       }
     }
@@ -3907,9 +3913,9 @@ mysql_execute_command(THD *thd, bool is_called_from_prepared_stmt)
     start a multi STMT transaction, the wsrep_transaction is
     committed as empty at the end of this function.
 
-    Transaction is started for BEGIN in trans_begin(), for DDL the
-    implicit commit took care of committing previous transaction
-    above and a new transaction should not be started.
+    For BEGIN and XA_START transaction is started in trans_begin().
+    For DDL the implicit commit took care of committing previous
+    transaction above and a new transaction should not be started.
 
     Do not start transaction for stored procedures, it will be handled
     internally in SP processing.
@@ -3920,6 +3926,8 @@ mysql_execute_command(THD *thd, bool is_called_from_prepared_stmt)
       lex->sql_command != SQLCOM_CALL     &&
       lex->sql_command != SQLCOM_EXECUTE  &&
       lex->sql_command != SQLCOM_EXECUTE_IMMEDIATE &&
+      lex->sql_command != SQLCOM_XA_START &&
+      !thd->transaction->xid_state.is_explicit_XA() &&
       !(sql_command_flags[lex->sql_command] & CF_AUTO_COMMIT_TRANS))
   {
     wsrep_start_trx_if_not_started(thd);
@@ -7782,6 +7790,7 @@ static bool wsrep_mysql_parse(THD *thd, char *rawbuf, uint length,
 {
   bool is_autocommit=
     !thd->in_multi_stmt_transaction_mode()                  &&
+    !thd->transaction->xid_state.is_explicit_XA() &&
     !thd->wsrep_applier;
   bool retry_autocommit;
   do

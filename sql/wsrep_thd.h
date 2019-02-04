@@ -209,7 +209,6 @@ static inline enum wsrep::provider::status
   return thd->wsrep_cs().current_error_status();
 }
 
-
 /**
    Helper functions to override error status
 
@@ -234,7 +233,8 @@ static inline void wsrep_override_error(THD *thd, uint error, const char *format
       (da->is_error() &&
        da->sql_errno() != error &&
        da->sql_errno() != ER_ERROR_DURING_COMMIT &&
-       da->sql_errno() != ER_LOCK_DEADLOCK))
+       da->sql_errno() != ER_LOCK_DEADLOCK &&
+       da->sql_errno() != ER_XA_RBDEADLOCK))
   {
     da->reset_diagnostics_area();
     va_list args;
@@ -305,6 +305,13 @@ static inline void wsrep_override_error(THD* thd,
   default:
     wsrep_override_error(thd, ER_UNKNOWN_ERROR);
   }
+}
+
+static inline void wsrep_override_current_error(THD* thd)
+{
+  wsrep_override_error(thd,
+                       wsrep_current_error(thd),
+                       wsrep_current_error_status(thd));
 }
 
 /**

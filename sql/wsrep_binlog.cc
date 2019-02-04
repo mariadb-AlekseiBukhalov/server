@@ -158,7 +158,8 @@ static int wsrep_write_cache_inc(THD*      const thd,
     } while ((cache->file >= 0) && (length= my_b_fill(cache)));
     if (ret == 0)
     {
-      assert(total_length + log_position == saved_pos);
+      assert(!WSREP_EMULATE_BINLOG(thd) ||
+             total_length + log_position == saved_pos);
     }
   }
 

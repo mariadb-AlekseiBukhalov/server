@@ -26,6 +26,8 @@
 #include <algorithm> /* std::sort() */
 #include <string>    /* std::string */
 #include <sstream>   /* std::stringstream */
+#include "log_event.h" /* serialize_xid */
+
 /*
  * WSREPXid
  */
@@ -278,4 +280,21 @@ bool wsrep_is_xid_gtid_undefined(const XID *xid)
   }
 
   return (gtid.seqno == 0 && gtid.server_id == 0 && gtid.domain_id == 0);
+}
+
+char* Wsrep_xid::serialize()
+{
+  if (data_.size() <= 0 || is_null())
+  {
+    m_serialized[0]= '\0';
+  }
+  else
+  {
+    serialize_xid(m_serialized, sizeof(m_serialized),
+                  format_id_,
+                  gtrid_len_,
+                  bqual_len_,
+                  data_.data());
+  }
+  return m_serialized;
 }

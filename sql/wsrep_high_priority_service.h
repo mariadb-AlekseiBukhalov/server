@@ -30,8 +30,8 @@ class Wsrep_high_priority_service :
   public wsrep::high_priority_context
 {
 public:
-  Wsrep_high_priority_service(THD*);
-  ~Wsrep_high_priority_service();
+  explicit Wsrep_high_priority_service(THD*);
+  ~Wsrep_high_priority_service() override;
   int start_transaction(const wsrep::ws_handle&,
                         const wsrep::ws_meta&) override;
   int next_fragment(const wsrep::ws_meta&) override;
@@ -81,8 +81,8 @@ protected:
 class Wsrep_applier_service : public Wsrep_high_priority_service
 {
 public:
-  Wsrep_applier_service(THD*);
-  ~Wsrep_applier_service();
+  explicit Wsrep_applier_service(THD*);
+  ~Wsrep_applier_service() override;
   int apply_write_set(const wsrep::ws_meta&, const wsrep::const_buffer&,
                       wsrep::mutable_buffer&) override;
   int apply_nbo_begin(const wsrep::ws_meta&, const wsrep::const_buffer& data,
@@ -92,11 +92,102 @@ public:
   bool check_exit_status() const override;
 };
 
+class Wsrep_prepared_applier_service : public Wsrep_applier_service
+{
+public:
+  Wsrep_prepared_applier_service(THD* thd, XID* xid)
+    : Wsrep_applier_service(thd)
+  {
+    m_xid.set(xid);
+  }
+  ~Wsrep_prepared_applier_service() override = default;
+  int start_transaction(const wsrep::ws_handle& ws_handle,
+                        const wsrep::ws_meta& ws_meta) override
+  {
+    DBUG_ENTER("Wsrep_prepared_applier_service::start_transaction");
+    DBUG_RETURN(m_thd->wsrep_cs().start_transaction(ws_handle, ws_meta));
+  }
+  int apply_write_set(const wsrep::ws_meta& ws_meta,
+                      const wsrep::const_buffer& data,
+                      wsrep::mutable_buffer&) override
+  {
+    DBUG_ENTER("Wsrep_prepared_applier_service::apply_write_set");
+    if (!wsrep::commits_transaction(ws_meta.flags()))
+    {
+      m_thd->wsrep_cs().fragment_applied(ws_meta.seqno());
+    }
+    if (wsrep::prepares_transaction(ws_meta.flags()))
+    {
+      wsrep_trans_xa_attach(m_thd, &m_xid);
+    }
+    DBUG_RETURN(0);
+  }
+  int commit(const wsrep::ws_handle& ws_handle,
+             const wsrep::ws_meta& ws_meta) override
+  {
+    DBUG_ENTER("Wsrep_prepared_applier_service::commit");
+    DBUG_ASSERT(m_thd->wsrep_trx().state() == wsrep::transaction::s_prepared);
+    m_thd->transaction->xid_state.xid_cache_element= 0;
+    DBUG_RETURN(Wsrep_applier_service::commit(ws_handle, ws_meta));
+  }
+  int rollback(const wsrep::ws_handle& ws_handle,
+               const wsrep::ws_meta& ws_meta) override
+  {
+    DBUG_ENTER("Wsrep_prepared_applier_service::rollback");
+    DBUG_ASSERT(m_thd->wsrep_trx().state() == wsrep::transaction::s_prepared);
+    m_thd->transaction->xid_state.xid_cache_element= 0;
+    DBUG_RETURN(Wsrep_applier_service::rollback(ws_handle, ws_meta));
+  }
+  int adopt_transaction(const wsrep::transaction& transaction) override
+  {
+    DBUG_ENTER("Wsrep_prepared_applier_service::adopt_transaction");
+    m_thd->wsrep_cs().adopt_transaction(transaction);
+    int ret= wsrep_trans_xa_attach(m_thd, &m_xid);
+    DBUG_RETURN(ret);
+  }
+protected:
+  XID m_xid;
+};
+
+class Wsrep_prepared_replayer_service :
+  public Wsrep_prepared_applier_service
+{
+public:
+  Wsrep_prepared_replayer_service(THD* thd, THD* orig_thd, XID* xid)
+    : Wsrep_prepared_applier_service(thd, xid)
+    , m_orig_thd(orig_thd) { }
+  int commit(const wsrep::ws_handle& ws_handle,
+             const wsrep::ws_meta& ws_meta) override
+  {
+    DBUG_ENTER("Wsrep_prepared_applier_service::commit");
+    DBUG_ASSERT(m_thd->wsrep_trx().state() == wsrep::transaction::s_prepared);
+    DBUG_RETURN(Wsrep_applier_service::commit(ws_handle, ws_meta));
+  }
+  int rollback(const wsrep::ws_handle& ws_handle,
+               const wsrep::ws_meta& ws_meta) override
+  {
+    DBUG_ENTER("Wsrep_prepared_applier_service::rollback");
+    DBUG_ASSERT(m_thd->wsrep_trx().state() == wsrep::transaction::s_prepared);
+    DBUG_RETURN(Wsrep_applier_service::rollback(ws_handle, ws_meta));
+  }
+  int adopt_transaction(const wsrep::transaction& transaction) override
+  {
+    m_thd->wsrep_cs().adopt_transaction(transaction);
+    m_thd->wsrep_cs().clone_transaction_for_replay(m_orig_thd->wsrep_trx());
+    return false;
+  }
+  int replay();
+private:
+  THD* m_orig_thd;
+  int replay_empty();
+  int replay_from_storage();
+};
+
 class Wsrep_replayer_service : public Wsrep_high_priority_service
 {
 public:
   Wsrep_replayer_service(THD* replayer_thd, THD* orig_thd);
-  ~Wsrep_replayer_service();
+  ~Wsrep_replayer_service() override;
   int apply_write_set(const wsrep::ws_meta&, const wsrep::const_buffer&,
                       wsrep::mutable_buffer&) override;
   int apply_nbo_begin(const wsrep::ws_meta&, const wsrep::const_buffer& data,

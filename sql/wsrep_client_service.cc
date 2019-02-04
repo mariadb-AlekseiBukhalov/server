@@ -28,6 +28,9 @@
 #include "sql_parse.h"   /* stmt_causes_implicit_commit() */
 #include "rpl_filter.h"  /* binlog_filter */
 #include "rpl_rli.h"     /* Relay_log_info */
+#include "rpl_mi.h"      /* Master_info */
+#include "wsrep_applier.h" /* wsrep_relay_group_init() */
+
 #include "slave.h"   /* opt_log_slave_updates */
 #include "transaction.h" /* trans_commit()... */
 #include "log.h"      /* stmt_has_updated_trans_table() */
@@ -152,6 +155,29 @@ void Wsrep_client_service::cleanup_transaction()
   m_thd->wsrep_affected_rows= 0;
 }
 
+static int write_xa_event_helper(THD* thd,
+                                 const char* query,
+                                 size_t query_len,
+                                 wsrep::mutable_buffer& buffer)
+{
+  DBUG_ASSERT(!thd->wsrep_trx().xid().is_null());
+
+  Wsrep_xid wsrep_xid(static_cast<const Wsrep_xid&>(thd->wsrep_trx().xid()));
+  char* xid= wsrep_xid.serialize();
+
+  std::string stmt;
+  stmt.append(query, query_len);
+  stmt.append(xid);
+
+  uchar* event_buf= NULL;
+  size_t event_buf_len= 0;
+  wsrep_to_buf_helper(thd, stmt.data(), stmt.length(),
+                      &event_buf, &event_buf_len);
+  buffer.push_back(reinterpret_cast<const char*>(event_buf),
+                   reinterpret_cast<const char*>(event_buf + event_buf_len));
+  my_free(event_buf);
+  return 0;
+}
 
 int Wsrep_client_service::prepare_fragment_for_replication(
   wsrep::mutable_buffer& buffer, size_t& log_position)
@@ -159,6 +185,13 @@ int Wsrep_client_service::prepare_fragment_for_replication(
   DBUG_ASSERT(m_thd == current_thd);
   THD* thd= m_thd;
   DBUG_ENTER("Wsrep_client_service::prepare_fragment_for_replication");
+
+  if (thd->wsrep_trx().is_xa() &&
+      thd->wsrep_sr().fragments_certified() == 0)
+  {
+    write_xa_event_helper(thd, STRING_WITH_LEN("XA START "), buffer);
+  }
+
   IO_CACHE* cache= wsrep_get_cache(thd, true);
   thd->binlog_flush_pending_rows_event(true);
 
@@ -174,7 +207,7 @@ int Wsrep_client_service::prepare_fragment_for_replication(
   }
 
   int ret= 0;
-  size_t total_length= 0;
+  size_t total_length= buffer.size();
   size_t length= my_b_bytes_in_cache(cache);
 
   if (!length)
@@ -201,8 +234,11 @@ int Wsrep_client_service::prepare_fragment_for_replication(
     }
     while (cache->file >= 0 && (length= my_b_fill(cache)));
   }
+
   DBUG_ASSERT(total_length == buffer.size());
+
   log_position= saved_pos;
+
 cleanup:
   if (reinit_io_cache(cache, WRITE_CACHE, saved_pos, 0, 0))
   {
@@ -257,8 +293,8 @@ size_t Wsrep_client_service::bytes_generated() const
 
 void Wsrep_client_service::will_replay()
 {
-  DBUG_ASSERT(m_thd == current_thd);
   mysql_mutex_lock(&LOCK_wsrep_replaying);
+  DBUG_ASSERT(wsrep_replaying >= 0);
   ++wsrep_replaying;
   mysql_mutex_unlock(&LOCK_wsrep_replaying);
 }
@@ -275,7 +311,6 @@ void Wsrep_client_service::signal_replayed()
 
 enum wsrep::provider::status Wsrep_client_service::replay()
 {
-
   DBUG_ASSERT(m_thd == current_thd);
   DBUG_ENTER("Wsrep_client_service::replay");
 
@@ -291,6 +326,10 @@ enum wsrep::provider::status Wsrep_client_service::replay()
   // on the replaced security context.
   Security_context old_ctx = replayer_thd->main_security_ctx;
   replayer_thd->main_security_ctx = m_thd->main_security_ctx;
+  replayer_thd->wsrep_rgi= wsrep_relay_group_init(replayer_thd, "wsrep_relay");
+  replayer_thd->system_thread_info.rpl_sql_info=
+    new rpl_sql_thread_info(replayer_thd->wsrep_rgi->rli->mi->rpl_filter);
+
   replayer_thd->thread_stack= m_thd->thread_stack;
   replayer_thd->real_id= pthread_self();
   replayer_thd->prior_thr_create_utime=
@@ -314,14 +353,19 @@ enum wsrep::provider::status Wsrep_client_service::replay()
   binlog_reset_cache(m_thd);
 
   replayer_thd->main_security_ctx = old_ctx;
+  delete replayer_thd->system_thread_info.rpl_sql_info;
   delete replayer_thd;
   DBUG_RETURN(ret);
 }
 
 enum wsrep::provider::status Wsrep_client_service::replay_unordered()
 {
-  DBUG_ASSERT(0);
-  return wsrep::provider::error_not_implemented;
+  Wsrep_server_state& server_state(Wsrep_server_state::instance());
+  Wsrep_prepared_replayer_service* replayer_service=
+    dynamic_cast<Wsrep_prepared_replayer_service*>(
+      server_state.find_streaming_applier(m_thd->wsrep_trx().xid()));
+  replayer_service->replay();
+  return wsrep::provider::success;
 }
 
 void Wsrep_client_service::wait_for_replayers(wsrep::unique_lock<wsrep::mutex>& lock)
@@ -343,10 +387,80 @@ void Wsrep_client_service::wait_for_replayers(wsrep::unique_lock<wsrep::mutex>& 
   lock.lock();
 }
 
+
+class thd_context_switch
+{
+public:
+  thd_context_switch(THD *orig_thd, THD *cur_thd)
+    : m_orig_thd(orig_thd)
+    , m_cur_thd(cur_thd)
+  {
+    wsrep_reset_threadvars(m_orig_thd);
+    wsrep_store_threadvars(m_cur_thd);
+  }
+  ~thd_context_switch()
+  {
+    wsrep_reset_threadvars(m_cur_thd);
+    wsrep_store_threadvars(m_orig_thd);
+  }
+private:
+  THD *m_orig_thd;
+  THD *m_cur_thd;
+};
+
 enum wsrep::provider::status Wsrep_client_service::commit_by_xid()
 {
-  DBUG_ASSERT(0);
-  return wsrep::provider::error_not_implemented;
+  DBUG_ASSERT(m_thd == current_thd);
+  DBUG_ASSERT(m_thd->wsrep_trx().is_xa());
+  DBUG_ENTER("Wsrep_client_service::commit_by_xid");
+
+  enum wsrep::provider::status status= wsrep::provider::error_unknown;
+  int ret= 1;
+
+  THD *commit_thd= new THD(next_thread_id(), false);
+  commit_thd->thread_stack= m_thd->thread_stack;
+  wsrep_assign_from_threadvars(commit_thd);
+  {
+    thd_context_switch context_switch(m_thd, commit_thd);
+
+    wsrep_open(commit_thd);
+    wsrep_before_command(commit_thd);
+    ret= commit_thd->wsrep_cs().commit_by_xid(m_thd->wsrep_trx().xid());
+    status = commit_thd->wsrep_cs().current_error_status();
+    wsrep_after_command_ignore_result(commit_thd);
+    wsrep_close(commit_thd);
+    // thd_context_switch is destructed here, commit_thd can be deleted after this
+  }
+  delete commit_thd;
+
+  if (ret == 0)
+  {
+    DBUG_ASSERT(status == wsrep::provider::success);
+    // Notice, this whole method could be entirely
+    // implemented in wsrep-lib. However, we need
+    // support from the DBMS for the following line
+    my_ok(m_thd);
+  }
+
+  DBUG_RETURN(status);
+}
+
+bool Wsrep_client_service::is_explicit_xa()
+{
+  DBUG_ASSERT(m_thd == current_thd);
+  return m_thd->transaction->xid_state.is_explicit_XA();
+}
+
+bool Wsrep_client_service::is_xa_rollback()
+{
+  DBUG_ASSERT(m_thd == current_thd);
+  return m_thd->lex->sql_command == SQLCOM_XA_ROLLBACK;
+}
+
+bool Wsrep_client_service::is_prepared_xa()
+{
+  DBUG_ASSERT(m_thd == current_thd);
+  return m_thd->transaction->xid_state.get_state_code() == XA_PREPARED;
 }
 
 void Wsrep_client_service::debug_sync(const char* sync_point)
@@ -366,7 +480,15 @@ int Wsrep_client_service::bf_rollback()
   DBUG_ASSERT(m_thd == current_thd);
   DBUG_ENTER("Wsrep_client_service::bf_rollback");
 
-  int ret= (trans_rollback_stmt(m_thd) || trans_rollback(m_thd));
+  int ret= 1;
+  if (m_thd->wsrep_trx().is_xa())
+  {
+    wsrep_trans_xa_force_rollback(m_thd);
+  }
+  else
+  {
+    ret= (trans_rollback_stmt(m_thd) || trans_rollback(m_thd));
+  }
 
   WSREP_DEBUG("::bf_rollback() thread: %lu, client_state %s "
               "client_mode %s trans_state %s killed %d",

@@ -70,6 +70,7 @@ LEX_CSTRING WSREP_LEX_ALLOWLIST= {STRING_WITH_LEN(WSREP_ALLOWLIST_TABLE)};
   "seqno BIGINT, " \
   "flags INT NOT NULL, " \
   "frag LONGBLOB NOT NULL, " \
+  "xid VARCHAR(512) NOT NULL," \
   "PRIMARY KEY (node_uuid, trx_id, seqno)" \
   ") ENGINE=InnoDB STATS_PERSISTENT=0 CHARSET=latin1"
 
@@ -79,6 +80,10 @@ LEX_CSTRING WSREP_LEX_ALLOWLIST= {STRING_WITH_LEN(WSREP_ALLOWLIST_TABLE)};
   "ip CHAR(64) NOT NULL," \
   "PRIMARY KEY (ip)" \
   ") ENGINE=InnoDB STATS_PERSISTENT=0 CHARSET=latin1"
+
+#define alter_frag_table_add_xid \
+  "ALTER TABLE " WSREP_SCHEMA "." WSREP_STREAMING_TABLE \
+  " ADD COLUMN IF NOT EXISTS xid VARCHAR(512) NOT NULL"
 
 #define delete_from_cluster_table \
   "DELETE FROM " WSREP_SCHEMA "." WSREP_CLUSTER_TABLE
@@ -580,6 +585,13 @@ static int scan(TABLE* table, uint field, char* strbuf, uint strbuf_len)
   return 0;
 }
 
+static int scan(TABLE* table, uint field, String& str)
+{
+  assert(field < table->s->fields);
+  (void)table->field[field]->val_str(&str);
+  return 0;
+}
+
 /*
   Scan member
   TODO: filter members by cluster UUID
@@ -735,6 +747,7 @@ int Wsrep_schema::init()
       Wsrep_schema_impl::execute_SQL(thd, STRING_WITH_LEN(create_frag_table_str)) ||
       Wsrep_schema_impl::execute_SQL(thd, STRING_WITH_LEN(create_allowlist_table_str)) ||
       Wsrep_schema_impl::execute_SQL(thd, STRING_WITH_LEN(alter_frag_table)) ||
+      Wsrep_schema_impl::execute_SQL(thd, STRING_WITH_LEN(alter_frag_table_add_xid)) ||
       Wsrep_schema_impl::execute_SQL(thd, STRING_WITH_LEN(alter_cluster_table)) ||
       Wsrep_schema_impl::execute_SQL(thd, STRING_WITH_LEN(alter_members_table)) ||
       Wsrep_schema_impl::execute_SQL(thd, STRING_WITH_LEN(alter_allowlist_table)) ||
@@ -1052,7 +1065,8 @@ int Wsrep_schema::append_fragment(THD* thd,
                                   wsrep::transaction_id transaction_id,
                                   wsrep::seqno seqno,
                                   int flags,
-                                  const wsrep::const_buffer& data)
+                                  const wsrep::const_buffer& data,
+                                  const wsrep::xid& xid)
 {
   DBUG_ENTER("Wsrep_schema::append_fragment");
   std::ostringstream os;
@@ -1081,11 +1095,15 @@ int Wsrep_schema::append_fragment(THD* thd,
   }
 
   TABLE* frag_table= frag_table_l.table;
+  Wsrep_xid wsrep_xid(static_cast<const Wsrep_xid&>(xid));
+  char* xid_str= wsrep_xid.serialize();
+
   Wsrep_schema_impl::store(frag_table, 0, server_id);
   Wsrep_schema_impl::store(frag_table, 1, transaction_id.get());
   Wsrep_schema_impl::store(frag_table, 2, seqno.get());
   Wsrep_schema_impl::store(frag_table, 3, flags);
   Wsrep_schema_impl::store(frag_table, 4, data.data(), data.size());
+  Wsrep_schema_impl::store(frag_table, 5, xid_str, strlen(xid_str));
 
   if (Wsrep_schema_impl::insert(frag_table)) {
     trans_rollback_stmt(thd);
@@ -1310,7 +1328,8 @@ static int replay_transaction(THD* thd,
                               THD* orig_thd,
                               Relay_log_info* rli,
                               const wsrep::ws_meta& ws_meta,
-                              const std::vector<wsrep::seqno>& fragments)
+                              const std::vector<wsrep::seqno>& fragments,
+                              bool remove_after_replay)
 {
   Wsrep_schema_impl::thd_context_switch thd_context_switch(orig_thd, thd);
 
@@ -1343,6 +1362,14 @@ static int replay_transaction(THD* thd,
                                                       key_map);
     if (error)
     {
+      if (error == HA_ERR_END_OF_FILE || error == HA_ERR_KEY_NOT_FOUND)
+      {
+        WSREP_WARN("Record not found in %s.%s: %d",
+                   frag_table->s->db.str,
+                   frag_table->s->table_name.str,
+                   error);
+      }
+
       WSREP_WARN("Failed to init streaming log table for index scan: %d",
                  error);
       Wsrep_schema_impl::end_index_scan(frag_table);
@@ -1373,42 +1400,46 @@ static int replay_transaction(THD* thd,
     Wsrep_schema_impl::end_index_scan(frag_table);
     Wsrep_schema_impl::finish_stmt(thd);
 
-    Wsrep_schema_impl::init_stmt(thd);
-
-    if ((error= Wsrep_schema_impl::open_for_write(thd,
-                                                  WSREP_STREAMING_TABLE,
-                                                  &frag_table_l)))
+    if (remove_after_replay)
     {
-      WSREP_WARN("Could not open SR table for write: %d", error);
+      Wsrep_schema_impl::init_stmt(thd);
+
+      if ((error= Wsrep_schema_impl::open_for_write(thd,
+                                                    WSREP_STREAMING_TABLE,
+                                                    &frag_table_l)))
+      {
+        WSREP_WARN("Could not open SR table for write: %d", error);
+        Wsrep_schema_impl::finish_stmt(thd);
+        ret= 1;
+        break;
+      }
+
+      frag_table= frag_table_l.table;
+
+      error= Wsrep_schema_impl::init_for_index_scan(frag_table,
+                                                    key,
+                                                    key_map);
+      if (error)
+      {
+        WSREP_WARN("Failed to init streaming log table for index scan: %d",
+                   error);
+        Wsrep_schema_impl::end_index_scan(frag_table);
+        ret= 1;
+        break;
+      }
+
+      error= Wsrep_schema_impl::delete_row(frag_table);
+
+      if (error)
+      {
+        WSREP_WARN("Could not delete row from streaming log table: %d", error);
+        Wsrep_schema_impl::end_index_scan(frag_table);
+        ret= 1;
+        break;
+      }
+      Wsrep_schema_impl::end_index_scan(frag_table);
       Wsrep_schema_impl::finish_stmt(thd);
-      ret= 1;
-      break;
     }
-    frag_table= frag_table_l.table;
-
-    error= Wsrep_schema_impl::init_for_index_scan(frag_table,
-                                                  key,
-                                                  key_map);
-    if (error)
-    {
-      WSREP_WARN("Failed to init streaming log table for index scan: %d",
-                 error);
-      Wsrep_schema_impl::end_index_scan(frag_table);
-      ret= 1;
-      break;
-    }
-
-    error= Wsrep_schema_impl::delete_row(frag_table);
-
-    if (error)
-    {
-      WSREP_WARN("Could not delete row from streaming log table: %d", error);
-      Wsrep_schema_impl::end_index_scan(frag_table);
-      ret= 1;
-      break;
-    }
-    Wsrep_schema_impl::end_index_scan(frag_table);
-    Wsrep_schema_impl::finish_stmt(thd);
     my_free(key);
     key= NULL;
   }
@@ -1422,7 +1453,8 @@ static int replay_transaction(THD* thd,
 int Wsrep_schema::replay_transaction(THD* orig_thd,
                                      Relay_log_info* rli,
                                      const wsrep::ws_meta& ws_meta,
-                                     const std::vector<wsrep::seqno>& fragments)
+                                     const std::vector<wsrep::seqno>& fragments,
+                                     bool remove_after_replay)
 {
   DBUG_ENTER("Wsrep_schema::replay_transaction");
   DBUG_ASSERT(!fragments.empty());
@@ -1444,7 +1476,8 @@ int Wsrep_schema::replay_transaction(THD* orig_thd,
     Backup and restore the query table list changes.
   */
   orig_thd->lex->reset_n_backup_query_tables_list(&query_tables_list_backup);
-  int ret= ::replay_transaction(thd, orig_thd, rli, ws_meta, fragments);
+  int ret= ::replay_transaction(thd, orig_thd, rli, ws_meta, fragments,
+                                remove_after_replay);
   orig_thd->lex->restore_backup_query_tables_list(&query_tables_list_backup);
 
   delete thd;
@@ -1554,10 +1587,13 @@ static int recover_sr_transactions(THD* storage_thd, THD* orig_thd)
       wsrep::gtid gtid(cluster_id, seqno);
       int flags;
       Wsrep_schema_impl::scan(frag_table, 3, flags);
-      String data_str;
 
-      (void)frag_table->field[4]->val_str(&data_str);
-      wsrep::const_buffer data(data_str.ptr(), data_str.length());
+      String data_str;
+      Wsrep_schema_impl::scan(frag_table, 4, data_str);
+      wsrep::const_buffer data(data_str.c_ptr_quick(), data_str.length());
+      String frag_xid;
+      Wsrep_schema_impl::scan(frag_table, 5, frag_xid);
+
       wsrep::ws_meta ws_meta(gtid,
                              wsrep::stid(server_id,
                                          transaction_id,
@@ -1570,12 +1606,25 @@ static int recover_sr_transactions(THD* storage_thd, THD* orig_thd)
                                                          transaction_id)))
       {
         DBUG_ASSERT(wsrep::starts_transaction(flags));
-        applier = wsrep_create_streaming_applier(storage_thd, "recovery");
-        server_state.start_streaming_applier(server_id, transaction_id,
+        XID xid;
+        xid.null();
+        const std::string xid_match(frag_xid.c_ptr(), frag_xid.length());
+        if (frag_xid.length())
+        {
+          wsrep_find_prepared_xid(orig_thd,
+                                  frag_xid.c_ptr(),
+                                  frag_xid.length(),
+                                  &xid);
+        }
+        applier= wsrep_create_streaming_applier(storage_thd, "recovery", &xid);
+
+        server_state.start_streaming_applier(server_id,
+                                             transaction_id,
                                              applier);
         applier->start_transaction(wsrep::ws_handle(transaction_id, 0),
                                    ws_meta);
       }
+
       applier->store_globals();
       wsrep::mutable_buffer unused;
       if ((ret= applier->apply_write_set(ws_meta, data, unused)) != 0)

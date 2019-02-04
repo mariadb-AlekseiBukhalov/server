@@ -53,18 +53,9 @@ public:
   enum wsrep::provider::status replay_unordered() override;
   void wait_for_replayers(wsrep::unique_lock<wsrep::mutex>&) override;
   enum wsrep::provider::status commit_by_xid() override;
-  bool is_explicit_xa() override
-  {
-    return false;
-  }
-  bool is_prepared_xa() override
-  {
-    return false;
-  }
-  bool is_xa_rollback() override
-  {
-    return false;
-  }
+  bool is_explicit_xa() override;
+  bool is_prepared_xa() override;
+  bool is_xa_rollback() override;
   void debug_sync(const char*) override;
   void debug_crash(const char*) override;
   int bf_rollback() override;
