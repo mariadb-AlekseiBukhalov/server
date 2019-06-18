@@ -1,4 +1,4 @@
-usr/lib/mysql/plugin/ha_mroonga.so
+usr/share/mariadb/not_supported/ha_mroonga.so usr/lib/mysql/plugin
 usr/share/mariadb/mroonga/AUTHORS
 usr/share/mariadb/mroonga/COPYING
 usr/share/mariadb/mroonga/install.sql
