@@ -26,11 +26,23 @@ MYSQL_VERSION_EXTRA=${MYSQL_VERSION_EXTRA/-/.}
 architecture=$(dpkg-architecture -q DEB_BUILD_ARCH)
 uname_machine=$(uname -m)
 
-# Look up distro-version specific stuff
-#
-# Always keep the actual packaging as up-to-date as possible following the latest
-# Debian policy and targeting Debian Sid. Then case-by-case run in autobake-deb.sh
-# tests for backwards compatibility and strip away parts on older builders.
+# Don't build or try to put files in a package for selected plugins and components on Travis-CI
+# in order to keep build small (in both duration and disk space)
+if [[ $TRAVIS ]]
+then
+  # Test suite package not relevant on Travis-CI
+  sed 's|DINSTALL_MYSQLTESTDIR=share/mysql/mysql-test|DINSTALL_MYSQLTESTDIR=false|' -i debian/rules
+  sed '/Package: mariadb-test-data/,/^$/d' -i debian/control
+  sed '/Package: mariadb-test$/,/^$/d' -i debian/control
+
+  # Extra plugins such as Mroonga, Spider, OQgraph, Sphinx and the embedded build can safely be skipped
+  sed 's|-DDEB|-DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_OQGRAPH=NO -DPLUGIN_PERFSCHEMA=NO -DPLUGIN_SPHINX=NO -DWITH_EMBEDDED_SERVER=OFF -DDEB|' -i debian/rules
+  sed "/Package: mariadb-plugin-mroonga/,/^$/d" -i debian/control
+  sed "/Package: mariadb-plugin-rocksdb/,/^$/d" -i debian/control
+  sed "/Package: mariadb-plugin-spider/,/^$/d" -i debian/control
+  sed "/Package: mariadb-plugin-oqgraph/,/^$/d" -i debian/control
+  sed "/ha_sphinx.so/d" -i debian/mariadb-server-10.6.install
+fi
 
 remove_rocksdb_tools()
 {
