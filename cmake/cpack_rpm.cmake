@@ -261,7 +261,7 @@ SETA(CPACK_RPM_server_PACKAGE_REQUIRES
 
 IF(WITH_WSREP)
   SETA(CPACK_RPM_server_PACKAGE_REQUIRES
-    "galera-4" "rsync" "grep" "gawk" "iproute"
+    "galera-enterprise-4" "rsync" "grep" "gawk" "iproute"
     "coreutils" "findutils" "tar")
   SETA(CPACK_RPM_server_PACKAGE_RECOMMENDS "lsof" "socat" "pv")
   SETA(CPACK_RPM_test_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}" "socat")
