@@ -2829,6 +2829,7 @@ void mysql_sql_stmt_prepare(THD *thd)
   {
     /* Statement map deletes the statement on erase */
     thd->stmt_map.erase(stmt);
+    DEBUG_SYNC(thd, "after_removing_statement");
   }
   else
   {
@@ -2847,6 +2848,7 @@ void mysql_sql_stmt_execute_immediate(THD *thd)
   CSET_STRING orig_query= thd->query_string;
   Prepared_statement *stmt;
   LEX_CSTRING query;
+  CSET_STRING old_query;
   DBUG_ENTER("mysql_sql_stmt_execute_immediate");
 
   if (lex->prepared_stmt.params_fix_fields(thd))
@@ -2868,6 +2870,7 @@ void mysql_sql_stmt_execute_immediate(THD *thd)
   // See comments on thd->free_list in mysql_sql_stmt_execute()
   SCOPE_VALUE(thd->free_list, (Item *) NULL);
   SCOPE_EXIT([thd]() mutable { thd->free_items(); });
+  old_query= thd->query_string;
   /*
     Make sure we call Prepared_statement::execute_immediate()
     with an empty THD::change_list. It can be non empty as the above
@@ -2890,6 +2893,7 @@ void mysql_sql_stmt_execute_immediate(THD *thd)
   Item_change_list_savepoint change_list_savepoint(thd);
   (void) stmt->execute_immediate(query.str, (uint) query.length);
   change_list_savepoint.rollback(thd);
+  thd->set_query_inner(old_query);
 
   /*
     stmt->execute_immediately() sets thd->query_string with the executed
@@ -2900,6 +2904,14 @@ void mysql_sql_stmt_execute_immediate(THD *thd)
   */
   thd->set_query_inner(orig_query);
   stmt->lex->restore_set_statement_var();
+  /*
+    stmt->execute_immediately() sets thd->query_string with the executed
+    query, so the audit plugin gets adequate notification with the
+    mysqld_stmt_* set of functions.
+    But here we should restore the original query so it's mentioned in
+    logs properly.
+  */
+  thd->set_query_inner(orig_query);
   delete stmt;
   DBUG_VOID_RETURN;
 }
@@ -4448,12 +4460,28 @@ Prepared_statement::execute_loop(String *expanded_query,
   if (unlikely(state == Query_arena::STMT_ERROR))
   {
     my_message(last_errno, last_error, MYF(0));
+    /*
+      Execute failed.
+      Fill the thd->query to the audit plugin later gets
+      the meaningful notification.
+
+    */
+    thd->set_query_inner(query_string);
     return TRUE;
   }
 
 reexecute:
   if (!params_are_set && set_parameters(expanded_query, packet, packet_end))
+  {
+    /*
+      Execute failed.
+      Fill the thd->query to the audit plugin later gets
+      the meaningful notification.
+
+    */
+    thd->set_query_inner(query_string);
     return TRUE;
+  }
   params_are_set= true;
 #ifdef WITH_WSREP
   if (thd->wsrep_delayed_BF_abort)
@@ -5011,6 +5039,13 @@ bool Prepared_statement::execute(String *expanded_query, bool open_cursor)
   if (open_cursor && lex->result && lex->result->check_simple_select())
   {
     DBUG_PRINT("info",("Cursor asked for not SELECT stmt"));
+    /*
+      Execute failed.
+      Fill the thd->query to the audit plugin later gets
+      the meaningful notification.
+
+    */
+    thd->set_query_inner(query_string);
     return TRUE;
   }
 
@@ -5043,7 +5078,16 @@ bool Prepared_statement::execute(String *expanded_query, bool open_cursor)
 
   if (mysql_opt_change_db(thd, &stmt_db_name, &saved_cur_db_name, TRUE,
                           &cur_db_changed))
+  {
+    /*
+      Execute failed.
+      Fill the thd->query to the audit plugin later gets
+      the meaningful notification.
+
+    */
+    thd->set_query_inner(query_string);
     goto error;
+  }
 
   /* Allocate query. */
 
@@ -5059,6 +5103,12 @@ bool Prepared_statement::execute(String *expanded_query, bool open_cursor)
     expanded query was allocated in thd->mem_root.
   */
   stmt_backup.set_query_inner(thd->query_string);
+  /*
+    We also want to store the query tables list even after backup
+    so it's possible to filter prepared statements by used tables.
+  */
+  if (!thd->spcont)
+    stmt_backup.lex->query_tables= thd->lex->query_tables;
 
   /*
     At first execution of prepared statement we may perform logical

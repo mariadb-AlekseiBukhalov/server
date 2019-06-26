@@ -30,6 +30,7 @@
 #include <mysql/plugin.h>
 
 #include "wsrep_mysqld.h"
+#include "wsrep_encryption.h"
 #include "wsrep/provider_options.hpp"
 #include "wsrep_server_state.h"
 #include "wsrep_var.h" // wsrep_refresh_provider_options()

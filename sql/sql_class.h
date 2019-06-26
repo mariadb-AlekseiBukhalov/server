@@ -253,6 +253,14 @@ extern "C" int thd_current_status(MYSQL_THD thd);
 extern "C" enum enum_server_command thd_current_command(MYSQL_THD thd);
 extern "C" int thd_double_innodb_cardinality(MYSQL_THD thd);
 
+extern "C" unsigned long thd_query_start_sec_part(MYSQL_THD thd);
+extern "C" bool make_date_time(THD *thd, const String* format,
+                               const MYSQL_TIME *l_time, timestamp_type type,
+                               const MY_LOCALE *locale, String *str);
+extern "C" void get_time_info(THD *thd, const char *format, size_t len,
+                              const MYSQL_TIME *l_time,
+                              uint type, LEX_STRING *res,
+                              size_t buffer_size);
 /**
   @class CSET_STRING
   @brief Character set armed LEX_STRING

@@ -1265,6 +1265,11 @@ void thd_gmt_sec_to_TIME(MYSQL_THD thd, MYSQL_TIME *ltime, my_time_t t)
   tz->gmt_sec_to_TIME(ltime, t);
 }
 
+extern "C"
+unsigned long thd_query_start_sec_part(MYSQL_THD thd)
+{
+  return thd ? thd->query_start_sec_part() : 0;
+}
 
 /*
   @brief
@@ -6010,6 +6015,32 @@ print_check_msg(THD *thd, const char *db_name, const char *table_name, const cha
 }
 
 
+/**
+  Query table list accessor.
+*/
+extern "C" size_t thd_query_table_list(MYSQL_THD thd,
+    MYSQL_CONST_LEX_STRING *db_table_names, size_t max_names)
+{
+  TABLE_LIST *tl= thd->lex->query_tables;
+  size_t n_names= 0;
+
+  while (tl)
+  {
+    if (tl->db.length == 0 && tl->db.str == empty_c_string)
+      continue;
+
+    if (max_names > n_names + 1)
+    {
+      db_table_names[n_names]= tl->db;
+      db_table_names[n_names+1]= tl->table_name;
+    }
+    n_names+= 2;
+    tl= tl->next_global;
+  }
+  return n_names;
+}
+
+
 /****************************************************************************
   Handling of statement states in functions and triggers.
 
@@ -8916,4 +8947,38 @@ LEX_CSTRING make_string(THD *thd, const char *start_ptr,
 {
   size_t length= end_ptr - start_ptr;
   return {strmake_root(thd->mem_root, start_ptr, length), length};
+}
+
+/*
+  Get the timestamp in a given format and copy it
+  to the buffer.
+  If the length of time in format is longer
+  than buffer (the size of buffer is passed as argument),
+  it will get truncated.
+*/
+extern "C"
+void get_time_info(THD *thd, const char *format, size_t format_len,
+                   const MYSQL_TIME *l_time, uint type,
+                   LEX_STRING *res, size_t buffer_size)
+{
+  String str(0);
+  size_t copy_buffer= 0;
+  String format_str(format, format_len, str.charset());
+  size_t res_len= 0;
+
+  const MY_LOCALE *lc= thd->variables.lc_time_names;
+
+  make_date_time(thd, &format_str, l_time, (timestamp_type)0, lc, &str);
+
+  res_len= str.length();
+
+  /* We dont do buffer_size-1 because length includes \0 (due to 0 base indexing). */
+  res->length= res_len < buffer_size ?
+               res_len : buffer_size;
+  /* We do buffer_size-1 because the last byte is reserved for \0. */
+  copy_buffer= res_len < buffer_size-1 ?
+               res_len :
+               buffer_size-1;
+
+  memcpy(res->str, str.ptr(), copy_buffer);
 }

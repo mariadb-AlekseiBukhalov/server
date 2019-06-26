@@ -1,0 +1,26 @@
+--source include/have_plugin_auth.inc
+--source include/not_embedded.inc
+
+if (!$SERVER_AUDIT2_SO) {
+  skip No SERVER_AUDIT2 plugin;
+}
+
+--echo #
+--echo # MENT-1744: Milliseconds for Timestamp of the Audit Log
+--echo #
+
+let $MYSQLD_DATADIR= `SELECT @@datadir`;
+
+SET GLOBAL server_audit_logging=on;
+
+show variables like 'server_audit%';
+
+--echo # Get only first 3 lines from the audit log. ( It is enough to see what is logged )
+--let SEARCH_FILE= $MYSQLD_DATADIR/server_audit.log
+--let LINES_TO_READ=3
+--replace_regex /\,[^,]*\,root\,/,HOSTNAME,root,/ /\,[1-9][0-9]*\,/,1,/ /\,[1-9][0-9]*/,ID/
+--source include/read_head.inc
+
+remove_file $MYSQLD_DATADIR/server_audit.log;
+
+SET GLOBAL server_audit_logging=DEFAULT;

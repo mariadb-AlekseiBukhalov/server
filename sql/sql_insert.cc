@@ -3191,6 +3191,7 @@ int write_delayed(THD *thd, TABLE *table, enum_duplicates duplic,
   Delayed_insert *di=thd->di;
   const Discrete_interval *forced_auto_inc;
   size_t user_len, host_len, ip_length;
+
   DBUG_ENTER("write_delayed");
   DBUG_PRINT("enter", ("query = '%s' length %lu", query.str,
                        (ulong) query.length));
@@ -3691,6 +3692,7 @@ pthread_handler_t handle_delayed_insert(void *arg)
       }
       if (di->stacked_inserts)
       {
+
         delayed_row *row;
         I_List_iterator<delayed_row> it(di->rows);
         my_thread_id cur_thd= di->thd.thread_id;

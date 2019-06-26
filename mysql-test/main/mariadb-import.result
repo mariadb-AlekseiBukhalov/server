@@ -51,6 +51,10 @@ proxies_priv.sql
 proxies_priv.txt
 roles_mapping.sql
 roles_mapping.txt
+server_audit_filters.sql
+server_audit_filters.txt
+server_audit_users.sql
+server_audit_users.txt
 servers.sql
 servers.txt
 slow_log.sql
@@ -102,6 +106,8 @@ Executing SQL script vardir/tmp/dump/mysql/index_stats.sql
 Executing SQL script vardir/tmp/dump/mysql/plugin.sql
 Executing SQL script vardir/tmp/dump/mysql/procs_priv.sql
 Executing SQL script vardir/tmp/dump/mysql/roles_mapping.sql
+Executing SQL script vardir/tmp/dump/mysql/server_audit_filters.sql
+Executing SQL script vardir/tmp/dump/mysql/server_audit_users.sql
 Executing SQL script vardir/tmp/dump/mysql/servers.sql
 Executing SQL script vardir/tmp/dump/mysql/table_stats.sql
 Executing SQL script vardir/tmp/dump/mysql/user.sql
@@ -155,6 +161,10 @@ Loading data from LOCAL file: vardir/tmp/dump/mysql/procs_priv.txt into procs_pr
 mysql.procs_priv: Records: 0  Deleted: 0  Skipped: 0  Warnings: 0
 Loading data from LOCAL file: vardir/tmp/dump/mysql/roles_mapping.txt into roles_mapping
 mysql.roles_mapping: Records: 0  Deleted: 0  Skipped: 0  Warnings: 0
+Loading data from LOCAL file: vardir/tmp/dump/mysql/server_audit_filters.txt into server_audit_filters
+mysql.server_audit_filters: Records: 0  Deleted: 0  Skipped: 0  Warnings: 0
+Loading data from LOCAL file: vardir/tmp/dump/mysql/server_audit_users.txt into server_audit_users
+mysql.server_audit_users: Records: 0  Deleted: 0  Skipped: 0  Warnings: 0
 Loading data from LOCAL file: vardir/tmp/dump/mysql/servers.txt into servers
 mysql.servers: Records: 0  Deleted: 0  Skipped: 0  Warnings: 0
 Loading data from LOCAL file: vardir/tmp/dump/mysql/table_stats.txt into table_stats

@@ -469,7 +469,7 @@ err:
   Create a formatted date/time value in a string.
 */
 
-static bool make_date_time(THD *thd, const String *format,
+bool make_date_time(THD *thd, const String *format,
                            const MYSQL_TIME *l_time, timestamp_type type,
                            const MY_LOCALE *locale, String *str)
 {

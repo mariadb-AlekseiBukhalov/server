@@ -284,7 +284,7 @@ drop table t1;
 create table test_partitions (i int) partition by hash (i) partitions 4;
 drop table test_partitions;
 set global server_audit_logging= off;
-set global server_audit_incl_users='root';
+set global server_audit_incl_users='';
 set global server_audit_logging= on;
 disconnect cn1;
 drop user user1@localhost;
