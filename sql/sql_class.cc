@@ -768,6 +768,7 @@ THD::THD(my_thread_id id, bool is_wsrep_applier)
    wsrep_affected_rows(0),
    wsrep_has_ignored_error(false),
    wsrep_was_on(false),
+   wsrep_nbo_notify_ctx(0),
    wsrep_ignore_table(false),
    wsrep_aborter(0),
    wsrep_delayed_BF_abort(false),
@@ -1428,6 +1429,7 @@ void THD::init()
   wsrep_killed_state      = 0;
 #endif /* DBUG_OFF */
   wsrep_desynced_backup_stage= false;
+  wsrep_nbo_notify_ctx    = 0;
 #endif /* WITH_WSREP */
 
   set_binlog_bit();

@@ -73,6 +73,7 @@ void set_thd_stage_info(void *thd,
 
 #include "wsrep.h"
 #include "wsrep_on.h"
+#include "wsrep_mysqld.h"
 #include <inttypes.h>
 #include <ilist.h>
 #ifdef WITH_WSREP
@@ -5935,6 +5936,7 @@ public:
   /* true if wsrep_on was ON in last wsrep_on_update */
   bool                      wsrep_was_on;
 
+  Wsrep_nbo_notify_context* wsrep_nbo_notify_ctx;
   /*
     When enabled, do not replicate/binlog updates from the current table that's
     being processed. At the moment, it is used to keep mysql.gtid_slave_pos

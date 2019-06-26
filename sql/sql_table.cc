@@ -8190,6 +8190,11 @@ static bool mysql_inplace_alter_table(THD *thd,
   DEBUG_SYNC(thd, "alter_table_inplace_after_lock_upgrade");
   THD_STAGE_INFO(thd, stage_alter_inplace_prepare);
 
+#ifdef WITH_WSREP
+  wsrep_nbo_phase_one_end(thd);
+
+#endif  /* WITH_WSREP */
+
   switch (inplace_supported) {
   case HA_ALTER_ERROR:
   case HA_ALTER_INPLACE_NOT_SUPPORTED:
@@ -10807,7 +10812,6 @@ bool mysql_alter_table(THD *thd, const LEX_CSTRING *new_db,
     *inplace_alter_table_committed= 0;
   void *inplace_alter_table_committed_argument= 0;
   DBUG_ENTER("mysql_alter_table");
-
   /*
     Check if we attempt to alter mysql.slow_log or
     mysql.general_log table and return an error if
@@ -11426,7 +11430,6 @@ do_continue:;
     {
       DBUG_RETURN(true);
     }
-
     // In-place execution of ALTER TABLE for partitioning.
     alter_info->db= alter_ctx.db;
     alter_info->table_name= alter_ctx.table_name;
@@ -11871,6 +11874,11 @@ alter_copy:
                                             alter_ctx.new_name, true);
   if (!new_table)
     goto err_new_table_cleanup;
+
+#ifdef WITH_WSREP
+  wsrep_nbo_phase_one_end(thd);
+
+#endif /* WITH_WSREP */
 
   DBUG_ASSERT(new_table->s->hlindexes() <= 1);
   for (uint i= new_table->s->keys; i < new_table->s->total_keys; i++)

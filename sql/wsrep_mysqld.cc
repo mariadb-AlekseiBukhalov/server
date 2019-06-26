@@ -21,6 +21,7 @@
 #include "wsrep_status.h"
 
 #include "mariadb.h"
+#include "debug_sync.h"
 #include <mysqld.h>
 #include <transaction.h>
 #include <sql_class.h>
@@ -245,7 +246,7 @@ static PSI_file_info wsrep_files[]=
 };
 
 PSI_thread_key key_wsrep_sst_joiner, key_wsrep_sst_donor,
-  key_wsrep_rollbacker, key_wsrep_applier,
+  key_wsrep_rollbacker, key_wsrep_applier, key_wsrep_nbo_worker,
   key_wsrep_sst_joiner_monitor, key_wsrep_sst_donor_monitor;
 
 static PSI_thread_info wsrep_threads[]=
@@ -254,6 +255,7 @@ static PSI_thread_info wsrep_threads[]=
  {&key_wsrep_sst_donor, "wsrep_sst_donor_thread", PSI_FLAG_GLOBAL},
  {&key_wsrep_rollbacker, "wsrep_rollbacker_thread", PSI_FLAG_GLOBAL},
  {&key_wsrep_applier, "wsrep_applier_thread", PSI_FLAG_GLOBAL},
+ {&key_wsrep_nbo_worker, "wsrep_nbo_worker_thread", PSI_FLAG_GLOBAL},
  {&key_wsrep_sst_joiner_monitor, "wsrep_sst_joiner_monitor", PSI_FLAG_GLOBAL},
  {&key_wsrep_sst_donor_monitor, "wsrep_sst_donor_monitor", PSI_FLAG_GLOBAL}
 };
@@ -1140,7 +1142,7 @@ void wsrep_recover()
   }
 }
 
-static void wsrep_stop_replication_common(THD *thd)
+static void wsrep_stop_replication_common(THD *thd, bool kill_clients= true)
 {
   if (Wsrep_server_state::instance().state() !=
       Wsrep_server_state::s_disconnected)
@@ -1154,22 +1156,25 @@ static void wsrep_stop_replication_common(THD *thd)
     }
   }
 
-  /* my connection, should not terminate with
-     wsrep_close_client_connections(), make transaction to rollback */
-  if (thd && !thd->wsrep_applier)
-    trans_rollback(thd);
-  wsrep_close_client_connections(TRUE, thd);
-
+  if (kill_clients)
+  {
+    /* my connection, should not terminate with wsrep_close_client_connection(),
+       make transaction to rollback
+    */
+    if (thd && !thd->wsrep_applier)
+      trans_rollback(thd);
+    wsrep_close_client_connections(TRUE, thd);
+  }
   /* wait until appliers have stopped */
   wsrep_wait_appliers_close(thd);
 
   node_uuid= WSREP_UUID_UNDEFINED;
 }
 
-void wsrep_stop_replication(THD *thd)
+void wsrep_stop_replication(THD *thd, bool kill_clients)
 {
   WSREP_INFO("Stop replication by %llu", (thd) ? thd->thread_id : 0);
-  wsrep_stop_replication_common(thd);
+  wsrep_stop_replication_common(thd, kill_clients);
 }
 
 void wsrep_shutdown()
@@ -2763,6 +2768,43 @@ bool wsrep_can_run_in_toi(THD *thd, const char *db, const char *table,
   }
 }
 
+/*
+  Decide if statement should run in NBO
+
+  The statement must be able to run in TOI in order to be candidate
+  for NBO.
+ */
+static bool wsrep_can_run_in_nbo(THD *thd, const char *db, const char *table,
+                                 const TABLE_LIST *table_list,
+                                 const HA_CREATE_INFO* create_info)
+{
+  if (!wsrep_can_run_in_toi(thd, db, table, table_list, create_info))
+  {
+    return false;
+  }
+  switch (thd->lex->sql_command)
+  {
+  case SQLCOM_ALTER_TABLE:
+  case SQLCOM_CREATE_INDEX:
+    switch (thd->lex->alter_info.requested_lock)
+    {
+    case Alter_info::ALTER_TABLE_LOCK_SHARED:
+    case Alter_info::ALTER_TABLE_LOCK_EXCLUSIVE:
+      return true;
+    default:
+      return false;
+    }
+  case SQLCOM_DROP_INDEX:
+    /* MariaDB 10.5: DROP INDEX grabs shared upgradeable lock, so it is
+       safe for NBO */
+    return true;
+  case SQLCOM_OPTIMIZE:
+    return true;
+  default:
+    break;
+  }
+  return false;
+}
 static int wsrep_create_sp(THD *thd, uchar** buf, size_t* buf_len)
 {
   String log_query;
@@ -2835,7 +2877,7 @@ static int wsrep_TOI_event_buf(THD* thd, uchar** buf, size_t* buf_len)
   return err;
 }
 
-static void wsrep_TOI_begin_failed(THD* thd, const wsrep_buf_t* /* const err */)
+static void wsrep_TOI_begin_failed(THD* thd)
 {
   if (wsrep_thd_trx_seqno(thd) > 0)
   {
@@ -2932,9 +2974,11 @@ static int wsrep_TOI_begin(THD *thd, const char *db, const char *table,
   DEBUG_SYNC(thd, "wsrep_before_toi_begin");
 
   wsrep::client_state& cs(thd->wsrep_cs());
-
-  int ret= cs.enter_toi_local(key_array,
-                              wsrep::const_buffer(buff.ptr, buff.len));
+  int ret= cs.enter_toi_local(
+      key_array,
+      wsrep::const_buffer(buff.ptr, buff.len),
+      wsrep::clock::now()
+      + std::chrono::seconds(thd->variables.lock_wait_timeout));
 
   if (ret)
   {
@@ -2999,7 +3043,7 @@ static int wsrep_TOI_begin(THD *thd, const char *db, const char *table,
 
   if (buf) my_free(buf);
 
-  if (rc) wsrep_TOI_begin_failed(thd, NULL);
+  if (rc) wsrep_TOI_begin_failed(thd);
 
   return rc;
 }
@@ -3103,6 +3147,253 @@ static inline bool is_replaying_connection(THD *thd)
   return ret;
 }
 
+int wsrep_NBO_begin(THD *thd, const char *db, const char *table,
+                    const TABLE_LIST *table_list,
+                    const Alter_info *alter_info,
+                    const wsrep::key_array *fk_tables,
+                    const HA_CREATE_INFO* create_info)
+{
+  DBUG_ASSERT(thd->variables.wsrep_OSU_method == WSREP_OSU_NBO);
+  WSREP_DEBUG("NBO begin");
+  if (!Wsrep_server_state::has_capability(wsrep::provider::capability::nbo))
+  {
+    WSREP_DEBUG("Provider does not support NBO");
+    my_message(ER_NOT_SUPPORTED_YET,
+               "wsrep_OSU_method NBO not supported by the provider",
+               MYF(0));
+    return -1;
+  }
+
+  if (!wsrep_can_run_in_nbo(thd, db, table, table_list, create_info))
+  {
+    WSREP_DEBUG("Cannot run DDL in NBO %s", wsrep_thd_query(thd));
+    my_message(ER_NOT_SUPPORTED_YET,
+               "wsrep_OSU_method NBO not supported for query",
+               MYF(0));
+    return -1;
+  }
+
+  uchar *buf= 0;
+  size_t buf_len= 0;
+  int buf_err;
+  int rc;
+
+  buf_err = wsrep_TOI_event_buf(thd, &buf, &buf_len);
+  if (buf_err) {
+    WSREP_ERROR("Failed to create NBO event buf: %d", buf_err);
+    my_message(ER_UNKNOWN_ERROR,
+               "WSREP replication failed to prepare NBO event buffer. "
+               "Check your query.",
+               MYF(0));
+    return -1;
+  }
+  struct wsrep_buf buff= { buf, buf_len };
+
+  wsrep::key_array key_array=
+    wsrep_prepare_keys_for_toi(db, table, table_list, alter_info, fk_tables);
+
+  if (thd->has_read_only_protection())
+  {
+    /* non replicated DDL, affecting temporary tables only */
+    WSREP_DEBUG("TO isolation skipped, sql: %s."
+                "Only temporary tables affected.",
+                wsrep_thd_query(thd));
+    if (buf) my_free(buf);
+    return -1;
+  }
+
+  thd_proc_info(thd, "acquiring total order isolation for NBO phase one");
+
+  wsrep::client_state& cs(thd->wsrep_cs());
+  int ret= cs.begin_nbo_phase_one(
+      key_array,
+      wsrep::const_buffer(buff.ptr, buff.len),
+      wsrep::clock::now()
+      + std::chrono::seconds(thd->variables.lock_wait_timeout));
+
+  if (ret)
+  {
+    DBUG_ASSERT(cs.current_error());
+    WSREP_DEBUG("begin_nbo_phase_one() failed for %llu: %s, seqno: %lld",
+                thd->thread_id, wsrep_thd_query(thd),
+                cs.toi_meta().seqno().get());
+    switch (cs.current_error())
+    {
+    case wsrep::e_size_exceeded_error:
+      WSREP_WARN("TO isolation failed for NBO phase one: %d, schema: %s, sql: %s. "
+                 "Maximum size exceeded.",
+                 ret,
+                 (thd->db.str ? thd->db.str : "(null)"),
+                 wsrep_thd_query(thd));
+      my_error(ER_ERROR_DURING_COMMIT, MYF(0), WSREP_SIZE_EXCEEDED);
+      break;
+    case wsrep::e_deadlock_error:
+      WSREP_WARN("TO isolation failed for NBO phase one: %d, schema: %s, sql: %s. "
+                 "Deadlock error.",
+                 ret,
+                 (thd->db.str ? thd->db.str : "(null)"),
+                 wsrep_thd_query(thd));
+      my_error(ER_LOCK_DEADLOCK, MYF(0));
+      break;
+    case wsrep::e_timeout_error:
+      WSREP_WARN("TO isolation failed for NBO phase one: %d, schema: %s, sql: %s. "
+                 "Operation timed out.",
+                 ret,
+                 (thd->db.str ? thd->db.str : "(null)"),
+                 wsrep_thd_query(thd));
+      my_error(ER_LOCK_WAIT_TIMEOUT, MYF(0));
+      break;
+    default:
+      WSREP_WARN("TO isolation failed for NBO phase one: %d, schema: %s, sql: %s. "
+                 "Check your wsrep connection state and retry the query.",
+                 ret,
+                 (thd->db.str ? thd->db.str : "(null)"),
+                 wsrep_thd_query(thd));
+      if (!thd->is_error())
+      {
+        my_error(ER_LOCK_DEADLOCK, MYF(0), "WSREP replication failed. "
+                 "Check your wsrep connection state and retry the query.");
+      }
+    }
+    rc= -1;
+  }
+  else
+  {
+    rc= 0;
+  }
+
+  if (buf) my_free(buf);
+  if (rc) wsrep_TOI_begin_failed(thd);
+
+  return rc;
+}
+
+void wsrep_nbo_phase_one_end(THD *thd)
+{
+  DBUG_ENTER("wsrep_nbo_phase_one_end");
+  if (wsrep_thd_is_nbo(thd))
+  {
+    wsrep::mutable_buffer err;
+    if (thd->is_error() && !wsrep_must_ignore_error(thd))
+    {
+      wsrep_store_error(thd, err, true);
+    }
+    wsrep::client_state& cs(thd->wsrep_cs());
+    if (thd->wsrep_nbo_notify_ctx)
+    {
+      thd->wsrep_nbo_notify_ctx->set_error(err);
+      thd->wsrep_nbo_notify_ctx->notify(thd->is_error() && !wsrep_must_ignore_error(thd));
+      thd->wsrep_nbo_notify_ctx= 0;
+    }
+    else if (cs.in_toi())
+    {
+      int ret = cs.end_nbo_phase_one(err);
+      if (!ret)
+      {
+        WSREP_DEBUG("NBO phase one END: %lld", cs.toi_meta().seqno().get());
+      }
+      else
+      {
+        WSREP_WARN("NBO phase one end failed for: %d, schema: %s, sql: %s",
+                   ret, (thd->db.str ? thd->db.str : "(null)"), wsrep_thd_query(thd));
+      }
+    }
+  }
+  DBUG_EXECUTE_IF("sync.wsrep_alter_locked_tables",
+                  {
+                    const char act[]=
+                      "now "
+                      "WAIT_FOR signal.wsrep_alter_locked_tables";
+                    DBUG_ASSERT(!debug_sync_set_action(thd,
+                                                       STRING_WITH_LEN(act)));
+                    const char act2[]=
+                      "now "
+                      "SIGNAL signal.wsrep_alter_locked_tables_continued";
+                    DBUG_ASSERT(!debug_sync_set_action(thd,
+                                                       STRING_WITH_LEN(act2)));
+
+                  };);
+  DBUG_VOID_RETURN;
+}
+
+/*
+  Append all opened tables which are not temporary into phase two
+  key array to take into account all tables which were opened during
+  DDL processing.
+*/
+static wsrep::key_array
+wsrep_nbo_phase_two_keys(THD *thd)
+{
+  /* Todo: It is not certain that all tables involved in the DDL are
+     contained in first_select_lex()->table_list. Figure out how to get
+     list of all tables affecting the DDL.  */
+  return wsrep_prepare_keys_for_toi(0, 0,
+    thd->lex->first_select_lex()->table_list.first, 0, NULL);
+}
+
+int wsrep_nbo_phase_two_begin(THD *thd)
+{
+  DBUG_ENTER("wsrep_nbo_phase_two_begin");
+  int ret= 0;
+  if (wsrep_thd_is_nbo(thd))
+  {
+    // ensure phase one is ended, in case of an early error in phase one
+    wsrep_nbo_phase_one_end(thd);
+    wsrep::key_array keys= wsrep_nbo_phase_two_keys(thd);
+
+    wsrep::client_state& cs(thd->wsrep_cs());
+    thd_proc_info(thd, "acquiring total order isolation for NBO phase two");
+    ret= cs.begin_nbo_phase_two(keys,
+                                wsrep::clock::now()
+                                + std::chrono::seconds(thd->variables.lock_wait_timeout));
+    if (ret)
+    {
+      DBUG_ASSERT(cs.current_error());
+      WSREP_DEBUG("begin_nbo_phase_two() failed for %llu: %s, seqno: %lld",
+                  thd->thread_id, wsrep_thd_query(thd),
+                  cs.toi_meta().seqno().get());
+      // If the thread had already errored, we don't override the
+      // original error so it can be reported to the client.
+      if ((cs.current_error() == wsrep::e_interrupted_error) && thd->is_error())
+      {
+        cs.reset_error();
+      }
+      WSREP_WARN("TO isolation failed for NBO phase two: %d, schema: %s, sql: %s.",
+                 ret,
+                 (thd->db.str ? thd->db.str : "(null)"),
+                 wsrep_thd_query(thd));
+    }
+  }
+  DBUG_RETURN(ret);
+}
+
+void wsrep_NBO_end(THD *thd)
+{
+  DBUG_ASSERT(wsrep_thd_is_nbo(thd));
+  if (wsrep_thd_is_nbo(thd))
+  {
+    wsrep::client_state& cs(thd->wsrep_cs());
+    wsrep_set_SE_checkpoint(cs.toi_meta().gtid(), wsrep_gtid_server.gtid());
+    wsrep::mutable_buffer err;
+    if (thd->is_error() && !wsrep_must_ignore_error(thd))
+    {
+        wsrep_store_error(thd, err, true);
+    }
+    int ret= cs.end_nbo_phase_two(err);
+
+    if (!ret)
+    {
+      WSREP_DEBUG("NBO END: %lld", cs.toi_meta().seqno().get());
+    }
+    else
+    {
+      WSREP_WARN("NBO phase two end failed for: %d, schema: %s, sql: %s",
+                 ret, (thd->db.str ? thd->db.str : "(null)"),
+                 wsrep_thd_query(thd));
+    }
+  }
+}
+
 int wsrep_to_isolation_begin(THD *thd, const char *db_, const char *table_,
                              const TABLE_LIST* table_list,
                              const Alter_info *alter_info,
@@ -3203,6 +3494,10 @@ int wsrep_to_isolation_begin(THD *thd, const char *db_, const char *table_,
     case WSREP_OSU_RSU:
       ret= wsrep_RSU_begin(thd, db_, table_);
       break;
+    case WSREP_OSU_NBO:
+      ret= wsrep_NBO_begin(thd, db_, table_, table_list, alter_info,
+                           fk_tables, create_info);
+      break;
     default:
       WSREP_ERROR("Unsupported OSU method: %lu",
                   wsrep_OSU_method_get(thd));
@@ -3237,7 +3532,12 @@ int wsrep_to_isolation_begin(THD *thd, const char *db_, const char *table_,
 
 void wsrep_to_isolation_end(THD *thd)
 {
-  if (wsrep_thd_is_local_toi(thd))
+  DBUG_ASSERT(wsrep_thd_is_in_rsu(thd));
+  if (wsrep_thd_is_nbo(thd))
+  {
+    wsrep_NBO_end(thd);
+  }
+  else if (wsrep_thd_is_local_toi(thd))
   {
     thd->variables.lock_wait_timeout= thd->variables.saved_lock_wait_timeout;
     DBUG_ASSERT(wsrep_OSU_method_get(thd) == WSREP_OSU_TOI);
@@ -3859,7 +4159,7 @@ int wsrep_must_ignore_error(THD* thd)
   const uint flags= sql_command_flags[thd->lex->sql_command];
 
   DBUG_ASSERT(error);
-  DBUG_ASSERT(wsrep_thd_is_toi(thd));
+  DBUG_ASSERT(wsrep_thd_is_toi(thd) || wsrep_thd_is_nbo(thd));
 
   if ((wsrep_ignore_apply_errors & WSREP_IGNORE_ERRORS_ON_DDL))
     goto ignore_error;
