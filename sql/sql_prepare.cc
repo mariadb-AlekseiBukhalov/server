@@ -4458,7 +4458,7 @@ reexecute:
 #ifdef WITH_WSREP
   if (thd->wsrep_delayed_BF_abort)
   {
-    WSREP_DEBUG("delayed BF abort, quitting execute_loop, stmt: %d", id);
+    WSREP_DEBUG("delayed BF abort, quitting execute_loop, stmt: %lu", id);
     return TRUE;
   }
 #endif /* WITH_WSREP */

@@ -495,18 +495,18 @@ void wsrep_recover_sr_from_storage(THD *orig_thd)
     if (!wsrep_schema)
     {
       WSREP_ERROR("Wsrep schema not initialized when trying to recover "
-                  "streaming transactions: wsrep_on %d", WSREP_ON);
+                  "streaming transactions: wsrep_on %ld", WSREP_ON);
       trans_commit(orig_thd);
     }
     if (wsrep_schema->recover_sr_transactions(orig_thd))
     {
-      WSREP_ERROR("Failed to recover SR transactions from schema: wsrep_on : %d", WSREP_ON);
+      WSREP_ERROR("Failed to recover SR transactions from schema: wsrep_on : %ld", WSREP_ON);
       trans_commit(orig_thd);
     }
     break;
   default:
     /* */
-    WSREP_ERROR("Unsupported wsrep SR store type: %lu wsrep_on: %d",
+    WSREP_ERROR("Unsupported wsrep SR store type: %lu wsrep_on: %ld",
                 wsrep_SR_store_type, WSREP_ON);
     trans_commit(orig_thd);
     break;
@@ -851,7 +851,7 @@ void wsrep_init_globals()
   else
   {
     if (wsrep_gtid_mode && wsrep_gtid_server.server_id != global_system_variables.server_id)
-      WSREP_INFO("Ignoring server id %ld for non bootstrap node, using %ld.",
+      WSREP_INFO("Ignoring server id %ld for non bootstrap node, using %u.",
                  global_system_variables.server_id, wsrep_gtid_server.server_id);
   }
   wsrep_init_schema();
@@ -1390,7 +1390,7 @@ static bool wsrep_protect_against_warning_flood(
         ulonglong save_count= wsrep_total_warnings_count;
         /* Print a suppression note and remove the suppression */
         wsrep_reset_warnings(now);
-        WSREP_INFO("Suppressed %lu unsafe warnings during "
+        WSREP_INFO("Suppressed %llu unsafe warnings during "
                               "the last %d seconds",
                               save_count, (int) diff_time);
       }
@@ -3394,7 +3394,7 @@ static void wsrep_log_state(const char *msg, const THD *thd, bool granted)
   char buff[2048];
   String buffer(buff, sizeof(buff), system_charset_info);
   wsrep_get_state(thd, granted, &buffer);
-  WSREP_DEBUG(msg, buffer.c_ptr());
+  WSREP_DEBUG("%s %s", msg, buffer.c_ptr());
 }
 
 /** This function handles MDL-conflict when thread holding MDL-lock
@@ -3551,21 +3551,24 @@ static void wsrep_abort_granted(THD* request_thd,
   @param  ticket               MDL ticket for the requested lock
   @param  key                  The key of the object (data) being protected
 
+  @retval true                 Request thread should wait MDL-lock
+  @retval false                Abort request thread
 */
-void wsrep_handle_mdl_conflict(MDL_context *requestor_ctx,
+bool wsrep_handle_mdl_conflict(MDL_context *requestor_ctx,
                                const MDL_ticket *ticket,
                                const MDL_key *key)
 {
+  bool wait= true;
   THD *request_thd= requestor_ctx->get_thd();
 
   /* Note here request_thd == current_thd */
   /* Fallback to the non-wsrep behaviour */
-  if (!WSREP(request_thd)) return;
+  if (!WSREP(request_thd)) return wait;
 
   /* Fallback to non-wsrep behaviour if request is not TOI or
      applying.
   */
-  if (!wsrep_thd_is_BF(request_thd, FALSE)) return; // requestor needs to wait
+  if (!wsrep_thd_is_BF(request_thd, FALSE)) return wait; // requestor needs to wait
 
   THD *granted_thd= ticket->get_ctx()->get_thd();
 
@@ -3626,6 +3629,8 @@ void wsrep_handle_mdl_conflict(MDL_context *requestor_ctx,
   mysql_mutex_unlock(&granted_thd->LOCK_thd_data);
   mysql_mutex_unlock(&granted_thd->LOCK_thd_kill);
   DEBUG_SYNC(request_thd, "after_wsrep_thd_abort");
+
+  return wait;
 }
 
 /**/
@@ -4314,7 +4319,7 @@ void wsrep_commit_empty(THD* thd, bool all)
     */
     if(!(empty || create || aborted || ddl_replay))
     {
-      WSREP_DEBUG("wsrep_commit_empty: thread: %llu client_state: %s client_mode:"
+      WSREP_DEBUG("wsrep_commit_empty: thread: %lu client_state: %s client_mode:"
                   " %s trans_state: %s error: %s empty: %d create: %d aborted:"
 		  " %d ddl_replay: %d sql: %s",
                   thd_get_thread_id(thd),

@@ -506,7 +506,7 @@ int wsrep_append_table_keys(THD* thd,
                             TABLE_LIST* table_list,
                             Wsrep_service_key_type key_type);
 
-extern void
+extern bool
 wsrep_handle_mdl_conflict(MDL_context *requestor_ctx,
                           const MDL_ticket *ticket,
                           const MDL_key *key);

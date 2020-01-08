@@ -383,7 +383,7 @@ void wsrep_abort_thd(THD *bf_thd,
   else
   {
     WSREP_DEBUG("wsrep_abort_thd not effective: bf %llu victim %llu "
-                "wsrep %d wsrep_on %d RSU %d TOI %d aborting %d",
+                "wsrep %d wsrep_on %ld RSU %d TOI %d aborting %d",
                 (long long)bf_thd->real_id, (long long)victim_thd->real_id,
                 WSREP_NNULL(bf_thd), WSREP_ON,
                 bf_thd->variables.wsrep_OSU_method == WSREP_OSU_RSU,

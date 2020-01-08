@@ -103,8 +103,8 @@ static void wsrep_store_error_rli(const THD* const thd,
     dst.clear();
     dst.push_back(err_str);
 
-    WSREP_DEBUG("Error buffer (RLI) for thd %u seqno %lld, %zu bytes: '%s'",
-                thd->thread_id, (long long)wsrep_thd_trx_seqno(thd),
+    WSREP_DEBUG("Error buffer (RLI) for thd %llu seqno %lld, %zu bytes: '%s'",
+                thd->thread_id, wsrep_thd_trx_seqno(thd),
                 dst.size(), dst.size() ? dst.data() : "(null)");
   }
 }

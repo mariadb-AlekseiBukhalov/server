@@ -228,8 +228,8 @@ extern "C" my_bool wsrep_thd_bf_abort(THD *bf_thd, THD *victim_thd,
    */
   if ((ret || !wsrep_on(victim_thd)) && signal)
   {
-    WSREP_DEBUG("wsrep_thd_bf_abort thread %ld sending "
-                "KILL_QUERY_HARD to %ld ret=%d signal %d",
+    WSREP_DEBUG("wsrep_thd_bf_abort thread %llu sending "
+                "KILL_QUERY_HARD to %llu ret=%d signal %d",
                 bf_thd->thread_id,
                 victim_thd->thread_id,
                 ret, signal);
@@ -252,8 +252,8 @@ extern "C" my_bool wsrep_thd_order_before(const THD *left, const THD *right)
                    wsrep_thd_is_BF(right, false) &&
                    wsrep_thd_trx_seqno(left) < wsrep_thd_trx_seqno(right));
 
-  WSREP_DEBUG("wsrep_thd_order_before: %s thread=%llu seqno=%llu query=%s "
-              "%s %s thread=%llu, seqno=%llu query=%s",
+  WSREP_DEBUG("wsrep_thd_order_before: %s thread=%lu seqno=%llu query=%s "
+              "%s %s thread=%lu, seqno=%llu query=%s",
               (wsrep_thd_is_BF(left, false) ? "BF" : "def"),
               thd_get_thread_id(left),
               wsrep_thd_trx_seqno(left),

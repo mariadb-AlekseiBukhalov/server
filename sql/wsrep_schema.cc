@@ -1675,7 +1675,7 @@ int Wsrep_schema::store_gtid_event(THD* thd,
 out:
   if (error)
   {
-    WSREP_DEBUG("Wsrep_schema::store_gtid_event %llu-%llu-%llu failed error=%s (%d).",
+    WSREP_DEBUG("Wsrep_schema::store_gtid_event %d-%d-%llu failed error=%s (%d).",
                 gtid->domain_id, gtid->server_id, gtid->seq_no, strerror(error), error);
     (void)trans_rollback_stmt(thd);
     (void)trans_rollback(thd);

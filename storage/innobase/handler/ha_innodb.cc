@@ -10005,7 +10005,7 @@ wsrep_append_foreign_key(
 		WSREP_ERROR(
 			"FK key set failed: " ULINTPF
 			" (" ULINTPF "%s), index: %s %s, %s",
-			rcode, referenced, wsrep_key_type_to_str(key_type),
+			rcode,(size_t)referenced, wsrep_key_type_to_str(key_type),
 			(index)       ? index->name() : "void index",
 			(index && index->table) ? index->table->name.m_name :
 				"void table",

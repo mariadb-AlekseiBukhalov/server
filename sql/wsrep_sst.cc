@@ -710,7 +710,7 @@ static void* sst_joiner_thread (void* a)
     else
     {
       err= proc.error();
-      WSREP_ERROR("Failed to execute (%M): %s",
+      WSREP_ERROR("Failed to execute (%iE): %s",
                   err, arg->cmd);
     }
 
@@ -1363,7 +1363,7 @@ static ssize_t sst_prepare_mysqldump (const char*  addr_in,
 
   if (ret)
   {
-    WSREP_ERROR("sst_prepare_other(): mysql_thread_create() failed: %d (%s)",
+    WSREP_ERROR("sst_prepare_other(): mysql_thread_create() failed: %zu (%s)",
                 ret, strerror(ret));
     return -ret;
   }
