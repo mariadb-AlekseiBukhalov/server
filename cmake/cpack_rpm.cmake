@@ -180,12 +180,17 @@ SET(ignored
   "%ignore ${CMAKE_INSTALL_PREFIX}/lib64/pkgconfig"
   )
 
+SET(conffiles
+  "%config(noreplace) ${INSTALL_SYSCONFDIR}/my.cnf"
+  "%config(noreplace) ${INSTALL_SYSCONF2DIR_RPM}/mariadb-enterprise.cnf"
+  )
+
 SET(CPACK_RPM_server_USER_FILELIST
     ${ignored}
     "%config(noreplace) ${INSTALL_SYSCONF2DIR}/*"
     "%config(noreplace) ${INSTALL_SYSCONFDIR}/logrotate.d/mariadb"
     )
-SET(CPACK_RPM_common_USER_FILELIST ${ignored} "%config(noreplace) ${INSTALL_SYSCONFDIR}/my.cnf")
+SET(CPACK_RPM_common_USER_FILELIST ${ignored} ${conffiles})
 SET(CPACK_RPM_shared_USER_FILELIST ${ignored} "%config(noreplace) ${INSTALL_SYSCONF2DIR}/*")
 SET(CPACK_RPM_client_USER_FILELIST ${ignored} "%config(noreplace) ${INSTALL_SYSCONF2DIR}/*")
 SET(CPACK_RPM_compat_USER_FILELIST ${ignored})
