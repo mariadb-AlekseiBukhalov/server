@@ -3279,11 +3279,10 @@ void wsrep_nbo_phase_one_end(THD *thd)
       wsrep_store_error(thd, err, true);
     }
     wsrep::client_state& cs(thd->wsrep_cs());
-    if (thd->wsrep_nbo_notify_ctx)
+    if (thd->wsrep_nbo_ctx.notifier())
     {
-      thd->wsrep_nbo_notify_ctx->set_error(err);
-      thd->wsrep_nbo_notify_ctx->notify(thd->is_error() && !wsrep_must_ignore_error(thd));
-      thd->wsrep_nbo_notify_ctx= 0;
+      thd->wsrep_nbo_ctx.set_error(err);
+      thd->wsrep_nbo_ctx.notify(thd->is_error() && !wsrep_must_ignore_error(thd));
     }
     else if (cs.in_toi())
     {
@@ -3335,6 +3334,10 @@ int wsrep_nbo_phase_two_begin(THD *thd)
 {
   DBUG_ENTER("wsrep_nbo_phase_two_begin");
   int ret= 0;
+  if (thd->wsrep_nbo_ctx.phase_two_done())
+  {
+    DBUG_RETURN(ret);
+  }
   if (wsrep_thd_is_nbo(thd))
   {
     // ensure phase one is ended, in case of an early error in phase one
@@ -3346,9 +3349,11 @@ int wsrep_nbo_phase_two_begin(THD *thd)
     ret= cs.begin_nbo_phase_two(keys,
                                 wsrep::clock::now()
                                 + std::chrono::seconds(thd->variables.lock_wait_timeout));
+    thd->wsrep_nbo_ctx.set_phase_two_done();
     if (ret)
     {
       DBUG_ASSERT(cs.current_error());
+      thd->wsrep_nbo_ctx.set_phase_two_error(cs.current_error());
       WSREP_DEBUG("begin_nbo_phase_two() failed for %llu: %s, seqno: %lld",
                   thd->thread_id, wsrep_thd_query(thd),
                   cs.toi_meta().seqno().get());
@@ -3377,7 +3382,7 @@ void wsrep_NBO_end(THD *thd)
     wsrep::mutable_buffer err;
     if (thd->is_error() && !wsrep_must_ignore_error(thd))
     {
-        wsrep_store_error(thd, err, true);
+      wsrep_store_error(thd, err, true);
     }
     int ret= cs.end_nbo_phase_two(err);
 
