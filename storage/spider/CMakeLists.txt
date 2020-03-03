@@ -15,18 +15,29 @@ SET(SPIDER_SOURCES
   spd_table.cc spd_direct_sql.cc spd_udf.cc spd_ping_table.cc
   spd_copy_tables.cc spd_i_s.cc spd_malloc.cc ha_spider.cc spd_udf.def
   spd_db_mysql.cc spd_group_by_handler.cc spd_db_include.cc
+  spd_db_odbc.cc spd_db_odbc_mariadb.cc
 )
+
+FIND_PATH(UNIXODBC_INCLUDE_DIR sql.h sqlext.h PATHS /usr/include)
+FIND_LIBRARY(UNIXODBC_LIBRARY NAMES odbc PATHS /usr/lib64)
 
 IF(PLUGIN_PARTITION MATCHES "^NO$")
   MESSAGE(STATUS "Spider is skipped because partitioning is disabled")
 ELSE()
-  IF(DEB)
-    SET(extra_options COMPONENT spider-engine)
-  ELSE()
-    SET(extra_options CONFIG spider.cnf)
-  ENDIF()
 
-  MYSQL_ADD_PLUGIN(spider ${SPIDER_SOURCES} ${extra_options}
-    STORAGE_ENGINE MODULE_ONLY)
+  MYSQL_ADD_PLUGIN(spider ${SPIDER_SOURCES}
+    STORAGE_ENGINE MODULE_ONLY COMPONENT spider-engine)
+  IF(NOT TARGET spider)
+    RETURN()
+  ENDIF()
 ENDIF()
 
+IF(UNIXODBC_INCLUDE_DIR AND UNIXODBC_LIBRARY)
+  SET(SPIDER_WITH_UNIXODBC OFF CACHE BOOL "Spider is compiled with unixODBC library.")
+  IF(SPIDER_WITH_UNIXODBC)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_SPIDER_UNIXODBC")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_SPIDER_UNIXODBC")
+    INCLUDE_DIRECTORIES(${UNIXODBC_INCLUDE_DIR})
+    TARGET_LINK_LIBRARIES (spider ${UNIXODBC_LIBRARY})
+  ENDIF()
+ENDIF()

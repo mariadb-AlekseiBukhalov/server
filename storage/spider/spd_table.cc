@@ -122,6 +122,10 @@ handlerton *spider_hton_ptr;
 SPIDER_DBTON spider_dbton[SPIDER_DBTON_SIZE];
 extern SPIDER_DBTON spider_dbton_mysql;
 extern SPIDER_DBTON spider_dbton_mariadb;
+#ifdef HAVE_SPIDER_UNIXODBC
+extern SPIDER_DBTON spider_dbton_odbc;
+extern SPIDER_DBTON spider_dbton_odbc_mariadb;
+#endif
 SPIDER_THREAD *spider_table_sts_thread;
 SPIDER_THREAD *spider_table_crd_thread;
 extern volatile ulonglong spider_mon_table_cache_version;
@@ -6761,7 +6765,17 @@ int spider_db_init(
   spider_dbton_mariadb.db_util->dbton_id = dbton_id;
   spider_dbton[dbton_id] = spider_dbton_mariadb;
   ++dbton_id;
-  for (roop_count = 0; roop_count < (int) dbton_id; roop_count++)
+#ifdef HAVE_SPIDER_UNIXODBC
+  spider_dbton_odbc.dbton_id = dbton_id;
+  spider_dbton_odbc.db_util->dbton_id = dbton_id;
+  spider_dbton[dbton_id] = spider_dbton_odbc;
+  ++dbton_id;
+  spider_dbton_odbc_mariadb.dbton_id = dbton_id;
+  spider_dbton_odbc_mariadb.db_util->dbton_id = dbton_id;
+  spider_dbton[dbton_id] = spider_dbton_odbc_mariadb;
+  ++dbton_id;
+#endif
+  DBUG_ASSERT(dbton_id <= SPIDER_DBTON_SIZE);
   {
     if (spider_dbton[roop_count].init &&
         (error_num = spider_dbton[roop_count].init()))
