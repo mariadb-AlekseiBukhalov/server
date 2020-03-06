@@ -157,6 +157,8 @@ MDL_ticket *get_mdl_ticket(TABLE *table) noexcept;
 #ifdef WITH_WSREP
 #include <mysql/service_md5.h>
 #include "wsrep_sst.h"
+static void
+wsrep_wait_until_initialized(handlerton* hton);
 #endif /* WITH_WSREP */
 
 #define INSIDE_HA_INNOBASE_CC
@@ -4173,7 +4175,8 @@ static int innodb_init(void* p)
 	innobase_hton->set_checkpoint=innobase_wsrep_set_checkpoint;
 	innobase_hton->get_checkpoint=innobase_wsrep_get_checkpoint;
 	innobase_hton->disable_internal_writes=innodb_disable_internal_writes;
-#endif /* WITH_WSREP */
+	innobase_hton->wait_until_initialized=wsrep_wait_until_initialized;
+ #endif /* WITH_WSREP */
 
 	innobase_hton->check_version = innodb_check_version;
 	innobase_hton->signal_ddl_recovery_done = innodb_ddl_recovery_done;
@@ -18929,6 +18932,24 @@ void lock_wait_wsrep_kill(trx_t *bf_trx, my_thread_id thd_id, trx_id_t trx_id)
   @param bf_thd       brute force THD asking for the abort
   @param victim_thd   victim THD to be aborted
 */
+
+
+static
+void
+wsrep_wait_until_initialized(handlerton*)
+{
+	extern bool trx_rollback_is_active;
+	DBUG_ENTER("wsrep_wait_until_initialized");
+
+	WSREP_DEBUG("waiitng until innodb is initialized %d",
+		   trx_rollback_is_active);
+	while (trx_rollback_is_active) {
+		WSREP_DEBUG("innodb rollbacker still active");
+		sleep(1);
+	}
+	DBUG_VOID_RETURN;
+}
+
 static void wsrep_abort_transaction(handlerton *, THD *bf_thd, THD *victim_thd,
                                     my_bool signal)
 {

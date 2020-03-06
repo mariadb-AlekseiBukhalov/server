@@ -1581,6 +1581,10 @@ struct handlerton : public transaction_participant
   int (*create_partitioning_metadata)(const char *path, const char *old_path,
                                       chf_create_flags action_flag);
 
+#ifdef WITH_WSREP
+  void (*wait_until_initialized)(handlerton *hton);
+#endif /* WITH_WSREP */
+
   /**********************************************************************
    Functions to intercept queries
   **********************************************************************/
@@ -5727,7 +5731,10 @@ int ha_savepoint(THD *thd, SAVEPOINT *sv);
 int ha_release_savepoint(THD *thd, SAVEPOINT *sv);
 #ifdef WITH_WSREP
 int ha_abort_transaction(THD *bf_thd, THD *victim_thd, my_bool signal);
-#endif
+void wsrep_wait_until_innodb_initialized();
+ #else
+inline void ha_fake_trx_id(THD *thd) { }
+#endif /* WITH_WSREP */
 
 /* these are called by storage engines */
 void trans_register_ha(THD *thd, bool all, transaction_participant *ht,
@@ -5741,7 +5748,7 @@ void trans_register_ha(THD *thd, bool all, transaction_participant *ht,
 #define trans_need_2pc(thd, all)                   ((total_ha_2pc > 1) && \
         !((all ? &thd->transaction.all : &thd->transaction.stmt)->no_2pc))
 
-
+bool mysql_xa_recover(THD *thd);
 void commit_checkpoint_notify_ha(void *cookie);
 
 inline const LEX_CSTRING *table_case_name(HA_CREATE_INFO *info, const LEX_CSTRING *name)
