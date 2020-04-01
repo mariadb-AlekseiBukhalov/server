@@ -9479,3 +9479,23 @@ void handler::set_optimizer_costs(THD *thd)
   optimizer_where_cost=      thd->variables.optimizer_where_cost;
   optimizer_scan_setup_cost= thd->variables.optimizer_scan_setup_cost;
 }
+
+#ifdef WITH_WSREP
+bool wsrep_check_initialization_order()
+{
+  handlerton *hton= installed_htons[DB_TYPE_INNODB];
+  if (hton)
+  {
+    st_plugin_int *plugin= hton2plugin[hton->slot];
+    if (plugin)
+    {
+      if (plugin->state == PLUGIN_IS_READY)
+      {
+        return true; // InnoDB plugin is initialized
+      }
+    }
+  }
+
+  return false; // InnoDB plugin is not initialized
+}
+#endif /* WITH_WSREP */
