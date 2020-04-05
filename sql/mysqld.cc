@@ -472,6 +472,7 @@ uint lower_case_table_names;
 ulong tc_heuristic_recover= 0;
 Atomic_counter<uint32_t> THD_count::count, CONNECT::count;
 bool shutdown_wait_for_slaves;
+my_bool opt_shutdown_wait_for_slaves;
 Atomic_counter<uint32_t> slave_open_temp_tables;
 /*
   This is incremented every time a slave starts to read a new binary log
