@@ -173,7 +173,6 @@ SELECT VARIABLE_VALUE = 4 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_N
 --source include/wait_condition.inc
 
 SELECT COUNT(*) AS EXPECT_19 FROM t1;
-
 --connection node_4
 --let $wait_condition = SELECT VARIABLE_VALUE = 4 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
 --source include/wait_condition.inc
