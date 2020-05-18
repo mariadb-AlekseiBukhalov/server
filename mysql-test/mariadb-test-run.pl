@@ -2545,10 +2545,11 @@ sub setup_vardir() {
   # and make them world readable
   copytree("$glob_mysql_test_dir/std_data", "$opt_vardir/std_data", "0022");
 
+  # create a plugin dir and copy or symlink plugins into it
   unless($plugindir)
   {
-    # create a plugin dir and copy or symlink plugins into it
-    if ($source_dist)
+    my $bintar= -d  "$bindir/share/not_supported/";
+    if ($source_dist or $bintar)
     {
       $plugindir="$opt_vardir/plugins";
       # Source builds collect both client plugins and server plugins in the
@@ -2563,6 +2564,8 @@ sub setup_vardir() {
           for (<$bindir/storage/*$multiconfig/*.dll>,
                <$bindir/plugin/*$multiconfig/*.dll>,
                <$bindir/libmariadb$multiconfig/*.dll>,
+               <$bindir/lib/plugin/*.dll>,             # bintar
+               <$bindir/share/not_supported/*.dll>,    # bintar
                <$bindir/sql$multiconfig/*.dll>)
           {
             my $pname=basename($_);
@@ -2584,6 +2587,8 @@ sub setup_vardir() {
              <$bindir/plugin/*$multiconfig/*.so>,
              <$bindir/libmariadb/plugins/*/*.so>,
              <$bindir/libmariadb/$multiconfig/*.so>,
+             <$bindir/lib/plugin/*.so>,             # bintar
+             <$bindir/share/not_supported/*.so>,    # bintar
              <$bindir/sql$multiconfig/*.so>)
         {
           my $pname=basename($_);
