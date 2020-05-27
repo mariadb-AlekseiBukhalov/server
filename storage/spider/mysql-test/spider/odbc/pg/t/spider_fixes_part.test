@@ -391,6 +391,7 @@ if ($HAVE_PARTITION)
   DROP TABLE IF EXISTS t1;
   --enable_warnings
   --disable_query_log
+  --disable_result_log
   echo CREATE TABLE t1 (
     id int(11) NOT NULL AUTO_INCREMENT,
     PRIMARY KEY (id)
@@ -420,6 +421,7 @@ if ($HAVE_PARTITION)
     ) $SLAVE1_1_ENGINE $SLAVE1_1_CHARSET $SLAVE1_1_COMMENT_INCREMENT1_P_1;
     --connection master_1
   }
+  --enable_result_log
   --enable_query_log
   INSERT INTO t1 () VALUES ();
   SELECT LAST_INSERT_ID();
@@ -502,6 +504,8 @@ if ($HAVE_PARTITION)
 --echo
 --echo deinit
 --disable_warnings
+--disable_query_log
+--disable_result_log
 --connection master_1
 eval $MASTER_1_AUTO_INCREMENT_DROP;
 DROP DATABASE IF EXISTS auto_test_local;
@@ -523,8 +527,6 @@ if ($USE_CHILD_GROUP2)
   eval $CHILD2_2_AUTO_INCREMENT_DROP;
   eval $CHILD2_2_DROP_DATABASE;
 }
---disable_query_log
---disable_result_log
 --source slave_test_deinit.inc
 --source test_deinit.inc
 --enable_result_log
