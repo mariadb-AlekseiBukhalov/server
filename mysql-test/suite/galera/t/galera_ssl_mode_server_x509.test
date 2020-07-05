@@ -1,0 +1,39 @@
+#
+# Verify that the wsrep-ssl-mode=SERVER_X509 works. For this we use
+# certificates with common root CA. See galera_ssl_mode_x509 for
+# configuration.
+#
+# We additionally check that when restarting the node with certificate
+# without common CA, the joining fails.
+#
+# Not to be run with ASAN. Provider does not fully clean up itself
+# in case of failure and ASAN fails with internal error while trying
+# to process leaks from unloaded library.
+#
+# Marked as big test as the failing attempt to join the node will take
+# long time.
+#
+--source include/not_asan.inc
+--source include/big_test.inc
+--source include/galera_cluster.inc
+--source include/have_innodb.inc
+
+SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%';
+
+--connection node_2
+--source include/shutdown_mysqld.inc
+
+--error 1
+--exec $MYSQLD --defaults-group-suffix=.2 --defaults-file=$MYSQLTEST_VARDIR/my.cnf --loose-ssl-key=$MYSQL_TEST_DIR/std_data/galera-key.pem --loose-ssl-cert=$MYSQL_TEST_DIR/std_data/galera-cert.pem --log-error=$MYSQL_TMP_DIR/galera_ssl_mode_server_x509.log
+
+--source include/start_mysqld.inc
+
+--connection node_1
+
+--let $assert_text= certificate verify failed
+--let $assert_select= certificate verify failed
+--let $assert_match= certificate verify failed
+--let $assert_file= $MYSQLTEST_VARDIR/log/mysqld.1.err
+--source include/assert_grep.inc
+
+CALL mtr.add_suppression('WSREP:.* certificate verify failed.*');

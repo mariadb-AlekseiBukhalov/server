@@ -12,10 +12,16 @@ use performance_schema;
 
 --vertical_results
 --disable_ps_protocol
+# Server side threads are known, but provider threads may vary
+# between provider versions. Exclued provider threads from the
+# first select and check that some provider threads are visible
+# in the second.
 SELECT name
 FROM threads
-WHERE name LIKE 'thread/sql/wsrep%'
+WHERE name LIKE 'thread/sql/wsrep%' AND
+      name NOT LIKE 'thread/sql/wsrep_provider%'
 ORDER BY name;
+SELECT COUNT(*) > 0 FROM threads WHERE name LIKE 'thread/sql/wsrep_provider%';
 --enable_ps_protocol
 
 use test;

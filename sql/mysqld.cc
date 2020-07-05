@@ -9984,12 +9984,17 @@ PSI_stage_info *all_server_stages[]=
 };
 
 PSI_socket_key key_socket_tcpip, key_socket_unix, key_socket_client_connection;
+extern PSI_socket_key key_socket_wsrep;
 
 static PSI_socket_info all_server_sockets[]=
 {
   { &key_socket_tcpip, "server_tcpip_socket", PSI_FLAG_GLOBAL},
   { &key_socket_unix, "server_unix_socket", PSI_FLAG_GLOBAL},
   { &key_socket_client_connection, "client_connection", 0}
+#ifdef WITH_WSREP
+  ,
+  { &key_socket_wsrep, "wsrep_connection", 0}
+#endif // WITH_WSREP
 };
 
 static PSI_memory_info all_server_memory[]=

@@ -1,0 +1,14 @@
+connection node_2;
+connection node_1;
+SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%';
+COUNT(*) > 0
+1
+SELECT COUNT(*) > 0 FROM performance_schema.threads WHERE NAME LIKE '%wsrep_provider%';
+COUNT(*) > 0
+1
+SELECT COUNT(*) > 0 FROM performance_schema.mutex_instances WHERE NAME LIKE '%wsrep_provider%';
+COUNT(*) > 0
+1
+SELECT COUNT(*) > 0 FROM performance_schema.cond_instances WHERE NAME LIKE '%wsrep_provider%';
+COUNT(*) > 0
+1

@@ -1,0 +1,11 @@
+#
+# Verify that the wsrep-ssl-mode=SERVER works. For this we use
+# two different certificates without common CA to check that X509
+# verification does not happen. See galera_ssl_server.cnf for
+# configuration.
+#
+--source include/galera_cluster.inc
+--source include/have_innodb.inc
+
+SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%';
+

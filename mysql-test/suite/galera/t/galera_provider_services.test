@@ -1,0 +1,14 @@
+#
+# Verify that Galera provider services get loaded.
+#
+# Instead of listing all socket/thread/mutex/cond instances we check
+# only that the count is greater than zero as the provider internals
+# may change and the result would depend on provider version.
+#
+--source include/galera_cluster.inc
+--source include/have_perfschema.inc
+
+SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%';
+SELECT COUNT(*) > 0 FROM performance_schema.threads WHERE NAME LIKE '%wsrep_provider%';
+SELECT COUNT(*) > 0 FROM performance_schema.mutex_instances WHERE NAME LIKE '%wsrep_provider%';
+SELECT COUNT(*) > 0 FROM performance_schema.cond_instances WHERE NAME LIKE '%wsrep_provider%';

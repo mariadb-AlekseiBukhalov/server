@@ -33,7 +33,7 @@
 --source include/wait_condition.inc
 
 --echo Starting garbd ...
---exec $MTR_GARBD_EXE --address "gcomm://127.0.0.1:$NODE_GALERAPORT_1" --group my_wsrep_cluster --options 'base_port=$NODE_GALERAPORT_3' > $MYSQL_TMP_DIR/garbd.log 2>&1 &
+--exec $MTR_GARBD_EXE --address "gcomm://127.0.0.1:$NODE_GALERAPORT_1" --group my_wsrep_cluster --options 'base_port=$NODE_GALERAPORT_3; socket.ssl=1; socket.ssl_ca=$MYSQL_TEST_DIR/std_data/cacert.pem; socket.ssl_cert=$MYSQL_TEST_DIR/std_data/server-cert.pem; socket.ssl_key=$MYSQL_TEST_DIR/std_data/server-key.pem; socket.ssl_cipher=' > $MYSQL_TMP_DIR/garbd.log 2>&1 &
 
 --sleep 5
 

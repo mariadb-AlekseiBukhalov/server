@@ -32,6 +32,8 @@ IF(WITH_WSREP AND NOT EMBEDDED_LIBRARY)
     wsrep_mysqld.cc
     wsrep_notify.cc
     wsrep_sst.cc
+    wsrep_thread_service.cc
+    wsrep_tls_service.cc
     wsrep_var.cc
     wsrep_binlog.cc
     wsrep_applier.cc

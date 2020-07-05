@@ -6682,6 +6682,24 @@ static Sys_var_charptr Sys_wsrep_allowlist(
        READ_ONLY GLOBAL_VAR(wsrep_allowlist), CMD_LINE(REQUIRED_ARG),
        DEFAULT(""));
 
+static const char* wsrep_ssl_mode_names[]=
+{
+  "PROVIDER",
+  "SERVER",
+  "SERVER_X509",
+  NullS
+};
+
+static Sys_var_enum Sys_wsrep_ssl_mode(
+  "wsrep_ssl_mode",
+  "Select which SSL implementation is used for wsrep provider communications: "
+  "PROVIDER - wsrep provider internal SSL implementation; SERVER - use "
+  "server side SSL implementation; SERVER_X509 - as SERVER and "
+  "require valid X509 certificate",
+  READ_ONLY GLOBAL_VAR(wsrep_ssl_mode), CMD_LINE(REQUIRED_ARG),
+  wsrep_ssl_mode_names,
+  DEFAULT(WSREP_SSL_MODE_SERVER));
+
 #endif /* WITH_WSREP */
 
 static bool fix_host_cache_size(sys_var *, THD *, enum_var_type)

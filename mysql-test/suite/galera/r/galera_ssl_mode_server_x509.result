@@ -1,0 +1,9 @@
+connection node_2;
+connection node_1;
+SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%';
+COUNT(*) > 0
+1
+connection node_2;
+connection node_1;
+include/assert_grep.inc [certificate verify failed]
+CALL mtr.add_suppression('WSREP:.* certificate verify failed.*');

@@ -45,6 +45,8 @@
 #include "wsrep_binlog.h"
 #include "wsrep_applier.h"
 #include "wsrep_schema.h"
+#include "wsrep_thread_service.h"
+#include "wsrep_tls_service.h"
 #include "wsrep_xid.h"
 #include "wsrep_trans_observer.h"
 #include "mysql/service_wsrep.h"
@@ -104,6 +106,8 @@ my_bool wsrep_restart_slave;                    // Should mysql slave thread be
 my_bool wsrep_desync;                           // De(re)synchronize the node from the
                                                 // cluster
 ulonglong wsrep_mode;
+ulong wsrep_ssl_mode;                           // Select SSL implementation to
+                                                // use for provider connections
 bool wsrep_service_started;                     // If Galera was initialized
 long wsrep_slave_threads;                       // No. of slave appliers threads
 ulong wsrep_retry_autocommit;                   // Retry aborted autocommit trx

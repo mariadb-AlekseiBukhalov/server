@@ -18,10 +18,16 @@
 #include "wsrep_server_state.h"
 #include "wsrep_allowlist_service.h"
 #include "wsrep_event_service.h"
+#include "wsrep_thread_service.h"
+#include "wsrep_tls_service.h"
 #include "wsrep_binlog.h" /* init/deinit group commit */
 #include "wsrep_plugin.h" /* make/destroy sysvar helpers */
 
 #include "my_stacktrace.h" /* my_safe_printf_stderr() */
+
+#ifdef WITH_PERFSCHEMA_STORAGE_ENGINE
+#include "../storage/perfschema/pfs_server.h"
+#endif /* WITH_PERFSCHEMA_STORAGE_ENGINE */
 
 mysql_mutex_t LOCK_wsrep_server_state;
 mysql_cond_t  COND_wsrep_server_state;
@@ -148,13 +154,29 @@ void Wsrep_server_state::init_provider_services()
 {
   m_provider_services.allowlist_service= wsrep_allowlist_service_init();
   m_provider_services.event_service= Wsrep_event_service::instance();
+#ifdef HAVE_PSI_THREAD_INTERFACE
+  if (pfs_param.m_enabled)
+    m_provider_services.thread_service= wsrep_thread_service_init();
+#endif /* HAVE_PSI_THREAD_INTERFACE */
+  WSREP_DEBUG("Wsrep_ssl_mode: %lu", wsrep_ssl_mode);
+  if (wsrep_ssl_mode != WSREP_SSL_MODE_PROVIDER)
+  {
+    WSREP_INFO("Using server side SSL for provider connections");
+    m_provider_services.tls_service= wsrep_tls_service_init();
+  }
 }
 
 void Wsrep_server_state::deinit_provider_services()
 {
+  if (m_provider_services.tls_service)
+    wsrep_tls_service_deinit();
+#ifdef HAVE_PSI_THREAD_INTERFACE
+  if (m_provider_services.thread_service)
+    wsrep_thread_service_deinit();
+#endif /* HAVE_PSI_THREAD_INTERFACE */
   if (m_provider_services.allowlist_service)
     wsrep_allowlist_service_deinit();
-  m_provider_services= wsrep::provider::services();
+  m_provider_services = wsrep::provider::services();
 }
 
 void Wsrep_server_state::handle_fatal_signal()
