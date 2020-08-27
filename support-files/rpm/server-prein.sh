@@ -52,8 +52,8 @@ A manual upgrade is required.
   rpm -qa | grep -iE '^(mariadb|mysql)-'
 
   You may choose to use 'rpm --nodeps -ev <package-name>' to remove
-  the package which contains the mysqlclient shared library.  The
-  library will be reinstalled by the MariaDB-shared package.
+  the package which contains the mysqlclient/mariadbclient shared library.
+  The library will be reinstalled by the MariaDB-shared package.
 - Install the new MariaDB packages supplied by $myvendor
 - Ensure that the MariaDB server is started
 - Run the 'mariadb-upgrade' program
