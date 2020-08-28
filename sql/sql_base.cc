@@ -4423,7 +4423,7 @@ static bool upgrade_lock_if_not_exists(THD *thd,
                             ER_THD(thd, ER_TABLE_EXISTS_ERROR),
                             create_table->table_name.str);
       }
-      else
+      else if (!(create_table->db_type->flags & HTON_IGNORE_UPDATES))
         my_error(ER_TABLE_EXISTS_ERROR, MYF(0), create_table->table_name.str);
       DBUG_RETURN(true);
     }
