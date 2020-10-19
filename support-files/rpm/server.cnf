@@ -43,7 +43,7 @@
 #wsrep_slave_threads=1
 #innodb_flush_log_at_trx_commit=0
 # Increase gcache size for performance
-#wsrep_provider_options="gcache.size=1024Mb"
+#wsrep_provider_options="gcache.size=1024M"
 
 # this is only for embedded server
 [embedded]
