@@ -1,0 +1,61 @@
+#
+# Test the safe_to_bootstrap in grastate.dat 
+#
+--source include/galera_cluster.inc
+--source include/force_restart.inc
+
+--let $node_1 = node_1
+--let $node_2 = node_2
+--source include/auto_increment_offset_save.inc
+
+--connection node_1
+CREATE TABLE t1 (f1 INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY) ENGINE=InnoDB;
+INSERT INTO t1 VALUES (1);
+
+--let $wait_condition = SELECT VARIABLE_VALUE = 2 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
+--source include/wait_condition.inc
+#
+# Kill the cluster
+#
+--connection node_2
+--source include/shutdown_mysqld.inc
+
+--connection node_1
+SET SESSION wsrep_on = OFF;
+--let $wait_condition = SELECT VARIABLE_VALUE = 1 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
+--source include/wait_condition.inc
+
+--source ../galera/include/kill_galera.inc
+
+#
+# Attempt to bootstrap node #1 with WSREP_ON=OFF, should fail 
+#
+
+--error 1
+--exec $MYSQLD --defaults-group-suffix=.1 --defaults-file=$MYSQLTEST_VARDIR/my.cnf --wsrep-new-cluster --wsrep-on=OFF --wsrep-cluster-address='gcomm://' | grep 'Bootsrap a new cluster requested but wsrep_on=OFF'
+
+#
+# Attempt to bootstrap with wsrep_on=on starting from node #1, should succeed
+#
+
+--connection node_1
+--let $_expect_file_name= $MYSQLTEST_VARDIR/tmp/mysqld.1.expect
+let $restart_noprint=2;
+--source include/start_mysqld.inc
+--source include/wait_until_connected_again.inc
+
+--let $wait_condition = SELECT VARIABLE_VALUE = 1 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
+--source include/wait_condition.inc
+
+
+--connection node_2
+--let $_expect_file_name= $MYSQLTEST_VARDIR/tmp/mysqld.2.expect
+let $restart_noprint=2;
+--source include/start_mysqld.inc
+
+--let $wait_condition = SELECT VARIABLE_VALUE = 2 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
+--source include/wait_condition.inc
+
+DROP TABLE t1;
+
+--source include/auto_increment_offset_restore.inc

@@ -9003,6 +9003,15 @@ static int get_options(int *argc_ptr, char ***argv_ptr)
     binlog_format_used= 1;
   }
 
+#ifdef WITH_WSREP
+  if (wsrep_new_cluster && !(global_system_variables.wsrep_on))
+  {
+    WSREP_ERROR("Bootstrap a new cluster requested but wsrep_on=OFF. "
+                "Please adjust your configuration.");
+    return 1;
+  }
+#endif
+
   // Synchronize @@global.autocommit on --autocommit
   const ulonglong turn_bit_on= opt_autocommit ?
     OPTION_AUTOCOMMIT : OPTION_NOT_AUTOCOMMIT;
