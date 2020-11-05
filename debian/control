@@ -226,7 +226,7 @@ Description: MariaDB database common files (e.g. /etc/mysql/mariadb.conf.d/)
 
 Package: mariadb-client-core
 Architecture: any
-Depends: libmariadb3 (>= 10.5.4),
+Depends: libmariadb3 (>= 10.6.0),
          mariadb-common (>= ${source:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
