@@ -90,7 +90,7 @@ struct TP_connection_generic :public TP_connection
   TP_file_handle fd;
   bool bound_to_poll_descriptor;
   int waiting;
-  bool fix_group;
+  uint reshuffle_group_period;
 #ifdef _WIN32
   win_aiosocket win_sock{};
   void init_vio(st_vio *vio) override

@@ -1393,8 +1393,27 @@ static void set_next_timeout_check(ulonglong abstime)
   DBUG_VOID_RETURN;
 }
 
+#include <mutex>
+#include <random>
+/* Get uniformly distributed random in range 0*/
+static unsigned int get_random(uint high)
+{
+  static std::mt19937 rgen;
+  std::uniform_int_distribution<uint> idist(0, high);
+
+  static std::mutex mtx;
+  std::lock_guard<std::mutex> lock(mtx);
+  return idist(rgen);
+}
+
 static size_t get_group_id(my_thread_id tid)
 {
+  if (threadpool_reshuffle_group_period)
+  {
+     /* Randomized group id*/
+     return get_random(group_count-1);
+  }
+  /* Round-robin group id */
   return size_t(tid % group_count);
 }
 
@@ -1407,7 +1426,7 @@ TP_connection_generic::TP_connection_generic(CONNECT *c):
   abs_wait_timeout(ULONGLONG_MAX),
   bound_to_poll_descriptor(false),
   waiting(false),
-  fix_group(false)
+  reshuffle_group_period(threadpool_reshuffle_group_period)
 {
   DBUG_ASSERT(c->vio_type != VIO_CLOSED);
 
@@ -1500,16 +1519,19 @@ int TP_connection_generic::start_io()
   /*
     Usually, connection will stay in the same group for the entire
     connection's life. However, we do allow group_count to
-    change at runtime, which means in rare cases when it changes is 
+    change at runtime, which means in rare cases when it changes is
     connection should need to migrate  to another group, this ensures
     to ensure equal load between groups.
 
     So we recalculate in which group the connection should be, based
     on thread_id and current group count, and migrate if necessary.
+
+    Another mechanism, that causes periodic(random) group reassignment is
+    thread_pool_reshuffle_group_period.
   */
-  if (fix_group)
+  if (reshuffle_group_period && !--reshuffle_group_period)
   {
-    fix_group = false;
+    reshuffle_group_period= threadpool_reshuffle_group_period;
     thread_group_t *new_group= &all_groups[get_group_id(thd->thread_id)];
 
     if (new_group != thread_group)
@@ -1647,11 +1669,11 @@ TP_pool_generic::~TP_pool_generic()
 }
 
 
-static my_bool thd_reset_group(THD* thd, void*)
+static my_bool thd_reset_group(THD* thd,void*)
 {
   auto c= (TP_connection_generic*)thd->event_scheduler.data;
   if(c)
-    c->fix_group= true;
+    c->reshuffle_group_period= 1;
   return FALSE;
 }
 
@@ -1681,6 +1703,13 @@ int TP_pool_generic::set_pool_size(uint size)
     }
   }
   group_count= size;
+  server_threads.iterate(thd_reset_group);
+  return 0;
+}
+
+
+int TP_pool_generic::set_reshuffle_group_period(uint)
+{
   server_threads.iterate(thd_reset_group);
   return 0;
 }

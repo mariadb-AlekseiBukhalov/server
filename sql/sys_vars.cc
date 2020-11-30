@@ -4355,6 +4355,11 @@ static bool fix_threadpool_size(sys_var*, THD*, enum_var_type)
   return false;
 }
 
+static bool fix_threadpool_reshuffle_group_period(sys_var*, THD*, enum_var_type)
+{
+  tp_set_threadpool_reshuffle_groups(threadpool_reshuffle_group_period);
+  return false;
+}
 
 static bool fix_threadpool_stall_limit(sys_var*, THD*, enum_var_type)
 {
@@ -4427,6 +4432,19 @@ Sys_threadpool_size(
   NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(check_threadpool_size),
   ON_UPDATE(fix_threadpool_size)
 );
+
+static Sys_var_on_access_global<Sys_var_uint, PRIV_SET_SYSTEM_GLOBAL_VAR_THREAD_POOL>
+Sys_threadpool_reshuffle_group_period(
+  "thread_pool_reshuffle_group_period",
+  "Change connection's thread group randomly after this many queries. "
+  "This randomization prevents a rare situation, where work is not evenly distributed between groups. "
+  "The value 0 prevents randomization",
+  GLOBAL_VAR(threadpool_reshuffle_group_period), CMD_LINE(REQUIRED_ARG),
+  VALID_RANGE(0, UINT_MAX), DEFAULT(0), BLOCK_SIZE(1),
+  NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(0),
+  ON_UPDATE(fix_threadpool_reshuffle_group_period)
+);
+
 static Sys_var_on_access_global<Sys_var_uint,
                                 PRIV_SET_SYSTEM_GLOBAL_VAR_THREAD_POOL>
 Sys_threadpool_stall_limit(

@@ -28,6 +28,7 @@ extern uint threadpool_oversubscribe;  /* Maximum active threads in group */
 extern uint threadpool_prio_kickup_timer;  /* Time before low prio item gets prio boost */
 extern my_bool threadpool_exact_stats; /* Better queueing time stats for information_schema, at small performance cost */
 extern my_bool threadpool_dedicated_listener; /* Listener thread does not pick up work items. */
+extern uint threadpool_reshuffle_group_period;
 #ifdef _WIN32
 extern uint threadpool_mode; /* Thread pool implementation , windows or generic */
 #define TP_MODE_WINDOWS 0
@@ -60,6 +61,7 @@ extern TP_STATISTICS tp_stats;
 extern void tp_set_min_threads(uint val);
 extern void tp_set_max_threads(uint val);
 extern void tp_set_threadpool_size(uint val);
+extern void tp_set_threadpool_reshuffle_groups(uint val);
 extern void tp_set_threadpool_stall_limit(uint val);
 extern int tp_get_idle_thread_count();
 extern int tp_get_thread_count();
@@ -133,6 +135,7 @@ struct TP_pool
   virtual int get_thread_count() { return tp_stats.num_worker_threads; }
   virtual int get_idle_thread_count(){ return 0; }
   virtual void resume(TP_connection* c)=0;
+  virtual int set_reshuffle_group_period(uint) { return 0; }
 };
 
 #ifdef _WIN32
@@ -158,6 +161,7 @@ struct TP_pool_generic :TP_pool
   TP_connection *new_connection(CONNECT *c) override;
   void add(TP_connection *) override;
   int set_pool_size(uint) override;
+  int set_reshuffle_group_period(uint) override;
   int set_stall_limit(uint) override;
   int get_idle_thread_count() override;
   void resume(TP_connection* c) override;

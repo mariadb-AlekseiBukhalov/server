@@ -45,6 +45,7 @@ uint threadpool_max_threads;
 uint threadpool_oversubscribe;
 uint threadpool_mode;
 uint threadpool_prio_kickup_timer;
+uint threadpool_reshuffle_group_period;
 my_bool threadpool_exact_stats;
 my_bool threadpool_dedicated_listener;
 
@@ -539,6 +540,11 @@ void tp_set_threadpool_stall_limit(uint val)
     pool->set_stall_limit(val);
 }
 
+void tp_set_threadpool_reshuffle_groups(uint val)
+{
+  if (pool)
+    pool->set_reshuffle_group_period(val);
+}
 
 void tp_timeout_handler(TP_connection *c)
 {

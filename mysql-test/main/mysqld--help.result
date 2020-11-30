@@ -1600,6 +1600,11 @@ The following specify which files/extra groups are read (specified before remain
  set to 'auto', the the actual priority(low or high) is
  determined based on whether or not connection is inside
  transaction
+ --thread-pool-reshuffle-group-period=# 
+ Change connection's thread group randomly after this many
+ queries. This randomization prevents a rare situation,
+ where work is not evenly distributed between groups. The
+ value 0 prevents randomization
  --thread-pool-size=# 
  Number of thread groups in the pool. This parameter is
  roughly equivalent to maximum number of concurrently
@@ -2073,6 +2078,7 @@ thread-pool-max-threads 65536
 thread-pool-oversubscribe 3
 thread-pool-prio-kickup-timer 1000
 thread-pool-priority auto
+thread-pool-reshuffle-group-period 0
 thread-pool-stall-limit 500
 tmp-disk-table-size 18446744073709551615
 tmp-memory-table-size 16777216
