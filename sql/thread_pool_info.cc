@@ -297,6 +297,48 @@ static int waits_init(void* p)
   return 0;
 }
 
+namespace Show
+{
+static ST_FIELD_INFO connections_field_info[] =
+{
+  Column("CONNECTION_ID", ULonglong(19), NOT_NULL),
+  Column("GROUP_ID", SLong(6) , NOT_NULL),
+  CEnd()
+};
+}
+
+
+static my_bool fill_conn_info(THD *thd, TABLE* table)
+{
+  auto c = (TP_connection_generic*) thd->event_scheduler.data;
+  if (!c)
+    return FALSE;
+
+  /* CONNECTION_ID */
+  table->field[0]->store(thd->thread_id, true);
+  /* GROUP ID */
+  table->field[1]->store(c->thread_group - all_groups, true);
+  if (schema_table_store_record(thd, table))
+    return TRUE;
+  return FALSE;
+}
+
+static int connections_fill_table(THD* thd, TABLE_LIST* tables, COND*)
+{
+  if (!all_groups)
+    return 0;
+
+  return server_threads.iterate(fill_conn_info,tables->table);
+}
+
+static int connections_init(void* p)
+{
+  ST_SCHEMA_TABLE* schema = (ST_SCHEMA_TABLE*)p;
+  schema->fields_info = Show::connections_field_info;
+  schema->fill_table = connections_fill_table;
+  return 0;
+}
+
 static struct st_mysql_information_schema plugin_descriptor =
 { MYSQL_INFORMATION_SCHEMA_INTERFACE_VERSION };
 
@@ -354,6 +396,21 @@ maria_declare_plugin(thread_pool_info)
   "Provides wait counters for threadpool.",
   PLUGIN_LICENSE_GPL,
   waits_init,
+  0,
+  0x0100,
+  NULL,
+  NULL,
+  "1.0",
+  MariaDB_PLUGIN_MATURITY_STABLE
+},
+{
+  MYSQL_INFORMATION_SCHEMA_PLUGIN,
+  &plugin_descriptor,
+  "THREAD_POOL_CONNECTIONS",
+  "Vladislav Vaintroub",
+  "Provides information about group assignment for connections in threadpool.",
+  PLUGIN_LICENSE_GPL,
+  connections_init,
   0,
   0x0100,
   NULL,

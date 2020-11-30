@@ -95,3 +95,31 @@ reap;
 disconnect con2;
 
 connection default;
+
+#I_S.THREAD_POOL_CONNECTIONS
+DESC INFORMATION_SCHEMA.THREAD_POOL_CONNECTIONS;
+
+
+SET @save_thread_pool_reshuffle_group_period = @@global.thread_pool_reshuffle_group_period;
+SET GLOBAL thread_pool_reshuffle_group_period = 0;
+
+SET @save_thread_pool_size=@@global.thread_pool_size;
+SET GLOBAL thread_pool_size=2;
+
+SET @save_thread_pool_max_threads=@@global.thread_pool_max_threads;
+SET GLOBAL thread_pool_max_threads=default;
+
+
+# without randomization, group_id can be derived from connection_id
+SELECT group_id = MOD(connection_id(),@@thread_pool_size) FROM INFORMATION_SCHEMA.THREAD_POOL_CONNECTIONS WHERE connection_id = connection_id();
+SET GLOBAL thread_pool_reshuffle_group_period=3;
+SELECT group_id INTO @groupid FROM INFORMATION_SCHEMA.THREAD_POOL_CONNECTIONS WHERE connection_id = connection_id();
+while (`SELECT group_id = @groupid FROM INFORMATION_SCHEMA.THREAD_POOL_CONNECTIONS WHERE connection_id = connection_id()`)
+{
+ # At some point, group_id will change, due to reshuffle above
+}
+SET GLOBAL thread_pool_reshuffle_group_period = @save_thread_pool_reshuffle_group_period;
+SET GLOBAL thread_pool_size = @save_thread_pool_size;
+SET GLOBAL thread_pool_max_threads = @save_thread_pool_max_threads;
+
+
