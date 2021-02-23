@@ -168,3 +168,16 @@ XA RECOVER;
 XA ROLLBACK 'test';
 
 DROP TABLE t1;
+
+
+#
+# MENT-1110: Assertion `is_streaming() == false' failed in
+# wsrep::transaction::cleanup()
+#
+
+SET @@session.pseudo_slave_mode=1;
+XA START 'a';
+XA END 'a';
+XA PREPARE 'a';
+XA COMMIT 'a';
+SET @@session.pseudo_slave_mode=DEFAULT;

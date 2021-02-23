@@ -148,3 +148,11 @@ formatID	gtrid_length	bqual_length	data
 1	4	0	test
 XA ROLLBACK 'test';
 DROP TABLE t1;
+SET @@session.pseudo_slave_mode=1;
+XA START 'a';
+XA END 'a';
+XA PREPARE 'a';
+XA COMMIT 'a';
+SET @@session.pseudo_slave_mode=DEFAULT;
+Warnings:
+Warning	1231	Slave applier execution mode not active, statement ineffective.

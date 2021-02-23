@@ -1256,6 +1256,12 @@ static bool slave_applier_reset_xa_trans(THD *thd)
   }
   thd->transaction->xid_state.xid_cache_element->acquired_to_recovered();
   thd->transaction->xid_state.xid_cache_element= 0;
+#ifdef WITH_WSREP
+  if (WSREP(thd))
+  {
+    wsrep_xa_detach(thd);
+  }
+#endif /* WITH_WSREP */
 
   for (Ha_trx_info *ha_info= thd->transaction->all.ha_list, *ha_info_next;
        ha_info; ha_info= ha_info_next)
