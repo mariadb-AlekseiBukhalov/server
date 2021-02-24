@@ -156,3 +156,11 @@ XA COMMIT 'a';
 SET @@session.pseudo_slave_mode=DEFAULT;
 Warnings:
 Warning	1231	Slave applier execution mode not active, statement ineffective.
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY);
+XA START 'a';
+INSERT INTO t1 VALUES(1);
+SAVEPOINT abc;
+XA END 'a';
+XA PREPARE 'a';
+XA COMMIT 'a';
+DROP TABLE t1;

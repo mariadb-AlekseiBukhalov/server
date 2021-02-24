@@ -158,8 +158,10 @@ static int wsrep_write_cache_inc(THD*      const thd,
     } while ((cache->file >= 0) && (length= my_b_fill(cache)));
     if (ret == 0)
     {
-      assert(!WSREP_EMULATE_BINLOG(thd) ||
-             total_length + log_position == saved_pos);
+      assert((total_length + log_position == saved_pos) ||
+             // The case for XA is an exception here, as the cache gets flushed
+             // upon XA PREPARE in binlog_prepare()
+             ((thd->wsrep_trx().is_xa()) && (total_length == 0) && (saved_pos == 0)));
     }
   }
 
