@@ -198,3 +198,16 @@ XA PREPARE 'a';
 XA COMMIT 'a';
 
 DROP TABLE t1;
+
+
+#
+# MENT-1111: Assertion `active()' failed in
+# void wsrep::transaction::assign_xid(const wsrep::xid&)
+#
+
+SET SESSION TRANSACTION READ ONLY;
+XA START 'a';
+XA END 'a';
+XA PREPARE 'a';
+XA COMMIT 'a';
+SET SESSION TRANSACTION READ WRITE;

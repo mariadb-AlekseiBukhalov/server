@@ -480,7 +480,7 @@ bool trans_xa_start(THD *thd)
       DBUG_RETURN(true);
     }
 #ifdef WITH_WSREP
-    if (WSREP(thd))
+    if (WSREP(thd) && wsrep_is_active(thd))
     {
       wsrep_assign_xid(thd);
     }
