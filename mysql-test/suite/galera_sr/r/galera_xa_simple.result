@@ -170,3 +170,14 @@ XA END 'a';
 XA PREPARE 'a';
 XA COMMIT 'a';
 SET SESSION TRANSACTION READ WRITE;
+CREATE TABLE t1 (c INTEGER PRIMARY KEY) Engine=InnoDB STATS_PERSISTENT=1;
+XA START 'a';
+INSERT INTO t1 VALUES(1);
+SET @@session.pseudo_slave_mode=1;
+XA END 'a';
+XA PREPARE 'a';
+XA ROLLBACK 'a';
+SET @@session.pseudo_slave_mode=DEFAULT;
+Warnings:
+Warning	1231	Slave applier execution mode not active, statement ineffective.
+DROP TABLE t1;

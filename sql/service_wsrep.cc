@@ -152,7 +152,7 @@ extern "C" my_bool wsrep_thd_is_local(const THD *thd)
 
 extern "C" my_bool wsrep_thd_is_applying(const THD *thd)
 {
-  return thd->wsrep_cs().mode() == wsrep::client_state::m_high_priority;
+  return thd && thd->wsrep_cs().mode() == wsrep::client_state::m_high_priority;
 }
 
 extern "C" my_bool wsrep_thd_is_toi(const THD *thd)
