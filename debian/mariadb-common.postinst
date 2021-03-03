@@ -35,7 +35,12 @@ case "$1" in
     then
       update-alternatives --install /etc/mysql/my.cnf my.cnf "/etc/mysql/mariadb.cnf" 500 || true
     fi
-    ;;
+    # MENT-1068 Enterprise upgrade from 10.4 to 10.5 fails
+    if [ -f /etc/mysql/conf.d/mariadb-enterprise.cnf ]
+    then
+      mv -f /etc/mysql/conf.d/mariadb-enterprise.cnf /etc/mysql/conf.d/mariadb-enterprise.cnf.saved
+    fi
+  ;;
 esac
 
 #DEBHELPER#

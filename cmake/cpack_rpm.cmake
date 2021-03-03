@@ -142,7 +142,7 @@ SET(CPACK_RPM_SPEC_MORE_DEFINE "${CPACK_RPM_SPEC_MORE_DEFINE}
 %define ignore \#
 ")
 
-SET(CPACK_RPM_PACKAGE_REQUIRES "MariaDB-common")
+SET(CPACK_RPM_PACKAGE_REQUIRES "MariaDB-common = %{version}-%{release}")
 
 SET(ignored
   "%ignore /etc"
