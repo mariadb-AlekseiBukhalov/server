@@ -1113,6 +1113,9 @@ public:
   {
     mysql_prlock_unlock(&m_LOCK_waiting_for);
   }
+#ifdef WITH_WSREP
+  bool clone_transactional_locks(MDL_context *mdl_context);
+#endif /* WITH_WSREP */
 private:
   MDL_context(const MDL_context &rhs);          /* not implemented */
   MDL_context &operator=(MDL_context &rhs);     /* not implemented */

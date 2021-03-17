@@ -3369,6 +3369,32 @@ bool MDL_context::has_explicit_locks()
 }
 
 #ifdef WITH_WSREP
+/**
+ * Clone transactional locks from the given mdl context.
+ */
+bool MDL_context::clone_transactional_locks(MDL_context *mdl_context)
+{
+  bool ret= FALSE;
+  MDL_ticket *ticket;
+  Ticket_iterator it(mdl_context->m_tickets[MDL_TRANSACTION]);
+  while ((ticket= it++))
+  {
+    MDL_request mdl_request;
+    MDL_REQUEST_INIT_BY_KEY(&mdl_request,
+                            ticket->get_key(),
+                            ticket->get_type(),
+                            MDL_TRANSACTION);
+    mdl_request.ticket= ticket;
+    if (clone_ticket(&mdl_request))
+    {
+      WSREP_WARN("Failed to clone ticket:");
+      ticket->wsrep_report(true);
+      ret= TRUE;
+    }
+  }
+  return ret;
+}
+
 static
 const char *wsrep_get_mdl_namespace_name(MDL_key::enum_mdl_namespace ns)
 {

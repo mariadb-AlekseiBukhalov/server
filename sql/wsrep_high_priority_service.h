@@ -95,10 +95,18 @@ public:
 class Wsrep_prepared_applier_service : public Wsrep_applier_service
 {
 public:
-  Wsrep_prepared_applier_service(THD* thd, XID* xid)
+  Wsrep_prepared_applier_service(THD* thd, THD* orig_thd, XID* xid)
     : Wsrep_applier_service(thd)
   {
     m_xid.set(xid);
+    /* Copy the transactional mdl locks from the original thd
+       that is detached (client is disconnecting or
+       pseudo_slave_mode = ON). We rely on these locks to avoid
+       potential BF aborts from conflicting DDLs. */
+    if (m_thd->mdl_context.clone_transactional_locks(&orig_thd->mdl_context))
+    {
+      DBUG_ASSERT(0);
+    }
   }
   ~Wsrep_prepared_applier_service() override = default;
   int start_transaction(const wsrep::ws_handle& ws_handle,
@@ -154,7 +162,7 @@ class Wsrep_prepared_replayer_service :
 {
 public:
   Wsrep_prepared_replayer_service(THD* thd, THD* orig_thd, XID* xid)
-    : Wsrep_prepared_applier_service(thd, xid)
+    : Wsrep_prepared_applier_service(thd, orig_thd, xid)
     , m_orig_thd(orig_thd) { }
   int commit(const wsrep::ws_handle& ws_handle,
              const wsrep::ws_meta& ws_meta) override

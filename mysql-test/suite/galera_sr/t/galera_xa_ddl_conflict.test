@@ -80,3 +80,60 @@ CALL mtr.add_suppression("WSREP: Event 1 Query apply failed");
 
 --connection node_2
 CALL mtr.add_suppression("WSREP: Event 1 Query apply failed");
+
+
+#
+# Test D: local DDL vs detached XA transaction conflict
+#
+
+--connect trx, 127.0.0.1, root, , test, $NODE_MYPORT_1
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY);
+
+--connection trx
+XA START 'test';
+INSERT INTO t1 VALUES(1);
+XA END 'test';
+XA PREPARE 'test';
+--disconnect trx
+--source include/wait_until_disconnected.inc
+
+--connection node_1
+--error ER_LOCK_DEADLOCK
+ALTER TABLE t1 ENGINE=InnoDB;
+
+--connection node_1
+XA COMMIT 'test';
+SELECT * FROM t1;
+
+DROP TABLE t1;
+
+
+#
+# MENT-1141: Assertion `thd' failed in
+# int wsrep_innobase_kill_one_trx(THD*, trx_t*, bool)
+#
+# DDL attempts to BF abort prepared XA with
+# pseudo_slave_mode=ON
+#
+
+--connect node_1a, 127.0.0.1, root, , test, $NODE_MYPORT_1
+CREATE TABLE t0 (c INT);
+
+--connection node_1
+SET SESSION pseudo_slave_mode=ON;
+XA START 'a';
+INSERT INTO t0 VALUES(0);
+XA END 'a';
+XA PREPARE 'a';
+
+--connection node_1a
+--error ER_LOCK_DEADLOCK
+ALTER TABLE t0 ENGINE=InnoDB;
+
+--connection node_1
+XA COMMIT 'a';
+SELECT * FROM t0;
+
+DROP TABLE t0;
+SET @@session.pseudo_slave_mode=DEFAULT;
+--disconnect node_1a

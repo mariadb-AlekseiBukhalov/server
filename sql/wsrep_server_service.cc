@@ -132,7 +132,9 @@ wsrep_create_streaming_applier(THD *orig_thd, const char *ctx, XID* xid)
       }
       else
       {
-        ret= new (std::nothrow) Wsrep_prepared_applier_service(thd, xid);
+        ret= new (std::nothrow) Wsrep_prepared_applier_service(thd,
+                                                               orig_thd,
+                                                               xid);
       }
     }
     else
