@@ -4,12 +4,12 @@
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; version 2 of the License.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1335 USA
@@ -102,7 +102,7 @@ IF(UNIX AND NOT WITHOUT_SERVER)
                         OUTPUT_VARIABLE LIBSEPOL_VERSION RESULT_VARIABLE err)
         IF (NOT err)
           SET(CPACK_RPM_server_PACKAGE_REQUIRES
-            "${CPACK_RPM_server_PACKAGE_REQUIRES} libsepol >= ${LIBSEPOL_VERSION}"
+            "${CPACK_RPM_server_PACKAGE_REQUIRES} ${LIBSEPOL_PKG} >= ${LIBSEPOL_VERSION}"
             PARENT_SCOPE)
         ENDIF()
       ENDIF()
@@ -113,7 +113,7 @@ IF(UNIX AND NOT WITHOUT_SERVER)
   INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/mariadb.pc DESTINATION ${INSTALL_LIBDIR}/pkgconfig COMPONENT Development)
 
   INSTALL(FILES mysql.m4 DESTINATION ${INSTALL_SHAREDIR}/aclocal COMPONENT Development)
-  
+
   SET(bindir ${INSTALL_BINDIRABS})
   SET(sbindir ${INSTALL_SBINDIRABS})
   SET(scriptdir ${INSTALL_SCRIPTDIRABS})
@@ -131,7 +131,7 @@ IF(UNIX AND NOT WITHOUT_SERVER)
   ELSE()
     SET(sysconf2dir "${sysconfdir}/mysql")
   ENDIF()
-  CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mysql.server.sh 
+  CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mysql.server.sh
                  ${CMAKE_CURRENT_BINARY_DIR}/mysql.server @ONLY)
   INSTALL(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/mysql.server
     DESTINATION ${inst_location} COMPONENT SupportFiles)
