@@ -1,0 +1,33 @@
+connection node_2;
+connection node_1;
+CREATE TABLE t1 (f1 INT PRIMARY KEY);
+SET SESSION wsrep_osu_method=RSU;
+CREATE TABLE t2 (f1 INT PRIMARY KEY);
+SET SESSION wsrep_osu_method=NBO;
+ALTER TABLE t1 LOCK=EXCLUSIVE,RENAME TO t3;
+SET SESSION wsrep_osu_method=RSU;
+DROP TABLE t2;
+SET SESSION wsrep_osu_method=TOI;
+DROP TABLE t3;
+SET SESSION wsrep_osu_method='RSU';
+CREATE TABLE t1 (a MEDIUMINT UNSIGNED, b SMALLINT NOT NULL, KEY(b), PRIMARY KEY(a)) engine=innodb;
+SET SESSION wsrep_osu_method=NBO;
+DROP INDEX b ON t1;
+SET SESSION wsrep_osu_method=TOI;
+SHOW create table t1;
+Table	Create Table
+t1	CREATE TABLE `t1` (
+  `a` mediumint(8) unsigned NOT NULL,
+  `b` smallint(6) NOT NULL,
+  PRIMARY KEY (`a`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+DROP TABLE t1;
+SET SESSION wsrep_osu_method=RSU;
+CREATE TABLE t0 (c0 INT);
+SET SESSION wsrep_osu_method=NBO;
+OPTIMIZE TABLE t0;
+Table	Op	Msg_type	Msg_text
+test.t0	optimize	note	Table does not support optimize, doing recreate + analyze instead
+test.t0	optimize	status	OK
+SET SESSION wsrep_osu_method=TOI;
+DROP TABLE t0;

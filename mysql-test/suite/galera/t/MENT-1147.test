@@ -1,0 +1,44 @@
+#
+# MENT-1147 NBO alter table after RSU triggers an assertion.
+#
+# Test outline:
+#
+# Create a table t1, this is used for ALTER TABLE which is run in NBO.
+# Create another table t2 in RSU mode, after which run ALTER TABLE to
+# rename t1 -> t3 in NBO mode.
+#
+# If the bug is present, ALTER TABLE will crash in assertion.
+#
+--source include/galera_cluster.inc
+--source include/have_innodb.inc
+
+CREATE TABLE t1 (f1 INT PRIMARY KEY);
+SET SESSION wsrep_osu_method=RSU;
+CREATE TABLE t2 (f1 INT PRIMARY KEY);
+SET SESSION wsrep_osu_method=NBO;
+ALTER TABLE t1 LOCK=EXCLUSIVE,RENAME TO t3;
+
+# Cleanup
+SET SESSION wsrep_osu_method=RSU;
+DROP TABLE t2;
+SET SESSION wsrep_osu_method=TOI;
+DROP TABLE t3;
+#
+# Test case 2 : CREATE TABLE with RSU and DROP INDEX with NBO
+#
+SET SESSION wsrep_osu_method='RSU';
+CREATE TABLE t1 (a MEDIUMINT UNSIGNED, b SMALLINT NOT NULL, KEY(b), PRIMARY KEY(a)) engine=innodb;
+SET SESSION wsrep_osu_method=NBO;
+DROP INDEX b ON t1;
+SET SESSION wsrep_osu_method=TOI;
+SHOW create table t1;
+DROP TABLE t1;
+#
+# Test case 3 : CREATE TABLE with RSU and OPTIMIZE TABLE with NBO
+#
+SET SESSION wsrep_osu_method=RSU;
+CREATE TABLE t0 (c0 INT);
+SET SESSION wsrep_osu_method=NBO;
+OPTIMIZE TABLE t0;
+SET SESSION wsrep_osu_method=TOI;
+DROP TABLE t0;

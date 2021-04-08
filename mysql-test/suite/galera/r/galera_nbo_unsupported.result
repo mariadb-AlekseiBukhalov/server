@@ -8,7 +8,7 @@ RENAME TABLE t1 TO t2;
 ERROR 42000: wsrep_OSU_method NBO not supported for query
 ALTER TABLE t1 LOCK=DEFAULT, ADD COLUMN f2 INTEGER;
 ERROR 42000: wsrep_OSU_method NBO not supported for query
-ALTER TABLE t2 LOCK=NONE, ADD COLUMN f2 INTEGER;
+ALTER TABLE t1 LOCK=NONE, ADD COLUMN f2 INTEGER;
 ERROR 42000: wsrep_OSU_method NBO not supported for query
 DROP TABLE t1;
 ERROR 42000: wsrep_OSU_method NBO not supported for query
