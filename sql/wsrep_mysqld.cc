@@ -3298,20 +3298,26 @@ void wsrep_nbo_phase_one_end(THD *thd)
       }
     }
   }
+
+#ifdef ENABLED_DEBUG_SYNC
   DBUG_EXECUTE_IF("sync.wsrep_alter_locked_tables",
                   {
-                    const char act[]=
-                      "now "
-                      "WAIT_FOR signal.wsrep_alter_locked_tables";
-                    DBUG_ASSERT(!debug_sync_set_action(thd,
-                                                       STRING_WITH_LEN(act)));
-                    const char act2[]=
-                      "now "
-                      "SIGNAL signal.wsrep_alter_locked_tables_continued";
-                    DBUG_ASSERT(!debug_sync_set_action(thd,
-                                                       STRING_WITH_LEN(act2)));
-
+                    if (!thd->is_error())
+                    {
+                      const char act[]=
+                        "now "
+                        "WAIT_FOR signal.wsrep_alter_locked_tables";
+                      DBUG_ASSERT(!debug_sync_set_action(thd,
+                                                         STRING_WITH_LEN(act)));
+                      const char act2[]=
+                        "now "
+                        "SIGNAL signal.wsrep_alter_locked_tables_continued";
+                      DBUG_ASSERT(!debug_sync_set_action(thd,
+                                                         STRING_WITH_LEN(act2)));
+                    }
                   };);
+#endif
+
   DBUG_VOID_RETURN;
 }
 
