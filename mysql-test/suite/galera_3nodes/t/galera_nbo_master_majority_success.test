@@ -41,6 +41,12 @@ CALL mtr.add_suppression("Failed to execute TOI action");
 CALL mtr.add_suppression("Non-blocking operation end failed");
 CALL mtr.add_suppression("Closing during nonblocking operation.");
 CALL mtr.add_suppression("NBO phase two begin failed for:");
+CALL mtr.add_suppression("Failed to report last committed .*");
+CALL mtr.add_suppression('last left .* greater than drain seqno');
+
+--connection node_1
+CALL mtr.add_suppression("Failed to report last committed .*");
+CALL mtr.add_suppression('last left .* greater than drain seqno');
 
 --connection node_3
 --source include/galera_wait_ready.inc
