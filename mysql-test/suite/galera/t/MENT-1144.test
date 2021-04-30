@@ -1,0 +1,21 @@
+#
+# MENT-1144 Multi table OPTIMIZE causes an assertion in NBO mode
+#
+# OPTIMIZE table with a table list causes an assertion. This is because
+# the optimize is executed one-by-one for tables, releasing NBO
+# phase one in between, and cannot be supported by NBO.
+#
+# The fix is to reject OPTIMIZE with table list.
+#
+
+--source include/galera_cluster.inc
+--source include/have_innodb.inc
+
+CREATE TABLE t1 (a INT);
+CREATE TABLE t2 (a INT);
+SET SESSION wsrep_osu_method=NBO;
+--error ER_NOT_SUPPORTED_YET
+OPTIMIZE TABLE t1, t2;
+
+SET SESSION wsrep_osu_method=TOI;
+DROP TABLE t1, t2;

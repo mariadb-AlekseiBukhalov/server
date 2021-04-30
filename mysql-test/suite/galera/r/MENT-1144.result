@@ -1,0 +1,9 @@
+connection node_2;
+connection node_1;
+CREATE TABLE t1 (a INT);
+CREATE TABLE t2 (a INT);
+SET SESSION wsrep_osu_method=NBO;
+OPTIMIZE TABLE t1, t2;
+ERROR 42000: wsrep_OSU_method NBO not supported for query
+SET SESSION wsrep_osu_method=TOI;
+DROP TABLE t1, t2;

@@ -2799,7 +2799,10 @@ static bool wsrep_can_run_in_nbo(THD *thd, const char *db, const char *table,
        safe for NBO */
     return true;
   case SQLCOM_OPTIMIZE:
-    return true;
+    /* Multi table OPTIMIZE cannot be supported. The mysql_admin_table
+       runs optimize one by one for tables, releasing NBO phase one in between,
+       and this cannot be supported at the moment. */
+    return (table_list->next_local ? false : true);
   default:
     break;
   }
