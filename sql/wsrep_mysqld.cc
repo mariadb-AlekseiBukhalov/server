@@ -108,6 +108,10 @@ my_bool wsrep_desync;                           // De(re)synchronize the node fr
 ulonglong wsrep_mode;
 ulong wsrep_ssl_mode;                           // Select SSL implementation to
                                                 // use for provider connections
+// Print warning to log if the certificate is about to expire
+// after hours below this value.
+ulonglong wsrep_certificate_expiration_hours_warning;
+
 bool wsrep_service_started;                     // If Galera was initialized
 long wsrep_slave_threads;                       // No. of slave appliers threads
 ulong wsrep_retry_autocommit;                   // Retry aborted autocommit trx
@@ -227,7 +231,8 @@ static PSI_mutex_info wsrep_mutexes[]=
   { &key_LOCK_wsrep_SR_pool, "LOCK_wsrep_SR_pool", PSI_FLAG_GLOBAL},
   { &key_LOCK_wsrep_SR_store, "LOCK_wsrep_SR_store", PSI_FLAG_GLOBAL},
   { &key_LOCK_wsrep_joiner_monitor, "LOCK_wsrep_joiner_monitor", PSI_FLAG_GLOBAL},
-  { &key_LOCK_wsrep_donor_monitor, "LOCK_wsrep_donor_monitor", PSI_FLAG_GLOBAL}
+  { &key_LOCK_wsrep_donor_monitor, "LOCK_wsrep_donor_monitor", PSI_FLAG_GLOBAL},
+  { &key_LOCK_wsrep_cert_alert, "LOCK_wsrep_cert_alert", PSI_FLAG_GLOBAL}
 };
 
 static PSI_cond_info wsrep_conds[]=
@@ -241,7 +246,8 @@ static PSI_cond_info wsrep_conds[]=
   { &key_COND_wsrep_slave_threads, "COND_wsrep_wsrep_slave_threads", PSI_FLAG_GLOBAL},
   { &key_COND_wsrep_gtid_wait_upto, "COND_wsrep_gtid_wait_upto", PSI_FLAG_GLOBAL},
   { &key_COND_wsrep_joiner_monitor, "COND_wsrep_joiner_monitor", PSI_FLAG_GLOBAL},
-  { &key_COND_wsrep_donor_monitor, "COND_wsrep_donor_monitor", PSI_FLAG_GLOBAL}
+  { &key_COND_wsrep_donor_monitor, "COND_wsrep_donor_monitor", PSI_FLAG_GLOBAL},
+  { &key_COND_wsrep_cert_alert, "COND_wsrep_cert_alert", PSI_FLAG_GLOBAL}
 };
 
 static PSI_file_info wsrep_files[]=
@@ -261,7 +267,8 @@ static PSI_thread_info wsrep_threads[]=
  {&key_wsrep_applier, "wsrep_applier_thread", PSI_FLAG_GLOBAL},
  {&key_wsrep_nbo_worker, "wsrep_nbo_worker_thread", PSI_FLAG_GLOBAL},
  {&key_wsrep_sst_joiner_monitor, "wsrep_sst_joiner_monitor", PSI_FLAG_GLOBAL},
- {&key_wsrep_sst_donor_monitor, "wsrep_sst_donor_monitor", PSI_FLAG_GLOBAL}
+ {&key_wsrep_sst_donor_monitor, "wsrep_sst_donor_monitor", PSI_FLAG_GLOBAL},
+ {&key_wsrep_cert_alert_thread, "wsrep_cert_alert_thread", PSI_FLAG_GLOBAL}
 };
 
 #endif /* HAVE_PSI_INTERFACE */

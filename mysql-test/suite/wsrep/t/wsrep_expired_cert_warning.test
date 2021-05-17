@@ -1,0 +1,17 @@
+#
+# Verify that certificate expiration warning gets written
+# in the log. See wsrep_expired_cert_warning.cnf for
+# configuration.
+#
+
+--source include/have_wsrep.inc
+--source include/have_innodb.inc
+--source include/have_wsrep_provider.inc
+
+--let $assert_text= certificate expiration warning
+--let $assert_select= certificate expiration warning
+--let $assert_match= certificate expiration warning
+--let $assert_file= $MYSQLTEST_VARDIR/log/mysqld.1.err
+--source include/assert_grep.inc
+
+CALL mtr.add_suppression("WSREP:.* certificate expiration warning");

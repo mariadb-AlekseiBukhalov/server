@@ -1,0 +1,10 @@
+!include ../my.cnf
+
+[mysqld.1]
+wsrep-on=ON
+binlog-format=ROW
+wsrep-cluster-address=gcomm://
+wsrep-provider=@ENV.WSREP_PROVIDER
+# Enough hours to go past server certificate expiration. Bump this
+# if the server certificate gets regenerated.
+wsrep-certificate-expiration-hours-warning=200000

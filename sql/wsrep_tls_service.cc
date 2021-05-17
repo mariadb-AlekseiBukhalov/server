@@ -28,12 +28,26 @@
 #include "wsrep_mysqld.h"
 #include "violite.h"
 #include "mysql/psi/mysql_socket.h"
+#include "mysql/psi/mysql_thread.h"
 
 #include <cerrno>
 #include <cstring>
 #include <memory>
 
 PSI_socket_key key_socket_wsrep;
+PSI_thread_key key_wsrep_cert_alert_thread;
+static pthread_t wsrep_cert_alert_thread;
+PSI_mutex_key key_LOCK_wsrep_cert_alert;
+static mysql_mutex_t wsrep_cert_alert_mutex;
+PSI_cond_key key_COND_wsrep_cert_alert;
+static mysql_cond_t wsrep_cert_alert_cond;
+enum enum_wsrep_cert_alert_thread_state
+{
+  wsrep_cert_alert_thread_idle,
+  wsrep_cert_alert_thread_running,
+  wsrep_cert_alert_thread_aborted
+} wsrep_cert_alert_thread_state;
+
 static std::unique_ptr<wsrep::tls_service> entrypoint;
 
 enum Wsrep_error_category
@@ -44,6 +58,65 @@ enum Wsrep_error_category
 
 static enum Wsrep_error_category system_error_category= Wsrep_tls_system_error;
 static enum Wsrep_error_category ssl_error_category= Wsrep_tls_ssl_error;
+
+static time_t wsrep_cert_hours_remaining(const X509 *cert)
+{
+  time_t ret= time_t(-1);
+  ASN1_TIME *now= ASN1_TIME_set(0, time(0));
+  ASN1_TIME *not_after= X509_get_notAfter(cert);
+  if (now && not_after)
+  {
+    int pday, psec;
+    if (ASN1_TIME_diff(&pday, &psec, now, not_after))
+    {
+      ret= (pday * 24 * 3600 + psec)/3600;
+    }
+  }
+  ASN1_STRING_free(now);
+  ASN1_STRING_free(not_after);
+  return ret;
+}
+
+static void wsrep_warn_peer_certificate_expiration(const SSL *ssl)
+{
+  const X509 *cert= SSL_get_peer_certificate(ssl);
+  if (cert)
+  {
+    mysql_mutex_lock(&LOCK_global_system_variables);
+    ulonglong hours_until_warning= wsrep_certificate_expiration_hours_warning;
+    mysql_mutex_unlock(&LOCK_global_system_variables);
+    time_t expires_in_hours= wsrep_cert_hours_remaining(cert);
+    if (expires_in_hours < time_t(hours_until_warning))
+    {
+      MYSQL_SOCKET socket{ SSL_get_fd(ssl), 0, 0, 0, NULL };
+      struct sockaddr_storage addr{};
+      socklen_t addr_len(sizeof(addr));
+      uint port= 0;
+      char addr_str[INET6_ADDRSTRLEN] = {0, };
+      if (mysql_socket_getsockname(socket, (struct sockaddr*)&addr, &addr_len) ||
+          (addr.ss_family != AF_INET && addr.ss_family != AF_INET6))
+      {
+        snprintf(addr_str, sizeof(addr_str), "unknown");
+      }
+      else if (addr.ss_family == AF_INET)
+      {
+        inet_ntop(AF_INET, &((struct sockaddr_in*)&addr)->sin_addr,
+                  addr_str, sizeof(addr_str));
+        port= ntohs(((struct sockaddr_in*)&addr)->sin_port);
+      }
+      else if (addr.ss_family == AF_INET6)
+      {
+        inet_ntop(AF_INET6, &((struct sockaddr_in6*)&addr)->sin6_addr,
+                  addr_str, sizeof(addr_str));
+        port= ntohs(((struct sockaddr_in6*)&addr)->sin6_port);
+      }
+      WSREP_WARN("certificate expiration warning: the peer certificate for "
+                 "%s:%u expires in %lld hours",
+                 addr_str, port,
+                 (long long)expires_in_hours);
+    }
+  }
+}
 
 class Wsrep_tls_service : public wsrep::tls_service
 {
@@ -246,6 +319,7 @@ Wsrep_tls_service::Stream::client_handshake()
   auto ret= map_status(ssl_error, sys_error, "client handshake");
   if (ret == wsrep::tls_service::success)
   {
+    wsrep_warn_peer_certificate_expiration(ssl);
     handshake_complete= true;
   }
   return ret;
@@ -261,6 +335,7 @@ Wsrep_tls_service::Stream::server_handshake()
   auto ret= map_status(ssl_error, sys_error, "server handshake");
   if (ret == wsrep::tls_service::success)
   {
+    wsrep_warn_peer_certificate_expiration(ssl);
     handshake_complete= true;
   }
   return ret;
@@ -485,8 +560,98 @@ void Wsrep_tls_service::deregister_socket(MYSQL_SOCKET* socket)
 }
 #endif /* HAVE_PSI_SOCKET_INTERFACE */
 
+static time_t wsrep_cert_hours_until_expiration()
+{
+  FILE *fp= fopen(opt_ssl_cert, "r");
+  if (!fp)
+  {
+    WSREP_WARN("Could not read certificate file: %s", opt_ssl_cert);
+    return time_t(-1);
+  }
+  X509 *cert= PEM_read_X509(fp, 0, 0, 0);
+  time_t ret= time_t(-1);
+  if (cert)
+  {
+    ret= wsrep_cert_hours_remaining(cert);
+  }
+  fclose(fp);
+  return ret;
+}
+
+extern "C" void* wsrep_cert_alert_run(void*)
+{
+  mysql_mutex_lock(&wsrep_cert_alert_mutex);
+  while (wsrep_cert_alert_thread_state !=
+         wsrep_cert_alert_thread_aborted)
+  {
+    if (wsrep_cert_alert_thread_state == wsrep_cert_alert_thread_idle)
+    {
+      wsrep_cert_alert_thread_state= wsrep_cert_alert_thread_running;
+      mysql_cond_signal(&wsrep_cert_alert_cond);
+    }
+    mysql_mutex_lock(&LOCK_global_system_variables);
+    ulonglong hours_until_warning= wsrep_certificate_expiration_hours_warning;
+    mysql_mutex_unlock(&LOCK_global_system_variables);
+    time_t expires_in_hours;
+    if (hours_until_warning &&
+        (expires_in_hours= wsrep_cert_hours_until_expiration()) <
+        time_t(hours_until_warning))
+    {
+      WSREP_WARN("certificate expiration warning:"
+                 "the certificate expires in %ldd hours",
+                 (long long)expires_in_hours);
+    }
+    struct timeval now;
+    struct timespec wait_until;
+    gettimeofday(&now, nullptr);
+    wait_until.tv_sec= now.tv_sec + 3600;
+    wait_until.tv_nsec = now.tv_usec * 1000;
+    mysql_cond_timedwait(&wsrep_cert_alert_cond,
+                         &wsrep_cert_alert_mutex,
+                         &wait_until);
+  }
+  mysql_mutex_unlock(&wsrep_cert_alert_mutex);
+  return nullptr;
+}
+
+static int wsrep_cert_alert_start()
+{
+  mysql_mutex_init(key_LOCK_wsrep_cert_alert,
+                   &wsrep_cert_alert_mutex, 0);
+  mysql_cond_init(key_COND_wsrep_cert_alert,
+                  &wsrep_cert_alert_cond, 0);
+  wsrep_cert_alert_thread_state = wsrep_cert_alert_thread_idle;
+  if (mysql_thread_create(key_wsrep_cert_alert_thread,
+                          &wsrep_cert_alert_thread, 0,
+                          &wsrep_cert_alert_run, 0))
+  {
+    return 1;
+  }
+  mysql_mutex_lock(&wsrep_cert_alert_mutex);
+  while (wsrep_cert_alert_thread_state == wsrep_cert_alert_thread_idle)
+  {
+    mysql_cond_wait(&wsrep_cert_alert_cond, &wsrep_cert_alert_mutex);
+  }
+  mysql_mutex_unlock(&wsrep_cert_alert_mutex);
+  return 0;
+}
+
+static void wsrep_cert_alert_abort()
+{
+  mysql_mutex_lock(&wsrep_cert_alert_mutex);
+  wsrep_cert_alert_thread_state= wsrep_cert_alert_thread_aborted;
+  mysql_cond_signal(&wsrep_cert_alert_cond);
+  mysql_mutex_unlock(&wsrep_cert_alert_mutex);
+  pthread_join(wsrep_cert_alert_thread, 0);
+}
+
 wsrep::tls_service* wsrep_tls_service_init()
 {
+  if (wsrep_cert_alert_start())
+  {
+    WSREP_ERROR("Could not start TLS certificate alert thread");
+    return nullptr;
+  }
   entrypoint = std::unique_ptr<wsrep::tls_service>(new Wsrep_tls_service);
   return entrypoint.get();
 }
@@ -494,4 +659,7 @@ wsrep::tls_service* wsrep_tls_service_init()
 void wsrep_tls_service_deinit()
 {
   entrypoint.reset();
+  wsrep_cert_alert_abort();
+  mysql_mutex_destroy(&wsrep_cert_alert_mutex);
+  mysql_cond_destroy(&wsrep_cert_alert_cond);
 }

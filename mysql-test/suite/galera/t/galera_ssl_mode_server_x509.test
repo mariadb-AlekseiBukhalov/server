@@ -18,6 +18,11 @@
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 
+# Save original auto_increment_offset values.
+--let $node_1=node_1
+--let $node_2=node_2
+--source include/auto_increment_offset_save.inc
+
 SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%';
 
 --connection node_2
@@ -37,3 +42,6 @@ SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LI
 --source include/assert_grep.inc
 
 CALL mtr.add_suppression('WSREP:.* certificate verify failed.*');
+
+# Restore original auto_increment_offset values.
+--source include/auto_increment_offset_restore.inc

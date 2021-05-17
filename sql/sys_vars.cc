@@ -6700,6 +6700,14 @@ static Sys_var_enum Sys_wsrep_ssl_mode(
   wsrep_ssl_mode_names,
   DEFAULT(WSREP_SSL_MODE_SERVER));
 
+static Sys_var_ulonglong Sys_wsrep_certificate_expiration_hours_warning(
+    "wsrep_certificate_expiration_hours_warning",
+    "Print warning about certificate expiration if the X509 certificate "
+    "used for wsrep connections is about to expiren in hours given as "
+    "an argument. If the value is 0, warnings are not printed",
+    GLOBAL_VAR(wsrep_certificate_expiration_hours_warning),
+    CMD_LINE(REQUIRED_ARG), VALID_RANGE(0, ULONGLONG_MAX), DEFAULT(0),
+    BLOCK_SIZE(1));
 #endif /* WITH_WSREP */
 
 static bool fix_host_cache_size(sys_var *, THD *, enum_var_type)

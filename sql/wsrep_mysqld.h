@@ -99,6 +99,7 @@ enum enum_wsrep_ssl_mode
   WSREP_SSL_MODE_SERVER_X509
 };
 extern ulong wsrep_ssl_mode;
+extern ulonglong wsrep_certificate_expiration_hours_warning;
 
 enum enum_wsrep_reject_types {
   WSREP_REJECT_NONE,    /* nothing rejected */
@@ -485,6 +486,8 @@ extern PSI_mutex_key key_LOCK_wsrep_thd_queue;
 extern PSI_cond_key  key_COND_wsrep_thd_queue;
 extern PSI_mutex_key key_LOCK_wsrep_joiner_monitor;
 extern PSI_mutex_key key_LOCK_wsrep_donor_monitor;
+extern PSI_mutex_key key_LOCK_wsrep_cert_alert;
+extern PSI_cond_key key_COND_wsrep_cert_alert;
 
 extern PSI_file_key key_file_wsrep_gra_log;
 
@@ -495,6 +498,7 @@ extern PSI_thread_key key_wsrep_applier;
 extern PSI_thread_key key_wsrep_nbo_worker;
 extern PSI_thread_key key_wsrep_sst_joiner_monitor;
 extern PSI_thread_key key_wsrep_sst_donor_monitor;
+extern PSI_thread_key key_wsrep_cert_alert_thread;
 #endif /* HAVE_PSI_INTERFACE */
 
 
