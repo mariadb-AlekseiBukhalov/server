@@ -356,6 +356,11 @@ IF(RPM MATCHES "fedora|rhel|centos" AND NOT RPM MATCHES "rhel[78]")
 ENDIF()
 SET(PYTHON_SHEBANG "/usr/bin/python3" CACHE STRING "python shebang")
 
+
+IF(RPM MATCHES "sles15")
+  SETA(CPACK_RPM_shared_PACKAGE_OBSOLETES "libmariadb3")
+ENDIF()
+
 ################
 IF(CMAKE_VERSION VERSION_GREATER "3.9.99")
 
