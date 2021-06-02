@@ -2418,10 +2418,11 @@ size_t spider_db_odbc::escape_string(
   const char *from,
   size_t from_length
 ) {
+  my_bool overflow;
   DBUG_ENTER("spider_db_odbc::escape_string");
   DBUG_PRINT("info",("spider this=%p", this));
   DBUG_RETURN(escape_quotes_for_mysql(conn->access_charset, to, 0,
-    from, from_length));
+    from, from_length, &overflow));
 }
 
 bool spider_db_odbc::have_lock_table_list()
@@ -2764,7 +2765,7 @@ int spider_db_odbc_util::append_column_value(
       field->real_type() == MYSQL_TYPE_VARCHAR
     ) {
       length = uint2korr(new_ptr);
-      tmp_str.set_quick((char *) new_ptr + HA_KEY_BLOB_LENGTH, length,
+      tmp_str.set((char *) new_ptr + HA_KEY_BLOB_LENGTH, length,
         field->charset());
       ptr = tmp_str.get_str();
     } else if (field->type() == MYSQL_TYPE_GEOMETRY)
@@ -5083,16 +5084,16 @@ int spider_db_odbc_util::open_item_func(
     if (str)
     {
       if (str->reserve(
-        ((item_func_match->flags & FT_BOOL) ?
+        ((item_func_match->match_flags & FT_BOOL) ?
           SPIDER_SQL_IN_BOOLEAN_MODE_LEN : 0) +
-        ((item_func_match->flags & FT_EXPAND) ?
+        ((item_func_match->match_flags & FT_EXPAND) ?
           SPIDER_SQL_WITH_QUERY_EXPANSION_LEN : 0)
       ))
         DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-      if (item_func_match->flags & FT_BOOL)
+      if (item_func_match->match_flags & FT_BOOL)
         str->q_append(SPIDER_SQL_IN_BOOLEAN_MODE_STR,
           SPIDER_SQL_IN_BOOLEAN_MODE_LEN);
-      if (item_func_match->flags & FT_EXPAND)
+      if (item_func_match->match_flags & FT_EXPAND)
         str->q_append(SPIDER_SQL_WITH_QUERY_EXPANSION_STR,
           SPIDER_SQL_WITH_QUERY_EXPANSION_LEN);
     }
@@ -5108,11 +5109,11 @@ int spider_db_odbc_util::open_item_func(
           (Item_func_conv_charset *)item_func;
         CHARSET_INFO *conv_charset =
           item_func_conv_charset->SPIDER_Item_func_conv_charset_conv_charset;
-        uint cset_length = strlen(conv_charset->csname);
-        if (str->reserve(SPIDER_SQL_USING_LEN + cset_length))
+        //uint cset_length = strlen(conv_charset->csname);
+        if (str->reserve(SPIDER_SQL_USING_LEN + conv_charset->cs_name.length))
           DBUG_RETURN(HA_ERR_OUT_OF_MEM);
         str->q_append(SPIDER_SQL_USING_STR, SPIDER_SQL_USING_LEN);
-        str->q_append(conv_charset->csname, cset_length);
+        str->q_append(conv_charset->cs_name.str, conv_charset->cs_name.length);
       }
     }
   }
@@ -5253,8 +5254,8 @@ int spider_db_odbc_util::append_escaped_util(
 ) {
   DBUG_ENTER("spider_db_odbc_util::append_escaped_util");
   DBUG_PRINT("info",("spider this=%p", this));
-  DBUG_PRINT("info",("spider from=%s", from->charset()->csname));
-  DBUG_PRINT("info",("spider to=%s", to->charset()->csname));
+  DBUG_PRINT("info",("spider from=%s", from->charset()->cs_name.str));
+  DBUG_PRINT("info",("spider to=%s", to->charset()->cs_name.str));
   to->append_escape_string(from->ptr(), from->length());
   DBUG_RETURN(0);
 }
