@@ -15,6 +15,8 @@ set -e
 # It takes a lot of time, and we will do a better test anyway in
 # Buildbot, running the test suite from installed .debs on a clean VM.
 export DEB_BUILD_OPTIONS="nocheck $DEB_BUILD_OPTIONS"
+# enable ColumnStore on amd64 only
+ARCH=$(dpkg --print-architecture)
 
 # shellcheck source=/dev/null
 source ./VERSION
