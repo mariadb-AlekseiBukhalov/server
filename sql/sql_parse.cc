@@ -6101,7 +6101,8 @@ finish:
 #ifdef WITH_WSREP
   thd->wsrep_consistency_check= NO_CONSISTENCY_CHECK;
 
-  if (wsrep_thd_is_toi(thd) || wsrep_thd_is_in_rsu(thd))
+  if (wsrep_thd_is_toi(thd) || wsrep_thd_is_in_rsu(thd) ||
+      wsrep_thd_is_nbo(thd))
   {
     WSREP_DEBUG("mysql_execute_command for %s", wsrep_thd_query(thd));
     THD_STAGE_INFO(thd, stage_waiting_isolation);

@@ -3546,7 +3546,6 @@ int wsrep_to_isolation_begin(THD *thd, const char *db_, const char *table_,
 
 void wsrep_to_isolation_end(THD *thd)
 {
-  DBUG_ASSERT(wsrep_thd_is_in_rsu(thd));
   if (wsrep_thd_is_nbo(thd))
   {
     wsrep_NBO_end(thd);

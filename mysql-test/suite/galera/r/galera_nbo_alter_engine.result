@@ -2,6 +2,8 @@ connection node_2;
 connection node_1;
 connection node_1;
 SET GLOBAL wsrep_replicate_myisam=ON;
+Warnings:
+Warning	1287	'@@wsrep_replicate_myisam' is deprecated and will be removed in a future release. Please use '@@wsrep_mode=REPLICATE_MYISAM' instead
 CREATE TABLE t1 (f1 INTEGER) ENGINE=MyISAM;
 INSERT INTO t1 VALUES (1);
 SET SESSION wsrep_OSU_method=NBO;
@@ -25,3 +27,5 @@ SET SESSION wsrep_OSU_method=TOI;
 DROP TABLE t1;
 connection node_1;
 SET GLOBAL wsrep_replicate_myisam=FALSE;
+Warnings:
+Warning	1287	'@@wsrep_replicate_myisam' is deprecated and will be removed in a future release. Please use '@@wsrep_mode=REPLICATE_MYISAM' instead
