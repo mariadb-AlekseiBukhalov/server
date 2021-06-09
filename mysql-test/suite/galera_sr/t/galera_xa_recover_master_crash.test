@@ -20,4 +20,5 @@
 # Restore original auto_increment_offset values.
 --source ../galera/include/auto_increment_offset_restore.inc
 
+call mtr.add_suppression('WSREP: Discovered discontinuity in recovered wsrep transaction XIDs. Truncating the recovery list.*');
 call mtr.add_suppression('Found 3 prepared XA transactions');

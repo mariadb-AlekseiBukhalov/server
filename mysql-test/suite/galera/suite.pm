@@ -69,6 +69,7 @@ push @::global_suppressions,
      qr|WSREP: Wait for gtid returned error 3 while waiting for prior transactions to commit before setting position|,
      qr|WSREP: Failed to report last committed|,
      qr|bytes freed by|,
+     qr|WSREP: open file.*|,
    );
 
 sub which($) { return `sh -c "command -v $_[0]"` }
