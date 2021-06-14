@@ -27,6 +27,11 @@
 #include "my_global.h"
 #include "wsrep_mysqld.h"
 #include "violite.h"
+
+#ifdef HAVE_OPENSSL
+#include "ssl_compat.h"
+#endif /* HAVE_OPENSSL */
+
 #include "mysql/psi/mysql_socket.h"
 #include "mysql/psi/mysql_thread.h"
 
@@ -59,61 +64,77 @@ enum Wsrep_error_category
 static enum Wsrep_error_category system_error_category= Wsrep_tls_system_error;
 static enum Wsrep_error_category ssl_error_category= Wsrep_tls_ssl_error;
 
-static time_t wsrep_cert_hours_remaining(const X509 *cert)
+static bool wsrep_cert_expires(const ASN1_TIME *not_after,
+                               time_t hours_until_warning)
 {
-  time_t ret= time_t(-1);
-  ASN1_TIME *now= ASN1_TIME_set(0, time(0));
-  ASN1_TIME *not_after= X509_get_notAfter(cert);
-  if (now && not_after)
+  time_t expiration_time= ::time(nullptr) + 3600*hours_until_warning;
+  bool ret= false;
+  if (X509_cmp_time(not_after, &expiration_time) < 0)
   {
-    int pday, psec;
-    if (ASN1_TIME_diff(&pday, &psec, now, not_after))
-    {
-      ret= (pday * 24 * 3600 + psec)/3600;
-    }
+    ret= true;
   }
-  ASN1_STRING_free(now);
-  ASN1_STRING_free(not_after);
   return ret;
 }
 
-static void wsrep_warn_peer_certificate_expiration(const SSL *ssl)
+const char* wsrep_asn1_print(const ASN1_TIME *asn1, char *buf, size_t len)
+{
+  BIO *bio= BIO_new(BIO_s_mem());
+  if (bio)
+  {
+    if (ASN1_TIME_print(bio, asn1))
+    {
+      BIO_read(bio, buf, (int)(len - 1));
+    }
+    BIO_free(bio);
+  }
+  return buf;
+}
+
+static void wsrep_cert_report_expiration(SSL *ssl, const ASN1_TIME *not_after)
+{
+  MYSQL_SOCKET socket{ SSL_get_fd(ssl), 0, 0, 0, NULL };
+  struct sockaddr_storage addr;
+  ::memset(&addr, 0, sizeof(addr));
+  socklen_t addr_len(sizeof(addr));
+  uint port= 0;
+  char addr_str[INET6_ADDRSTRLEN] = {0, };
+  if (mysql_socket_getsockname(socket, (struct sockaddr*)&addr, &addr_len) ||
+      (addr.ss_family != AF_INET && addr.ss_family != AF_INET6))
+  {
+    snprintf(addr_str, sizeof(addr_str), "unknown");
+  }
+  else if (addr.ss_family == AF_INET)
+  {
+    inet_ntop(AF_INET, &((struct sockaddr_in*)&addr)->sin_addr,
+              addr_str, sizeof(addr_str));
+    port= ntohs(((struct sockaddr_in*)&addr)->sin_port);
+  }
+  else if (addr.ss_family == AF_INET6)
+  {
+    inet_ntop(AF_INET6, &((struct sockaddr_in6*)&addr)->sin6_addr,
+              addr_str, sizeof(addr_str));
+    port= ntohs(((struct sockaddr_in6*)&addr)->sin6_port);
+  }
+  char time_str_buf[32] = {0};
+  WSREP_WARN("certificate expiration warning: the peer certificate for "
+             "%s:%u expires at %s",
+             addr_str, port,
+             wsrep_asn1_print(not_after, time_str_buf, sizeof(time_str_buf)));
+}
+
+static void wsrep_warn_peer_certificate_expiration(SSL *ssl)
 {
   const X509 *cert= SSL_get_peer_certificate(ssl);
   if (cert)
   {
+    const ASN1_TIME *not_after= X509_get0_notAfter(cert);
+
     mysql_mutex_lock(&LOCK_global_system_variables);
     ulonglong hours_until_warning= wsrep_certificate_expiration_hours_warning;
     mysql_mutex_unlock(&LOCK_global_system_variables);
-    time_t expires_in_hours= wsrep_cert_hours_remaining(cert);
-    if (expires_in_hours < time_t(hours_until_warning))
+    if (wsrep_cert_expires(not_after, time_t(hours_until_warning)))
     {
-      MYSQL_SOCKET socket{ SSL_get_fd(ssl), 0, 0, 0, NULL };
-      struct sockaddr_storage addr{};
-      socklen_t addr_len(sizeof(addr));
-      uint port= 0;
-      char addr_str[INET6_ADDRSTRLEN] = {0, };
-      if (mysql_socket_getsockname(socket, (struct sockaddr*)&addr, &addr_len) ||
-          (addr.ss_family != AF_INET && addr.ss_family != AF_INET6))
-      {
-        snprintf(addr_str, sizeof(addr_str), "unknown");
-      }
-      else if (addr.ss_family == AF_INET)
-      {
-        inet_ntop(AF_INET, &((struct sockaddr_in*)&addr)->sin_addr,
-                  addr_str, sizeof(addr_str));
-        port= ntohs(((struct sockaddr_in*)&addr)->sin_port);
-      }
-      else if (addr.ss_family == AF_INET6)
-      {
-        inet_ntop(AF_INET6, &((struct sockaddr_in6*)&addr)->sin6_addr,
-                  addr_str, sizeof(addr_str));
-        port= ntohs(((struct sockaddr_in6*)&addr)->sin6_port);
-      }
-      WSREP_WARN("certificate expiration warning: the peer certificate for "
-                 "%s:%u expires in %lld hours",
-                 addr_str, port,
-                 (long long)expires_in_hours);
+      wsrep_cert_report_expiration(ssl, not_after);
     }
   }
 }
@@ -246,10 +267,53 @@ private:
 #endif /* HAVE_PSI_SOCKET_INTERFACE */
 };
 
-/*
-   Stream
- */
 
+#ifdef HAVE_WOLFSSL
+static int wsrep_wolfssl_return(int ret, int on_block)
+{
+  if (ret < 0)
+  {
+    int err = errno;
+    if (err == EWOULDBLOCK || err == EAGAIN)
+    {
+      ret= on_block;
+    }
+    else if (err == EINTR)
+    {
+      ret= WOLFSSL_CBIO_ERR_ISR;
+    }
+    else if (err == EPIPE || err == ECONNABORTED || err == ECONNRESET)
+    {
+      ret= WOLFSSL_CBIO_ERR_CONN_CLOSE;
+    }
+    else
+    {
+      ret= WOLFSSL_CBIO_ERR_GENERAL;
+    }
+  }
+  else if (ret == 0)
+  {
+    ret= WOLFSSL_CBIO_ERR_CONN_CLOSE;
+  }
+  return ret;
+}
+
+static int wsrep_wolfssl_recv(WOLFSSL* ssl, char* buf, int sz, void*)
+{
+  return wsrep_wolfssl_return(recv(SSL_get_fd(ssl), buf, sz, 0),
+                              WOLFSSL_CBIO_ERR_WANT_READ);
+}
+
+static int wsrep_wolfssl_send(WOLFSSL* ssl, char* buf, int sz, void*)
+{
+  return wsrep_wolfssl_return(send(SSL_get_fd(ssl), buf, sz, MSG_NOSIGNAL),
+                              WOLFSSL_CBIO_ERR_WANT_WRITE);
+}
+#endif /* HAVE_WOLFSSL */
+
+/*
+  Stream
+*/
 int Wsrep_tls_service::Stream::alloc_and_init_ssl()
 {
   DBUG_ASSERT(vio_ssl->ssl_context);
@@ -278,6 +342,11 @@ int Wsrep_tls_service::Stream::alloc_and_init_ssl()
 #if defined(SSL_OP_NO_COMPRESSION)
   SSL_set_options(ssl, SSL_OP_NO_COMPRESSION);
 #endif
+#ifdef HAVE_WOLFSSL
+  wolfSSL_SSLSetIORecv(ssl, wsrep_wolfssl_recv);
+  wolfSSL_SSLSetIOSend(ssl, wsrep_wolfssl_send);
+#endif /* HAVE_WOLFSSL */
+
   return 0;
 }
 
@@ -296,7 +365,8 @@ Wsrep_tls_service::Stream::map_status(
   case SSL_ERROR_SYSCALL:
     last_error= sys_error;
     last_error_category= &system_error_category;
-    return (sys_error == 0 ? eof : error);
+    return (sys_error == 0 ? wsrep::tls_service::eof
+                           : wsrep::tls_service::error);
   case SSL_ERROR_SSL:
     {
       last_error= sys_error;
@@ -304,6 +374,16 @@ Wsrep_tls_service::Stream::map_status(
       last_verify_error= SSL_get_verify_result(ssl);
       return wsrep::tls_service::error;
     }
+  case SSL_ERROR_ZERO_RETURN:
+    return eof;
+  default:
+    /* WolfSSL returns negative ssl_errors on socket errors. We treat
+     * them as EOF to avoid excessive warning messages. All unhandled
+     * positive SSL errors are reported as errors. */
+    last_error= ssl_error;
+    last_error_category= &ssl_error_category;
+    last_verify_error= SSL_get_verify_result(ssl);
+    return (ssl_error < 0 ? wsrep::tls_service::eof : wsrep::tls_service::error);
   }
   DBUG_ASSERT(0);
   return wsrep::tls_service::error;
@@ -536,7 +616,8 @@ wsrep::tls_service::status Wsrep_tls_service::shutdown(
 #ifdef HAVE_PSI_SOCKET_INTERFACE
 void Wsrep_tls_service::register_socket(MYSQL_SOCKET* socket)
 {
-  struct sockaddr_storage addr{};
+  struct sockaddr_storage addr;
+  ::memset(&addr, 0, sizeof(addr));
   socklen_t addr_len(sizeof(addr));
   if (mysql_socket_getsockname(*socket, (struct sockaddr*)&addr, &addr_len))
   {
@@ -560,22 +641,17 @@ void Wsrep_tls_service::deregister_socket(MYSQL_SOCKET* socket)
 }
 #endif /* HAVE_PSI_SOCKET_INTERFACE */
 
-static time_t wsrep_cert_hours_until_expiration()
+static X509 *wsrep_get_local_cert()
 {
   FILE *fp= fopen(opt_ssl_cert, "r");
   if (!fp)
   {
     WSREP_WARN("Could not read certificate file: %s", opt_ssl_cert);
-    return time_t(-1);
+    return nullptr;
   }
   X509 *cert= PEM_read_X509(fp, 0, 0, 0);
-  time_t ret= time_t(-1);
-  if (cert)
-  {
-    ret= wsrep_cert_hours_remaining(cert);
-  }
   fclose(fp);
-  return ret;
+  return cert;
 }
 
 extern "C" void* wsrep_cert_alert_run(void*)
@@ -592,14 +668,21 @@ extern "C" void* wsrep_cert_alert_run(void*)
     mysql_mutex_lock(&LOCK_global_system_variables);
     ulonglong hours_until_warning= wsrep_certificate_expiration_hours_warning;
     mysql_mutex_unlock(&LOCK_global_system_variables);
-    time_t expires_in_hours;
+    X509 *cert= wsrep_get_local_cert();
+    const ASN1_TIME *not_after= cert ? X509_get0_notAfter(cert) : nullptr;
     if (hours_until_warning &&
-        (expires_in_hours= wsrep_cert_hours_until_expiration()) <
-        time_t(hours_until_warning))
+        not_after &&
+        wsrep_cert_expires(X509_get0_notAfter(cert),
+                           time_t(hours_until_warning)))
     {
-      WSREP_WARN("certificate expiration warning:"
-                 "the certificate expires in %ldd hours",
-                 (long long)expires_in_hours);
+      char time_str_buf[32]= {0};
+      WSREP_WARN(
+          "certificate expiration warning: the certificate expires at %s",
+          wsrep_asn1_print(not_after, time_str_buf, sizeof(time_str_buf)));
+    }
+    if (cert)
+    {
+      X509_free(cert);
     }
     struct timeval now;
     struct timespec wait_until;
