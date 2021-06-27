@@ -542,7 +542,7 @@ Wsrep_tls_service::client_handshake(wsrep::tls_stream* stream) WSREP_NOEXCEPT
 
     if (error != SSL_INITERR_NOERROR)
     {
-      WSREP_WARN("SSL init error: %d", error);
+      WSREP_WARN("SSL init error: %s", sslGetErrString(error));
       st->last_error= EPROTO;
       st->last_error_category= &system_error_category;
       return wsrep::tls_service::error;
@@ -573,7 +573,7 @@ Wsrep_tls_service::server_handshake(wsrep::tls_stream* stream)
                                       tls_version);
     if (error != SSL_INITERR_NOERROR)
     {
-      WSREP_WARN("SSL init error: %d", error);
+      WSREP_WARN("SSL init error: %s", sslGetErrString(error));
       st->last_error= EPROTO;
       st->last_error_category= &system_error_category;
       return wsrep::tls_service::error;
