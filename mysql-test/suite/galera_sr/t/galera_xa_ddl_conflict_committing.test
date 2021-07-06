@@ -1,0 +1,65 @@
+#
+# MENT-1249: Assertion `m_thd->wsrep_trx().is_streaming()' failed
+# in Wsrep_replayer_service::apply_write_set().
+#
+# Test the case where a DDL attempts to BF abort a XA transaction
+# that is committing (transaction is in s_certifying state).
+# Expect that the XA cannot be BF aborted after prepare.
+#
+
+--source include/galera_cluster.inc
+--source include/have_debug_sync.inc
+
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY);
+
+--connect trx, 127.0.0.1, root, , test, $NODE_MYPORT_1
+--connection trx
+
+#
+# Start a XA transaction and execute up to XA PREPARE
+#
+XA START 't';
+INSERT INTO t1 VALUES (1);
+XA END 't';
+XA PREPARE 't';
+
+#
+# Issue XA COMMIT and block it right before it goes for certification
+#
+SET DEBUG_SYNC = "wsrep_before_certification SIGNAL before_certification_reached WAIT_FOR continue";
+--send XA COMMIT 't';
+
+--connection node_1
+SET DEBUG_SYNC = "now WAIT_FOR before_certification_reached";
+
+#
+# Issue a conflicting DDL and expect it to fail
+#
+--connection node_2
+--error ER_LOCK_DEADLOCK
+ALTER TABLE t1 ENGINE=InnoDB;
+
+--connection node_1
+SET DEBUG_SYNC = "now SIGNAL continue";
+
+--connection trx
+--reap
+
+SELECT * FROM t1;
+--disconnect trx
+
+--connection node_2
+SELECT * FROM t1;
+
+#
+# Cleanup
+#
+--connection node_1
+SET DEBUG_SYNC = "RESET";
+DROP TABLE t1;
+CALL mtr.add_suppression("Slave SQL: Error 'Deadlock found when trying to get lock; try restarting transaction' on query");
+CALL mtr.add_suppression("Ignoring error 'Deadlock found when trying to get lock; try restarting transaction' on query.");
+
+--connection node_2
+CALL mtr.add_suppression("Slave SQL: Error 'Deadlock found when trying to get lock; try restarting transaction' on query");
+CALL mtr.add_suppression("Ignoring error 'Deadlock found when trying to get lock; try restarting transaction' on query.");
