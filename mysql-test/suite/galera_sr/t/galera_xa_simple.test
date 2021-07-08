@@ -228,3 +228,17 @@ XA ROLLBACK 'a';
 SET @@session.pseudo_slave_mode=DEFAULT;
 
 DROP TABLE t1;
+
+
+#
+# MENT-1234: Assertion
+# `thd->wsrep_trx().state() == wsrep::transaction::s_prepared' failed
+#
+
+SET @@session.pseudo_slave_mode=1;
+SET SESSION TRANSACTION READ ONLY;
+XA START 'a';
+XA END 'a';
+XA PREPARE 'a';
+XA COMMIT 'a';
+SET @@session.pseudo_slave_mode=DEFAULT;
