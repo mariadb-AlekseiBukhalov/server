@@ -105,7 +105,7 @@
 #include "table_replication_applier_status_by_worker.h"
 #include "table_replication_group_member_stats.h"
 
-#ifdef WITH_WSREP_PS
+#ifdef WITH_WSREP
 #include "table_galera_group_members.h"
 #include "table_galera_group_member_stats.h"
 #endif
@@ -325,7 +325,7 @@ static PFS_engine_table_share *all_shares[]=
   //&table_replication_group_member_stats::m_share,
 #endif
 
-#ifdef WITH_WSREP_PS
+#ifdef WITH_WSREP
   &table_galera_group_members::m_share,
   &table_galera_group_member_stats::m_share,
 #endif

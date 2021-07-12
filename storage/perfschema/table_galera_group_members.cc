@@ -23,7 +23,8 @@
 #include "pfs_instr_class.h"
 #include "pfs_instr.h"
 #include "log.h"
-#include "wsrep/ps_service.hpp"
+
+#include <atomic>
 
 THR_LOCK table_galera_group_members::m_table_lock;
 
@@ -42,26 +43,50 @@ table_galera_group_members::m_share=
   sizeof(PFS_simple_index), /* ref length */
   &m_table_lock,
   { C_STRING_WITH_LEN("CREATE TABLE galera_group_members("
-                      "wsrep_node_id char(" STRINGIFY(WSREP_UUID_STR_LEN) "),"
-                      "wsrep_cluster_state_uuid char(" STRINGIFY(WSREP_UUID_STR_LEN) "),"
-                      "wsrep_local_state_uuid char(" STRINGIFY(WSREP_UUID_STR_LEN) "),"
-                      "wsrep_last_applied BIGINT,"
-                      "wsrep_last_committed BIGINT,"
-                      "wsrep_replicated BIGINT,"
-                      "wsrep_replicated_bytes BIGINT,"
-                      "wsrep_received BIGINT,"
-                      "wsrep_received_bytes BIGINT,"
-                      "wsrep_local_bf_aborts BIGINT,"
-                      "wsrep_local_commits BIGINT,"
-                      "wsrep_local_cert_failures BIGINT,"
-                      "wsrep_apply_window BIGINT,"
-                      "wsrep_commit_window BIGINT)") },
+                      "wsrep_node_id char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null,"
+                      "wsrep_cluster_state_uuid char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null,"
+                      "wsrep_local_state_uuid char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null,"
+                      "wsrep_last_applied BIGINT not null,"
+                      "wsrep_last_committed BIGINT not null,"
+                      "wsrep_replicated BIGINT not null,"
+                      "wsrep_replicated_bytes BIGINT not null,"
+                      "wsrep_received BIGINT not null,"
+                      "wsrep_received_bytes BIGINT not null,"
+                      "wsrep_local_bf_aborts BIGINT not null,"
+                      "wsrep_local_commits BIGINT not null,"
+                      "wsrep_local_cert_failures BIGINT not null,"
+                      "wsrep_apply_window BIGINT not null,"
+                      "wsrep_commit_window BIGINT not null)") },
   false  /* perpetual */
 };
 
 PFS_engine_table* table_galera_group_members::create(void)
 {
   return new table_galera_group_members();
+}
+
+static std::atomic<wsrep_ps_fetch_cluster_info_t> fetch_cluster_info;
+
+static wsrep_ps_fetch_cluster_info_t init_once()
+{
+  if (auto f= fetch_cluster_info.load(std::memory_order_acquire))
+    return f;
+
+  union
+  {
+    void* sym;
+    wsrep_ps_fetch_cluster_info_t func;
+  } obj;
+  obj.sym= dlsym(
+    ((wsrep_t*)Wsrep_server_state::instance().get_provider().native())->dlh,
+    WSREP_PS_FETCH_CLUSTER_INFO_FUNC);
+  if (obj.func)
+    fetch_cluster_info.store(obj.func, std::memory_order_release);
+  DBUG_PRINT("info", ("Initialized galera PS fetch cluster info: %p %p",
+                      ((wsrep_t*)Wsrep_server_state::instance().
+                       get_provider().native())->dlh,
+                      obj.sym));
+  return obj.func;
 }
 
 table_galera_group_members::table_galera_group_members()
@@ -82,6 +107,8 @@ ha_rows table_galera_group_members::get_row_count(void)
 {
   if (WSREP_ON)
   {
+    if (!init_once())
+      return 0;
     ha_rows total= wsrep_cluster_size;
     if (total > PFS_GALERA_MAX_CLUSTER_SIZE)
     {
@@ -96,11 +123,13 @@ int table_galera_group_members::rnd_init(bool) {
   m_rows= 0;
   if (!WSREP_ON)
     return 0;
+  auto fetch= init_once();
+  if (!fetch)
+    return 0;
   uint32_t size= PFS_GALERA_MAX_CLUSTER_SIZE;
   wsrep_status_t ret=
-    Wsrep_server_state::instance().provider_services().ps_service->
-      fetch_pfs_info.load(std::memory_order_relaxed)
-        (&Wsrep_server_state::instance().get_provider(), m_entries, &size);
+    fetch((wsrep_t*)Wsrep_server_state::instance().get_provider().native(),
+          m_entries, &size);
   if (ret == WSREP_OK)
   {
     m_rows= size;
@@ -171,7 +200,7 @@ int table_galera_group_members::read_row_values(TABLE *table,
   if (unlikely(! m_row_exists))
     return HA_ERR_RECORD_DELETED;
 
-  DBUG_ASSERT(table->s->null_bytes == 1);
+  DBUG_ASSERT(table->s->null_bytes == 0);
   buf[0]= 0;
 
   for (; (f= *fields) ; fields++)

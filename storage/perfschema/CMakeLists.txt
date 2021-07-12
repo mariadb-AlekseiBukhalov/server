@@ -27,14 +27,6 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${PCRE_INCLUDE_DIRS}
                     ${SSL_INCLUDE_DIRS})
 
-IF(WITH_WSREP)
-  if(EXISTS ${CMAKE_SOURCE_DIR}/wsrep-lib/include/ps_service.h)
-    INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/wsrep-lib/include
-                        ${CMAKE_SOURCE_DIR}/wsrep-lib/wsrep-API/v26)
-    ADD_DEFINITIONS(-DWITH_WSREP_PS)
-  ENDIF()
-ENDIF()
-
 ADD_DEFINITIONS(-DMYSQL_SERVER)
 IF (SSL_DEFINES)
   ADD_DEFINITIONS(${SSL_DEFINES})
@@ -289,13 +281,11 @@ table_replication_applier_status_by_worker.cc
 )
 
 IF(WITH_WSREP)
-if(EXISTS ${CMAKE_SOURCE_DIR}/wsrep-lib/include/ps_service.h)
 SET(PERFSCHEMA_WSREP_SOURCES
 table_galera_group_members.h
 table_galera_group_member_stats.h
 table_galera_group_members.cc
 table_galera_group_member_stats.cc)
-ENDIF()
 ENDIF()
 
 # Check for pthread_threadid_np()

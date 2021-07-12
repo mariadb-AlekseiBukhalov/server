@@ -23,7 +23,8 @@
 #include "pfs_instr_class.h"
 #include "pfs_instr.h"
 #include "log.h"
-#include "wsrep/ps_service.hpp"
+
+#include <atomic>
 
 THR_LOCK table_galera_group_member_stats::m_table_lock;
 
@@ -42,32 +43,57 @@ table_galera_group_member_stats::m_share=
   sizeof(PFS_simple_index), /* ref length */
   &m_table_lock,
   { C_STRING_WITH_LEN("CREATE TABLE galera_group_member_stats("
-                      "wsrep_node_id char(" STRINGIFY(WSREP_UUID_STR_LEN) "),"
-                      "wsrep_local_index BIGINT,"
-                      "wsrep_repl_keys BIGINT,"
-                      "wsrep_repl_keys_bytes BIGINT,"
-                      "wsrep_repl_data_bytes BIGINT,"
-                      "wsrep_repl_other_bytes BIGINT,"
-                      "wsrep_local_replays BIGINT,"
-                      "wsrep_local_send_queue BIGINT,"
-                      "wsrep_local_send_queue_avg DOUBLE PRECISION,"
-                      "wsrep_local_recv_queue BIGINT,"
-                      "wsrep_local_recv_queue_avg DOUBLE PRECISION,"
-                      "wsrep_flow_control_paused BIGINT,"
-                      "wsrep_flow_control_sent BIGINT,"
-                      "wsrep_flow_control_recv BIGINT,"
+                      "wsrep_node_id char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null,"
+                      "wsrep_local_index BIGINT not null,"
+                      "wsrep_repl_keys BIGINT not null,"
+                      "wsrep_repl_keys_bytes BIGINT not null,"
+                      "wsrep_repl_data_bytes BIGINT not null,"
+                      "wsrep_repl_other_bytes BIGINT not null,"
+                      "wsrep_local_replays BIGINT not null,"
+                      "wsrep_local_send_queue BIGINT not null,"
+                      "wsrep_local_send_queue_avg DOUBLE PRECISION not null,"
+                      "wsrep_local_recv_queue BIGINT not null,"
+                      "wsrep_local_recv_queue_avg DOUBLE PRECISION not null,"
+                      "wsrep_flow_control_paused BIGINT not null,"
+                      "wsrep_flow_control_sent BIGINT not null,"
+                      "wsrep_flow_control_recv BIGINT not null,"
                       "wsrep_flow_control_status char("
                          STRINGIFY(WSREP_STATUS_LENGTH)
-                      "),"
-                      "wsrep_cert_deps_distance DOUBLE PRECISION,"
-                      "wsrep_open_transactions BIGINT,"
-                      "wsrep_evs_repl_latency BIGINT)") },
+                      ") not null,"
+                      "wsrep_cert_deps_distance DOUBLE PRECISION not null,"
+                      "wsrep_open_transactions BIGINT not null,"
+                      "wsrep_evs_repl_latency BIGINT not null)") },
   false  /* perpetual */
 };
 
 PFS_engine_table* table_galera_group_member_stats::create(void)
 {
   return new table_galera_group_member_stats();
+}
+
+static std::atomic<wsrep_ps_fetch_node_stat_t> fetch_node_stat;
+
+static wsrep_ps_fetch_node_stat_t init_once()
+{
+  if (auto f= fetch_node_stat.load(std::memory_order_acquire))
+    return f;
+
+  union
+  {
+    void* sym;
+    wsrep_ps_fetch_node_stat_t func;
+  } obj;
+
+  obj.sym= dlsym(
+    ((wsrep_t*)Wsrep_server_state::instance().get_provider().native())->dlh,
+    WSREP_PS_FETCH_NODE_STAT_FUNC);
+  if (obj.func)
+    fetch_node_stat.store(obj.func, std::memory_order_release);
+  DBUG_PRINT("info", ("Initialized galera PS fetch node stat: %p %p",
+                      ((wsrep_t*)Wsrep_server_state::instance()
+                       .get_provider().native())->dlh,
+                      obj.sym));
+  return obj.func;
 }
 
 table_galera_group_member_stats::table_galera_group_member_stats()
@@ -88,6 +114,8 @@ ha_rows table_galera_group_member_stats::get_row_count()
 {
   if (WSREP_ON)
   {
+    if (!init_once())
+      return 0;
     if (wsrep_cluster_size > 0)
     {
       return 1;
@@ -100,10 +128,12 @@ int table_galera_group_member_stats::rnd_init(bool) {
   m_rows= 0;
   if (!WSREP_ON)
     return 0;
-  wsrep_status_t ret=
-    Wsrep_server_state::instance().provider_services().ps_service->
-      fetch_pfs_stat.load(std::memory_order_relaxed)
-        (&Wsrep_server_state::instance().get_provider(), m_entries);
+  auto fetch= init_once();
+  if (!fetch)
+    return 0;
+  wsrep_status_t ret= fetch(
+    (wsrep_t*)Wsrep_server_state::instance().get_provider().native(),
+    m_entries);
   if (ret == WSREP_OK)
   {
     m_rows= 1;
