@@ -98,11 +98,11 @@ IF(UNIX AND NOT WITHOUT_SERVER)
         INSTALL(FILES ${out} DESTINATION ${inst_location}/policy/selinux COMPONENT SupportFiles)
       ENDFOREACH()
       IF(RPM)
-        EXECUTE_PROCESS(COMMAND rpm -q --qf "%{VERSION}" libsepol."${CMAKE_SYSTEM_PROCESSOR}"
+        EXECUTE_PROCESS(COMMAND rpm -q --qf "%{VERSION}" libsepol
                         OUTPUT_VARIABLE LIBSEPOL_VERSION RESULT_VARIABLE err)
         IF (NOT err)
           SET(CPACK_RPM_server_PACKAGE_REQUIRES
-            "${CPACK_RPM_server_PACKAGE_REQUIRES} ${LIBSEPOL_PKG} >= ${LIBSEPOL_VERSION}"
+            "${CPACK_RPM_server_PACKAGE_REQUIRES} libsepol >= ${LIBSEPOL_VERSION}"
             PARENT_SCOPE)
         ENDIF()
       ENDIF()
