@@ -102,9 +102,12 @@ static void prepare_for_xa_command(THD* thd,
   thd->lex->xid= xid;
   thd->lex->xa_opt= XA_NONE;
   thd->lex->sql_command= cmd;
-  thd->variables.option_bits&= ~OPTION_BEGIN;
-  thd->variables.option_bits&= ~OPTION_NOT_AUTOCOMMIT;
-  thd->server_status&= ~SERVER_STATUS_IN_TRANS;
+  if (cmd == SQLCOM_XA_COMMIT ||
+      cmd == SQLCOM_XA_ROLLBACK)
+  {
+    thd->variables.option_bits&= ~OPTION_BEGIN;
+    thd->variables.option_bits&= ~OPTION_NOT_AUTOCOMMIT;
+  }
 }
 
 static int wsrep_trans_xa_end_and_prepare(THD* thd, XID* xid)
