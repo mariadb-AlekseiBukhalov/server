@@ -7,7 +7,7 @@
 #
 
 --source include/galera_cluster.inc
---source ../mariabackup/include/have_rocksdb.inc
+--source include/have_rocksdb.inc
 
 --connection node_1
 CREATE TABLE t1 (f1 INTEGER PRIMARY KEY) ENGINE = INNODB;
