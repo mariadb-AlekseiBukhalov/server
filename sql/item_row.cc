@@ -173,6 +173,36 @@ Item *Item_row::transform(THD *thd, Item_transformer transformer, uchar *arg)
   return (this->*transformer)(thd, arg);
 }
 
+transform_result
+Item_row::recursive_transform(THD *thd, Recurcive_transformer transformer,
+                              Item** reference, uchar *argument)
+{
+  Item *old_ref= *reference;
+  transform_result res= (this->*transformer)(thd, reference, argument);
+
+  switch (res)
+  {
+    case OK_BUT_STOP_HERE:
+      return OK_AND_CONTINUE;
+    case OK_BUT_ABORT:
+    case ERROR_AND_ABORT:
+      return res;
+    case OK_AND_CONTINUE:
+      if (*reference == old_ref) // no change here continue with ref
+      {
+        return recursive_transform_args(thd, transformer, argument);
+      }
+      // proceed with the new substitution
+      res= (*reference)->recursive_transform(thd, transformer, reference,
+                                             argument);
+      DBUG_ASSERT(res != OK_BUT_STOP_HERE);
+      return res;
+    default:
+       DBUG_ASSERT(1);
+       return ERROR_AND_ABORT;
+  }
+}
+
 void Item_row::bring_value()
 {
   for (uint i= 0; i < arg_count; i++)

@@ -465,6 +465,8 @@ public:
   }
   Item_cache **get_cache() { return &cache; }
   Item *transform(THD *thd, Item_transformer transformer, uchar *arg) override;
+  transform_result
+  recursive_transform(THD *, Recurcive_transformer, Item **, uchar *) override;
   Item *expr_cache_insert_transformer(THD *thd, uchar *unused) override;
   bool is_expensive_processor(void *arg) override;
   bool is_expensive() override;
@@ -3370,6 +3372,8 @@ public:
   {
     return do_transform(thd, transformer, arg, 1);
   }
+  transform_result
+  recursive_transform(THD *, Recurcive_transformer, Item **, uchar *) override;
   void traverse_cond(Cond_traverser, void *arg, traverse_order order) override;
   void neg_arguments(THD *thd);
   Item* propagate_equal_fields(THD *, const Context &, COND_EQUAL *) override;
@@ -3569,6 +3573,8 @@ public:
   SEL_TREE *get_mm_tree(RANGE_OPT_PARAM *param, Item **cond_ptr) override;
   bool walk(Item_processor processor, bool walk_subquery, void *arg) override;
   Item *transform(THD *thd, Item_transformer transformer, uchar *arg) override;
+  transform_result
+  recursive_transform(THD *, Recurcive_transformer, Item **, uchar *) override;
   void print(String *str, enum_query_type query_type) override;
   const Type_handler *compare_type_handler() const { return m_compare_handler; }
   CHARSET_INFO *compare_collation() const override

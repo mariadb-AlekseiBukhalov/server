@@ -630,6 +630,17 @@ Item* Item::transform(THD *thd, Item_transformer transformer, uchar *arg)
 }
 
 
+transform_result
+Item::recursive_transform(THD *thd, Recurcive_transformer transformer,
+                          Item **reference, uchar *arg)
+{
+  transform_result res= (this->*transformer)(thd, reference, arg);
+  if (res == OK_BUT_STOP_HERE)
+    return OK_AND_CONTINUE; //It is "dead end" Item so just continue
+  return res;
+}
+
+
 /**
   Create and set up an expression cache for this item
 
@@ -2843,6 +2854,69 @@ Item* Item_func_or_sum::deep_copy(THD *thd) const
     memcpy(copy->args, copy_args, sizeof(Item *) * arg_count);
   }
   return copy;
+}
+
+
+transform_result
+Item_args::recursive_transform_args(THD *thd,
+                                    Recurcive_transformer transformer,
+                                    uchar *argument)
+{
+  if (arg_count)
+  {
+    Item **arg, **arg_end;
+    for (arg= args, arg_end= args + arg_count; arg != arg_end ; arg++)
+    {
+      transform_result res= (*arg)->recursive_transform(thd, transformer, arg,
+                                                        argument);
+      switch (res)
+      {
+        case OK_BUT_STOP_HERE:
+          DBUG_ASSERT(1); // should not be returned
+          return OK_AND_CONTINUE;
+        case OK_BUT_ABORT:
+        case ERROR_AND_ABORT:
+          return res;
+        default:
+          DBUG_ASSERT(1); //impossible
+          // fall through
+        case OK_AND_CONTINUE:
+          ;
+      }
+    }
+  }
+  return OK_AND_CONTINUE;
+}
+
+transform_result
+Item_func_or_sum::recursive_transform(THD *thd,
+                                      Recurcive_transformer transformer,
+                                      Item** reference, uchar *argument)
+{
+  Item *old_ref= *reference;
+  transform_result res= (this->*transformer)(thd, reference, argument);
+
+  switch (res)
+  {
+    case OK_BUT_STOP_HERE:
+      return OK_AND_CONTINUE;
+    case OK_BUT_ABORT:
+    case ERROR_AND_ABORT:
+      return res;
+    case OK_AND_CONTINUE:
+      if (*reference == old_ref) // no change here continue with ref
+      {
+        return recursive_transform_args(thd, transformer, argument);
+      }
+      // proceed with the new substitution
+      res= (*reference)->recursive_transform(thd, transformer, reference,
+                                             argument);
+      DBUG_ASSERT(res != OK_BUT_STOP_HERE);
+      return res;
+    default:
+       DBUG_ASSERT(1);
+       return ERROR_AND_ABORT;
+  }
 }
 
 Item_sp::Item_sp(THD *thd, Name_resolution_context *context_arg,
@@ -8799,6 +8873,46 @@ Item* Item_ref::transform(THD *thd, Item_transformer transformer, uchar *arg)
   return (this->*transformer)(thd, arg);
 }
 
+transform_result
+Item::item_recursive_transform_follower(THD *thd, transform_result res,
+                                        Item **follower,
+                                        Item **reference, Item *old_ref,
+                                        Recurcive_transformer transformer,
+                                        uchar *arg)
+{
+  switch (res)
+  {
+    case OK_BUT_STOP_HERE:
+      return OK_AND_CONTINUE;
+    case OK_BUT_ABORT:
+    case ERROR_AND_ABORT:
+      return res;
+    case OK_AND_CONTINUE:
+      if (*reference == old_ref) // no change here continue with ref
+        res= (*follower)->recursive_transform(thd, transformer,
+                                              follower, arg);
+      else
+      // proceed with the new substitution
+        res= (*reference)->recursive_transform(thd, transformer,
+                                               reference, arg);
+      DBUG_ASSERT(res != OK_BUT_STOP_HERE);
+      return res;
+    default:
+       DBUG_ASSERT(1);
+       return ERROR_AND_ABORT;
+  }
+}
+
+
+transform_result
+Item_ref::recursive_transform(THD *thd, Recurcive_transformer transformer,
+                              Item** reference, uchar *arg)
+{
+  Item *old_ref= *reference;
+  transform_result res= (this->*transformer)(thd, reference, arg);
+  return item_recursive_transform_follower(thd, res, ref, reference, old_ref,
+                                           transformer, arg);
+}
 
 /**
   Compile an Item_ref object with a processor and a transformer
@@ -10326,6 +10440,18 @@ error:
   return true;
 
 }
+
+transform_result
+Item_default_value::recursive_transform(THD *thd,
+                                        Recurcive_transformer transformer,
+                                        Item** reference, uchar *argument)
+{
+  Item *old_ref= *reference;
+  transform_result res= (this->*transformer)(thd, reference, argument);
+  return item_recursive_transform_follower(thd, res, &arg, reference, old_ref,
+                                           transformer, argument);
+}
+
 
 bool Item_insert_value::eq(const Item *item, const Eq_config &config) const
 {

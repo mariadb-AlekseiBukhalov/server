@@ -40,6 +40,13 @@
 /** Table PERFORMANCE_SCHEMA.GALERA_GROUP_MEMBER_STATS. */
 class table_galera_group_member_stats: public PFS_engine_table
 {
+public:
+  static PFS_engine_table_share_state m_share_state;
+  /** Table share */
+  static PFS_engine_table_share m_share;
+  /** Table builder */
+  static PFS_engine_table* create();
+
 private:
   void make_row(uint index);
   /** Table share lock. */
@@ -78,9 +85,6 @@ protected:
 public:
   ~table_galera_group_member_stats() override;
 
-  /** Table share. */
-  static PFS_engine_table_share m_share;
-  static PFS_engine_table* create();
   static ha_rows get_row_count();
 
   int rnd_init(bool) override;

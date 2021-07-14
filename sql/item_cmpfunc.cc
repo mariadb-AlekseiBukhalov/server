@@ -1891,6 +1891,102 @@ Item *Item_in_optimizer::transform(THD *thd, Item_transformer transformer,
 }
 
 
+transform_result
+Item_in_optimizer::recursive_transform(THD *thd,
+                                       Recurcive_transformer transformer,
+                                       Item** reference, uchar *argument)
+{
+  if (!fixed())
+  {
+    // if it is not fixed than there is nothing special, usual function
+    return Item_bool_func::recursive_transform(thd, transformer, reference,
+                                               argument);
+  }
+  else
+  {
+    Item *old_ref= *reference;
+    transform_result res= (this->*transformer)(thd, reference, argument);
+
+    switch (res)
+    {
+      case OK_BUT_STOP_HERE:
+        return OK_AND_CONTINUE;
+      case OK_BUT_ABORT:
+      case ERROR_AND_ABORT:
+        return res;
+      case OK_AND_CONTINUE:
+        if (*reference == old_ref) // no change here continue with ref
+        {
+          res= args[0]->recursive_transform(thd, transformer, args, argument);
+          switch (res)
+          {
+            case OK_BUT_STOP_HERE:
+              DBUG_ASSERT(1); // should not be returned
+              return OK_AND_CONTINUE;
+            case OK_BUT_ABORT:
+            case ERROR_AND_ABORT:
+              return res;
+            default:
+              DBUG_ASSERT(1); //impossible
+              // fall through
+            case OK_AND_CONTINUE:
+              ;
+          }
+            if (invisible_mode())
+            {
+              /* MAX/MIN transformed => pass through */
+              res= args[1]->recursive_transform(thd, transformer, args + 1,
+                                                argument);
+              switch (res)
+              {
+                case OK_BUT_STOP_HERE:
+                  DBUG_ASSERT(1); // should not be returned
+                  return OK_AND_CONTINUE;
+                case OK_BUT_ABORT:
+                case ERROR_AND_ABORT:
+                  return res;
+                default:
+                  DBUG_ASSERT(1); //impossible
+                  // fall through
+                case OK_AND_CONTINUE:
+                  ;
+              }
+            }
+            else
+            {
+              /*
+                 Transform the right IN operand which should be an
+                 Item_in_subselect or a subclass of it. The left
+                 operand of the IN must be the same as the left
+                 operand of this Item_in_optimizer, so in this
+                 case there is no further transformation, we only
+                 make both operands the same.
+               */
+              DBUG_ASSERT((args[1])->type() == Item::SUBSELECT_ITEM &&
+                (((Item_subselect*)(args[1]))->substype() ==
+                 Item_subselect::IN_SUBS ||
+                 ((Item_subselect*)(args[1]))->substype() ==
+                 Item_subselect::ALL_SUBS ||
+                 ((Item_subselect*)(args[1]))->substype() ==
+                 Item_subselect::ANY_SUBS));
+
+              (* args[1]->get_IN_subquery()->left_exp_ptr())= args[0];
+            }
+            return OK_AND_CONTINUE;
+        }
+        // proceed with the new substitution
+        res= (*reference)->recursive_transform(thd, transformer, reference,
+                                               argument);
+        DBUG_ASSERT(res != OK_BUT_STOP_HERE);
+        return res;
+      default:
+        DBUG_ASSERT(1);
+        return ERROR_AND_ABORT;
+    }
+  }
+}
+
+
 bool Item_in_optimizer::is_expensive_processor(void *arg)
 {
   DBUG_ASSERT(fixed());
@@ -5431,6 +5527,59 @@ Item *Item_cond::do_transform(THD *thd, Item_transformer transformer, uchar *arg
 }
 
 
+transform_result
+Item_cond::recursive_transform(THD *thd,
+                               Recurcive_transformer transformer,
+                               Item** reference, uchar *argument)
+{
+  Item *old_ref= *reference;
+  transform_result res= (this->*transformer)(thd, reference, argument);
+
+  switch (res)
+  {
+    case OK_BUT_STOP_HERE:
+      return OK_AND_CONTINUE;
+    case OK_BUT_ABORT:
+    case ERROR_AND_ABORT:
+      return res;
+    case OK_AND_CONTINUE:
+      if (*reference == old_ref) // no change here continue with ref
+      {
+        List_iterator<Item> li(list);
+        Item *item;
+        while ((item= li++))
+        {
+          res= item->recursive_transform(thd, transformer, li.ref(),
+                                         argument);
+          switch (res)
+          {
+            case OK_BUT_STOP_HERE:
+              DBUG_ASSERT(1); // should not be returned
+              return OK_AND_CONTINUE;
+            case OK_BUT_ABORT:
+            case ERROR_AND_ABORT:
+              return res;
+            default:
+              DBUG_ASSERT(1); //impossible
+              // fall through
+            case OK_AND_CONTINUE:
+              ;
+          }
+        }
+        return OK_AND_CONTINUE;
+      }
+      // proceed with the new substitution
+      res= (*reference)->recursive_transform(thd, transformer, reference,
+                                             argument);
+      DBUG_ASSERT(res != OK_BUT_STOP_HERE);
+      return res;
+    default:
+       DBUG_ASSERT(1);
+       return ERROR_AND_ABORT;
+  }
+}
+
+
 /**
   Compile Item_cond object with a processor and a transformer
   callback functions.
@@ -7545,6 +7694,58 @@ Item *Item_equal::transform(THD *thd, Item_transformer transformer, uchar *arg)
   return Item_func::transform(thd, transformer, arg);
 }
 
+
+transform_result
+Item_equal::recursive_transform(THD *thd,
+                                Recurcive_transformer transformer,
+                                Item** reference, uchar *argument)
+{
+  Item *old_ref= *reference;
+  transform_result res= (this->*transformer)(thd, reference, argument);
+
+  switch (res)
+  {
+    case OK_BUT_STOP_HERE:
+      return OK_AND_CONTINUE;
+    case OK_BUT_ABORT:
+    case ERROR_AND_ABORT:
+      return res;
+    case OK_AND_CONTINUE:
+      if (*reference == old_ref) // no change here continue with ref
+      {
+        Item_equal_fields_iterator it(*this);
+        Item *item;
+        while ((item= it++))
+        {
+          res= item->recursive_transform(thd, transformer, it.ref(),
+                                         argument);
+          switch (res)
+          {
+            case OK_BUT_STOP_HERE:
+              DBUG_ASSERT(1); // should not be returned
+              return OK_AND_CONTINUE;
+            case OK_BUT_ABORT:
+            case ERROR_AND_ABORT:
+              return res;
+            default:
+              DBUG_ASSERT(1); //impossible
+              // fall through
+            case OK_AND_CONTINUE:
+              ;
+          }
+        }
+        return OK_AND_CONTINUE;
+      }
+      // proceed with the new substitution
+      res= (*reference)->recursive_transform(thd, transformer, reference,
+                                             argument);
+      DBUG_ASSERT(res != OK_BUT_STOP_HERE);
+      return res;
+    default:
+       DBUG_ASSERT(1);
+       return ERROR_AND_ABORT;
+  }
+}
 
 void Item_equal::print(String *str, enum_query_type query_type)
 {

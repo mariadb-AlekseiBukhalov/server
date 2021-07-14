@@ -623,6 +623,16 @@ typedef struct st_dyncall_create_def DYNCALL_CREATE_DEF;
 
 
 typedef bool (Item::*Item_processor) (void *arg);
+
+enum transform_result
+{
+  ERROR_AND_ABORT,
+  OK_BUT_ABORT,
+  OK_BUT_STOP_HERE,
+  OK_AND_CONTINUE
+};
+
+
 /*
   Analyzer function
     SYNOPSIS
@@ -638,6 +648,8 @@ typedef bool (Item::*Item_analyzer) (uchar **argp);
 typedef Item* (Item::*Item_transformer) (THD *thd, uchar *arg);
 typedef void (*Cond_traverser) (const Item *item, void *arg);
 typedef bool (Item::*Pushdown_checker) (uchar *arg);
+typedef transform_result (Item::*Recurcive_transformer)
+  (THD *, Item**, uchar *);
 
 struct st_cond_statistic;
 
@@ -2241,6 +2253,15 @@ public:
   {
     return transform(thd, transformer, arg);
   }
+  virtual transform_result
+  recursive_transform(THD *thd, Recurcive_transformer transformer,
+                      Item **ref, uchar *arg);
+  transform_result
+  item_recursive_transform_follower(THD *thd, transform_result res,
+                                    Item **follower, Item **reference,
+                                    Item *old_ref,
+                                    Recurcive_transformer transformer,
+                                    uchar *arg);
 
   /*
     This function performs a generic "compilation" of the Item tree.
@@ -2919,6 +2940,9 @@ protected:
     return false;
   }
   bool transform_args(THD *thd, Item_transformer transformer, uchar *arg);
+  transform_result
+  recursive_transform_args(THD *thd, Recurcive_transformer transformer,
+                           uchar *argument);
   void propagate_equal_fields(THD *, const Item::Context &, COND_EQUAL *);
   bool excl_dep_on_table(table_map tab_map)
   {
@@ -5907,6 +5931,8 @@ public:
       return true;
     return (this->*processor)(arg);
   }
+  transform_result
+  recursive_transform(THD *, Recurcive_transformer, Item **, uchar *) override;
   /*
     Built-in schema, e.g. mariadb_schema, oracle_schema, maxdb_schema
   */
@@ -6139,6 +6165,8 @@ public:
       return FALSE;
   }
   Item* transform(THD *thd, Item_transformer, uchar *arg) override;
+  transform_result
+  recursive_transform(THD *, Recurcive_transformer, Item **, uchar *) override;
   Item* compile(THD *thd, Item_analyzer analyzer, uchar **arg_p,
                 Item_transformer transformer, uchar *arg_t) override;
   bool enumerate_field_refs_processor(void *arg) override
@@ -7249,6 +7277,8 @@ public:
   { return NULL; }
   Item *derived_field_transformer_for_where(THD *thd, uchar *arg) override
   { return NULL; }
+  transform_result
+  recursive_transform(THD *, Recurcive_transformer, Item **, uchar *) override;
   /*
     Note that grouping_field_transformer_for_where() is not implemented for
     some reason.

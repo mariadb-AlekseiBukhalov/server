@@ -28,6 +28,12 @@
 
 THR_LOCK table_galera_group_member_stats::m_table_lock;
 
+PFS_engine_table_share_state
+table_galera_group_member_stats::m_share_state = {
+  false /* m_checked */
+};
+
+
 #define STRINGIFY2(X) #X
 #define STRINGIFY(X) STRINGIFY2(X)
 
@@ -63,7 +69,9 @@ table_galera_group_member_stats::m_share=
                       "wsrep_cert_deps_distance DOUBLE PRECISION not null,"
                       "wsrep_open_transactions BIGINT not null,"
                       "wsrep_evs_repl_latency BIGINT not null)") },
-  false  /* perpetual */
+  false, /* m_perpetual */
+  false, /* m_optional */
+  &m_share_state
 };
 
 PFS_engine_table* table_galera_group_member_stats::create(void)

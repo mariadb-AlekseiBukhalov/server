@@ -115,6 +115,8 @@ public:
     return (this->*processor)(arg);
   }
   Item *transform(THD *thd, Item_transformer transformer, uchar *arg) override;
+  transform_result
+  recursive_transform(THD *, Recurcive_transformer, Item **, uchar *) override;
   bool eval_not_null_tables(void *opt_arg) override;
   bool find_not_null_fields(table_map allowed) override;
 
