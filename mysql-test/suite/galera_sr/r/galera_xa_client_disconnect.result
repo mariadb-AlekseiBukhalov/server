@@ -244,3 +244,20 @@ XA RECOVER;
 formatID	gtrid_length	bqual_length	data
 connection node_1a;
 DROP TABLE t1;
+disconnect trx1;
+disconnect trx2;
+connect trx1, 127.0.0.1, root, , test, $NODE_MYPORT_1;
+connection trx1;
+XA START 'a';
+SET GLOBAL wsrep_provider_options='repl.max_ws_size=0';
+XA END 'a';
+XA PREPARE 'a';
+ERROR HY000: Got error 0 "Internal error/check (Not system error)" during COMMIT
+disconnect trx1;
+connection node_1;
+XA RECOVER;
+formatID	gtrid_length	bqual_length	data
+SET GLOBAL wsrep_provider_options='repl.max_ws_size=2147483647';
+connection node_2;
+XA RECOVER;
+formatID	gtrid_length	bqual_length	data

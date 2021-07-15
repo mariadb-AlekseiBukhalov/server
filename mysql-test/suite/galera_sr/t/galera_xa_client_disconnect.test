@@ -228,3 +228,33 @@ XA RECOVER;
 
 --connection node_1a
 DROP TABLE t1;
+
+--disconnect trx1
+--disconnect trx2
+
+
+#
+# MENT-1237: Assertion `i != streaming_clients_.end()' failed in
+# void wsrep::server_state::convert_streaming_client_to_applier(wsrep::client_state*)
+#
+# Disconnect after transaction size exceeded error on XA PREPARE
+#
+
+--let $wsrep_max_ws_size_orig = `SELECT @@wsrep_max_ws_size`
+
+--connect trx1, 127.0.0.1, root, , test, $NODE_MYPORT_1
+--connection trx1
+XA START 'a';
+SET GLOBAL wsrep_provider_options='repl.max_ws_size=0';
+XA END 'a';
+--error ER_ERROR_DURING_COMMIT
+XA PREPARE 'a';
+
+--disconnect trx1
+
+--connection node_1
+XA RECOVER;
+--eval SET GLOBAL wsrep_provider_options='repl.max_ws_size=$wsrep_max_ws_size_orig'
+
+--connection node_2
+XA RECOVER;

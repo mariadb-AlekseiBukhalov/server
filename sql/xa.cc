@@ -593,11 +593,11 @@ bool trans_xa_prepare(THD *thd)
         ~(SERVER_STATUS_IN_TRANS | SERVER_STATUS_IN_TRANS_READONLY);
 #ifdef WITH_WSREP
       /* Galera may BF abort or fail certification on XA PREPARE */
-      if (wsrep_current_error(thd) == wsrep::e_deadlock_error)
+      if (wsrep_current_error(thd))
       {
         MYSQL_ROLLBACK_TRANSACTION(thd->m_transaction_psi);
         thd->m_transaction_psi= NULL;
-        wsrep_override_error(thd, ER_XA_RBDEADLOCK);
+        wsrep_override_current_error(thd);
         DBUG_RETURN(1);
       }
 #endif /* WITH_WSREP */

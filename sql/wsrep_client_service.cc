@@ -171,8 +171,11 @@ static int write_xa_event_helper(THD* thd,
 
   uchar* event_buf= NULL;
   size_t event_buf_len= 0;
-  wsrep_to_buf_helper(thd, stmt.data(), stmt.length(),
-                      &event_buf, &event_buf_len);
+  if (wsrep_to_buf_helper(thd, stmt.data(), stmt.length(),
+                          &event_buf, &event_buf_len))
+  {
+    return 1;
+  }
   buffer.push_back(reinterpret_cast<const char*>(event_buf),
                    reinterpret_cast<const char*>(event_buf + event_buf_len));
   my_free(event_buf);
@@ -187,9 +190,10 @@ int Wsrep_client_service::prepare_fragment_for_replication(
   DBUG_ENTER("Wsrep_client_service::prepare_fragment_for_replication");
 
   if (thd->wsrep_trx().is_xa() &&
-      thd->wsrep_sr().fragments_certified() == 0)
+      thd->wsrep_sr().fragments_certified() == 0 &&
+      write_xa_event_helper(thd, STRING_WITH_LEN("XA START "), buffer))
   {
-    write_xa_event_helper(thd, STRING_WITH_LEN("XA START "), buffer);
+    DBUG_RETURN(1);
   }
 
   IO_CACHE* cache= wsrep_get_cache(thd, true);
