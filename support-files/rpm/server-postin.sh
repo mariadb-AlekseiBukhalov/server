@@ -63,16 +63,23 @@ if [ $1 = 1 ] ; then
   chmod -R og-rw $datadir/mysql
 fi
 
+%if 0%{?sle_version} < 150000
+# if sle_version is not defined (not SLES), condition 0<150000 will be also true
+
 # install SELinux files - but don't override existing ones
 SETARGETDIR=/etc/selinux/targeted/src/policy
 SEDOMPROG=$SETARGETDIR/domains/program
 SECONPROG=$SETARGETDIR/file_contexts/program
+
+%if 0%{?sle_version} > 120000
+exit
+%endif
 
 if [ -x /usr/sbin/semodule ] ; then
   /usr/sbin/semodule -i /usr/share/mariadb/policy/selinux/mariadb.pp
 fi
 
 if [ -x /sbin/restorecon -a -d /var/lib/mysql ] ; then
-	/sbin/restorecon -R /var/lib/mysql
+  /sbin/restorecon -R /var/lib/mysql
 fi
-
+%endif

@@ -78,32 +78,37 @@ IF(UNIX AND NOT WITHOUT_SERVER)
 
   IF(INSTALL_SUPPORTFILESDIR)
     INSTALL(FILES magic DESTINATION ${inst_location} COMPONENT SupportFiles)
-    INSTALL(DIRECTORY policy DESTINATION ${inst_location} COMPONENT SupportFiles)
-    FIND_PROGRAM(CHECKMODULE checkmodule)
-    FIND_PROGRAM(SEMODULE_PACKAGE semodule_package)
-    MARK_AS_ADVANCED(CHECKMODULE SEMODULE_PACKAGE)
-
-    # Build pp files in policy/selinux
-    IF(CHECKMODULE AND SEMODULE_PACKAGE)
-      FOREACH(pol mariadb)
-        SET(src ${CMAKE_CURRENT_SOURCE_DIR}/policy/selinux/${pol}.te)
-        SET(tmp ${CMAKE_CURRENT_BINARY_DIR}/${pol}.mod)
-        SET(out ${CMAKE_CURRENT_BINARY_DIR}/${pol}.pp)
-        ADD_CUSTOM_COMMAND(OUTPUT ${out}
-          COMMAND ${CHECKMODULE} -M -m ${src} -o ${tmp}
-          COMMAND ${SEMODULE_PACKAGE} -m ${tmp} -o ${out}
-          COMMAND ${CMAKE_COMMAND} -E remove ${tmp}
-        DEPENDS ${src})
-        ADD_CUSTOM_TARGET(${pol}-pp ALL DEPENDS ${out})
-        INSTALL(FILES ${out} DESTINATION ${inst_location}/policy/selinux COMPONENT SupportFiles)
-      ENDFOREACH()
-      IF(RPM)
-        EXECUTE_PROCESS(COMMAND rpm -q --qf "%{VERSION}" libsepol
-                        OUTPUT_VARIABLE LIBSEPOL_VERSION RESULT_VARIABLE err)
-        IF (NOT err)
-          SET(CPACK_RPM_server_PACKAGE_REQUIRES
-            "${CPACK_RPM_server_PACKAGE_REQUIRES} libsepol >= ${LIBSEPOL_VERSION}"
-            PARENT_SCOPE)
+    IF(NOT RPM MATCHES "sles15")
+      INSTALL(DIRECTORY policy DESTINATION ${inst_location} COMPONENT SupportFiles)
+      FIND_PROGRAM(CHECKMODULE checkmodule)
+      FIND_PROGRAM(SEMODULE_PACKAGE semodule_package)
+      MARK_AS_ADVANCED(CHECKMODULE SEMODULE_PACKAGE)
+      # Build pp files in policy/selinux
+      IF(CHECKMODULE AND SEMODULE_PACKAGE)
+        FOREACH(pol mariadb)
+          SET(src ${CMAKE_CURRENT_SOURCE_DIR}/policy/selinux/${pol}.te)
+          SET(tmp ${CMAKE_CURRENT_BINARY_DIR}/${pol}.mod)
+          SET(out ${CMAKE_CURRENT_BINARY_DIR}/${pol}.pp)
+          ADD_CUSTOM_COMMAND(OUTPUT ${out}
+            COMMAND ${CHECKMODULE} -M -m ${src} -o ${tmp}
+            COMMAND ${SEMODULE_PACKAGE} -m ${tmp} -o ${out}
+            COMMAND ${CMAKE_COMMAND} -E remove ${tmp}
+          DEPENDS ${src})
+          ADD_CUSTOM_TARGET(${pol}-pp ALL DEPENDS ${out})
+          INSTALL(FILES ${out} DESTINATION ${inst_location}/policy/selinux COMPONENT SupportFiles)
+        ENDFOREACH()
+        IF(RPM)
+          SET(LIBSEPOL_PKG "libsepol")
+          IF(RPM MATCHES "sles12")
+            SET(LIBSEPOL_PKG "libsepol1")
+          ENDIF()
+          EXECUTE_PROCESS(COMMAND rpm -q --qf "%{VERSION}" ${LIBSEPOL_PKG}
+                          OUTPUT_VARIABLE LIBSEPOL_VERSION RESULT_VARIABLE err)
+          IF (NOT err)
+            SET(CPACK_RPM_server_PACKAGE_REQUIRES
+              "${CPACK_RPM_server_PACKAGE_REQUIRES} ${LIBSEPOL_PKG} >= ${LIBSEPOL_VERSION}"
+              PARENT_SCOPE)
+          ENDIF()
         ENDIF()
       ENDIF()
     ENDIF()
