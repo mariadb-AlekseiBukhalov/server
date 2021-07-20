@@ -1430,6 +1430,7 @@ void THD::init()
 #endif /* DBUG_OFF */
   wsrep_desynced_backup_stage= false;
   wsrep_nbo_ctx.clear();
+  wsrep_desynced_backup_stage= false;
 #endif /* WITH_WSREP */
 
   set_binlog_bit();

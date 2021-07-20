@@ -5,7 +5,7 @@ INSERT INTO t VALUES(2);
 # xtrabackup prepare
 db.opt.qp
 t.frm.qp
-t.ibd.qp
+t.new.qp
 # shutdown server
 # remove datadir
 # xtrabackup move back
