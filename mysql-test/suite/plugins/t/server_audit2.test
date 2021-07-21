@@ -332,10 +332,12 @@ select * from mysql.server_audit_users;
 UPDATE mysql.server_audit_users SET filtername= 'sa_nested' where host='%' and user='root';
 SET GLOBAL server_audit_reload_filters=ON;
 select * from t1;
+--sleep 2
 connect (con1,localhost,root,,mysql);
 select * from test.t1;
 insert into sa_db.t1 values (1, 'one');
 connection default;
+--sleep 2
 disconnect con1;
 select * from mysql.server_audit_users;
 
