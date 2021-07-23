@@ -5469,6 +5469,7 @@ bool Ed_connection::execute_direct(Protocol *p, Server_runnable *server_runnable
   Prepared_statement stmt(m_thd);
   Protocol *save_protocol= m_thd->protocol;
   Diagnostics_area *save_diagnostics_area= m_thd->get_stmt_da();
+  Reprepare_observer *save_reprepare_observer= m_thd->m_reprepare_observer;
 
   DBUG_ENTER("Ed_connection::execute_direct");
 
@@ -5476,10 +5477,12 @@ bool Ed_connection::execute_direct(Protocol *p, Server_runnable *server_runnable
 
   m_thd->protocol= p;
   m_thd->set_stmt_da(&m_diagnostics_area);
+  m_thd->m_reprepare_observer= 0;
 
   rc= stmt.execute_server_runnable(server_runnable);
   m_thd->protocol->end_statement();
 
+  m_thd->m_reprepare_observer= save_reprepare_observer;
   m_thd->protocol= save_protocol;
   m_thd->set_stmt_da(save_diagnostics_area);
   /*
