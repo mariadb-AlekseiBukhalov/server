@@ -700,37 +700,38 @@ def	performance_schema	file_summary_by_instance	MIN_TIMER_MISC	23	NULL	NO	bigint
 def	performance_schema	file_summary_by_instance	AVG_TIMER_MISC	24	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references	Average wait time of all miscellaneous operations that are timed.	NEVER	NULL	NO	NO
 def	performance_schema	file_summary_by_instance	MAX_TIMER_MISC	25	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references	Maximum wait time of all miscellaneous operations that are timed.	NEVER	NULL	NO	NO
 def	performance_schema	galera_group_members	wsrep_node_id	1	NULL	NO	char	36	108	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	char(36)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_cluster_state_uuid	2	NULL	NO	char	36	108	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	char(36)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_local_state_uuid	3	NULL	NO	char	36	108	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	char(36)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_last_applied	4	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_last_committed	5	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_replicated	6	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_replicated_bytes	7	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_received	8	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_received_bytes	9	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_local_bf_aborts	10	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_local_commits	11	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_local_cert_failures	12	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_apply_window	13	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_members	wsrep_commit_window	14	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_local_index	2	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_cluster_state_uuid	3	NULL	NO	char	36	108	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	char(36)			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_local_state_uuid	4	NULL	NO	char	36	108	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	char(36)			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_last_applied	5	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_last_committed	6	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_replicated	7	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_replicated_bytes	8	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_received	9	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_received_bytes	10	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_local_bf_aborts	11	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_local_commits	12	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_local_cert_failures	13	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_apply_window	14	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_members	wsrep_commit_window	15	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
 def	performance_schema	galera_group_member_stats	wsrep_node_id	1	NULL	NO	char	36	108	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	char(36)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_local_index	2	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_repl_keys	3	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_repl_keys_bytes	4	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_repl_data_bytes	5	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_repl_other_bytes	6	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_local_replays	7	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_local_send_queue	8	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_local_index	2	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_repl_keys	3	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_repl_keys_bytes	4	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_repl_data_bytes	5	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_repl_other_bytes	6	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_local_replays	7	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_local_send_queue	8	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
 def	performance_schema	galera_group_member_stats	wsrep_local_send_queue_avg	9	NULL	NO	double	NULL	NULL	22	NULL	NULL	NULL	NULL	double			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_local_recv_queue	10	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_local_recv_queue	10	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
 def	performance_schema	galera_group_member_stats	wsrep_local_recv_queue_avg	11	NULL	NO	double	NULL	NULL	22	NULL	NULL	NULL	NULL	double			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_flow_control_paused	12	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_flow_control_sent	13	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_flow_control_recv	14	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_flow_control_status	15	NULL	NO	char	32	96	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	char(32)			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_flow_control_paused	12	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_flow_control_sent	13	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_flow_control_recv	14	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_flow_control_status	15	NULL	NO	varchar	32	96	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	varchar(32)			select,insert,update,references		NEVER	NULL	NO	NO
 def	performance_schema	galera_group_member_stats	wsrep_cert_deps_distance	16	NULL	NO	double	NULL	NULL	22	NULL	NULL	NULL	NULL	double			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_open_transactions	17	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
-def	performance_schema	galera_group_member_stats	wsrep_evs_repl_latency	18	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_open_transactions	17	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
+def	performance_schema	galera_group_member_stats	wsrep_evs_repl_latency	18	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		NEVER	NULL	NO	NO
 def	performance_schema	global_status	VARIABLE_NAME	1	NULL	NO	varchar	64	192	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	varchar(64)			select,insert,update,references	The global status variable name.	NEVER	NULL	NO	NO
 def	performance_schema	global_status	VARIABLE_VALUE	2	NULL	YES	varchar	4096	12288	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	varchar(4096)			select,insert,update,references	The global status variable value.	NEVER	NULL	NO	NO
 def	performance_schema	hosts	HOST	1	NULL	YES	char	255	765	NULL	NULL	NULL	utf8mb3	utf8mb3_bin	char(255)			select,insert,update,references	Host name used by the client to connect, NULL for internal threads or user sessions that failed to authenticate.	NEVER	NULL	NO	NO

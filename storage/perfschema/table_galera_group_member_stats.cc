@@ -50,25 +50,25 @@ table_galera_group_member_stats::m_share=
   &m_table_lock,
   { C_STRING_WITH_LEN("CREATE TABLE galera_group_member_stats("
                       "wsrep_node_id char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null,"
-                      "wsrep_local_index BIGINT not null,"
-                      "wsrep_repl_keys BIGINT not null,"
-                      "wsrep_repl_keys_bytes BIGINT not null,"
-                      "wsrep_repl_data_bytes BIGINT not null,"
-                      "wsrep_repl_other_bytes BIGINT not null,"
-                      "wsrep_local_replays BIGINT not null,"
-                      "wsrep_local_send_queue BIGINT not null,"
+                      "wsrep_local_index INTEGER UNSIGNED not null,"
+                      "wsrep_repl_keys BIGINT UNSIGNED not null,"
+                      "wsrep_repl_keys_bytes BIGINT UNSIGNED not null,"
+                      "wsrep_repl_data_bytes BIGINT UNSIGNED not null,"
+                      "wsrep_repl_other_bytes BIGINT UNSIGNED not null,"
+                      "wsrep_local_replays BIGINT UNSIGNED not null,"
+                      "wsrep_local_send_queue BIGINT UNSIGNED not null,"
                       "wsrep_local_send_queue_avg DOUBLE PRECISION not null,"
-                      "wsrep_local_recv_queue BIGINT not null,"
+                      "wsrep_local_recv_queue BIGINT UNSIGNED not null,"
                       "wsrep_local_recv_queue_avg DOUBLE PRECISION not null,"
-                      "wsrep_flow_control_paused BIGINT not null,"
-                      "wsrep_flow_control_sent BIGINT not null,"
-                      "wsrep_flow_control_recv BIGINT not null,"
-                      "wsrep_flow_control_status char("
+                      "wsrep_flow_control_paused BIGINT UNSIGNED not null,"
+                      "wsrep_flow_control_sent BIGINT UNSIGNED not null,"
+                      "wsrep_flow_control_recv BIGINT UNSIGNED not null,"
+                      "wsrep_flow_control_status VARCHAR("
                          STRINGIFY(WSREP_STATUS_LENGTH)
                       ") not null,"
                       "wsrep_cert_deps_distance DOUBLE PRECISION not null,"
-                      "wsrep_open_transactions BIGINT not null,"
-                      "wsrep_evs_repl_latency BIGINT not null)") },
+                      "wsrep_open_transactions BIGINT UNSIGNED not null,"
+                      "wsrep_evs_repl_latency BIGINT UNSIGNED not null)") },
   false, /* m_perpetual */
   false, /* m_optional */
   &m_share_state
@@ -212,7 +212,7 @@ int table_galera_group_member_stats::read_row_values(TABLE *table,
   if (unlikely(! m_row_exists))
     return HA_ERR_RECORD_DELETED;
 
-  DBUG_ASSERT(table->s->null_bytes == 1);
+  DBUG_ASSERT(table->s->null_bytes == 0);
   buf[0]= 0;
 
   for (; (f= *fields) ; fields++)
@@ -229,53 +229,53 @@ int table_galera_group_member_stats::read_row_values(TABLE *table,
         set_field_ulong(f, m_row.wsrep_local_index);
         break;
       case 2: /** wsrep_repl_keys */
-        set_field_ulong(f, m_row.wsrep_repl_keys);
+        set_field_ulonglong(f, m_row.wsrep_repl_keys);
         break;
       case 3: /** wsrep_repl_keys_bytes */
-        set_field_ulong(f, m_row.wsrep_repl_keys_bytes);
+        set_field_ulonglong(f, m_row.wsrep_repl_keys_bytes);
         break;
       case 4: /** wsrep_repl_data_bytes */
-        set_field_ulong(f, m_row.wsrep_repl_data_bytes);
+        set_field_ulonglong(f, m_row.wsrep_repl_data_bytes);
         break;
       case 5: /** wsrep_repl_other_bytes */
-        set_field_ulong(f, m_row.wsrep_repl_other_bytes);
+        set_field_ulonglong(f, m_row.wsrep_repl_other_bytes);
         break;
       case 6: /** wsrep_local_replays */
-        set_field_ulong(f, m_row.wsrep_local_replays);
+        set_field_ulonglong(f, m_row.wsrep_local_replays);
         break;
       case 7: /** wsrep_local_send_queue */
-        set_field_ulong(f, m_row.wsrep_local_send_queue);
+        set_field_ulonglong(f, m_row.wsrep_local_send_queue);
         break;
       case 8: /** wsrep_local_send_queue_avg */
         set_field_double(f, m_row.wsrep_local_send_queue_avg);
         break;
       case 9: /** wsrep_local_recv_queue */
-        set_field_ulong(f, m_row.wsrep_local_recv_queue);
+        set_field_ulonglong(f, m_row.wsrep_local_recv_queue);
         break;
       case 10: /** wsrep_local_recv_queue_avg */
         set_field_double(f, m_row.wsrep_local_recv_queue_avg);
         break;
       case 11: /** wsrep_flow_control_paused */
-        set_field_ulong(f, m_row.wsrep_flow_control_paused);
+        set_field_ulonglong(f, m_row.wsrep_flow_control_paused);
         break;
       case 12: /** wsrep_flow_control_sent */
-        set_field_ulong(f, m_row.wsrep_flow_control_sent);
+        set_field_ulonglong(f, m_row.wsrep_flow_control_sent);
         break;
       case 13: /** wsrep_flow_control_recv */
-        set_field_ulong(f, m_row.wsrep_flow_control_recv);
+        set_field_ulonglong(f, m_row.wsrep_flow_control_recv);
         break;
       case 14: /** wsrep_flow_control_status */
-        set_field_char_utf8(f, m_row.wsrep_flow_control_status,
-                            WSREP_STATUS_LENGTH);
+        set_field_varchar_utf8(f, m_row.wsrep_flow_control_status,
+                               strlen(m_row.wsrep_flow_control_status));
         break;
       case 15: /** wsrep_cert_deps_distance */
         set_field_double(f, m_row.wsrep_cert_deps_distance);
         break;
       case 16: /** wsrep_open_transactions */
-        set_field_ulong(f, m_row.wsrep_open_transactions);
+        set_field_ulonglong(f, m_row.wsrep_open_transactions);
         break;
       case 17: /** wsrep_evs_repl_latency */
-        set_field_ulong(f, m_row.wsrep_evs_repl_latency);
+        set_field_ulonglong(f, m_row.wsrep_evs_repl_latency);
         break;
       default:
         DBUG_ASSERT(false);

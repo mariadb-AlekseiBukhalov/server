@@ -49,19 +49,20 @@ table_galera_group_members::m_share=
   &m_table_lock,
   { C_STRING_WITH_LEN("CREATE TABLE galera_group_members("
                       "wsrep_node_id char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null,"
+                      "wsrep_local_index INTEGER UNSIGNED not null,"
                       "wsrep_cluster_state_uuid char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null,"
                       "wsrep_local_state_uuid char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null,"
-                      "wsrep_last_applied BIGINT not null,"
-                      "wsrep_last_committed BIGINT not null,"
-                      "wsrep_replicated BIGINT not null,"
-                      "wsrep_replicated_bytes BIGINT not null,"
-                      "wsrep_received BIGINT not null,"
-                      "wsrep_received_bytes BIGINT not null,"
-                      "wsrep_local_bf_aborts BIGINT not null,"
-                      "wsrep_local_commits BIGINT not null,"
-                      "wsrep_local_cert_failures BIGINT not null,"
-                      "wsrep_apply_window BIGINT not null,"
-                      "wsrep_commit_window BIGINT not null)") },
+                      "wsrep_last_applied BIGINT UNSIGNED not null,"
+                      "wsrep_last_committed BIGINT UNSIGNED not null,"
+                      "wsrep_replicated BIGINT UNSIGNED not null,"
+                      "wsrep_replicated_bytes BIGINT UNSIGNED not null,"
+                      "wsrep_received BIGINT UNSIGNED not null,"
+                      "wsrep_received_bytes BIGINT UNSIGNED not null,"
+                      "wsrep_local_bf_aborts BIGINT UNSIGNED not null,"
+                      "wsrep_local_commits BIGINT UNSIGNED not null,"
+                      "wsrep_local_cert_failures BIGINT UNSIGNED not null,"
+                      "wsrep_apply_window BIGINT UNSIGNED not null,"
+                      "wsrep_commit_window BIGINT UNSIGNED not null)") },
   false, /* m_perpetual */
   false, /* m_optional */
   &m_share_state
@@ -207,7 +208,7 @@ int table_galera_group_members::read_row_values(TABLE *table,
   if (unlikely(! m_row_exists))
     return HA_ERR_RECORD_DELETED;
 
-  DBUG_ASSERT(table->s->null_bytes == 0);
+  DBUG_ASSERT(table->s->null_bytes == 1);
   buf[0]= 0;
 
   for (; (f= *fields) ; fields++)
@@ -220,46 +221,49 @@ int table_galera_group_members::read_row_values(TABLE *table,
         set_field_char_utf8(f, m_row.wsrep_node_id,
                             WSREP_UUID_STR_LEN);
         break;
-      case 1: /** wsrep_cluster_state_uuid */
+      case 1: /** wsrep_local_index */
+        set_field_ulong(f, m_row.wsrep_local_index);
+        break;
+      case 2: /** wsrep_cluster_state_uuid */
         set_field_char_utf8(f, m_row.wsrep_cluster_state_uuid,
                             WSREP_UUID_STR_LEN);
         break;
-      case 2: /** wsrep_local_state_uuid */
+      case 3: /** wsrep_local_state_uuid */
         set_field_char_utf8(f, m_row.wsrep_local_state_uuid,
                             WSREP_UUID_STR_LEN);
         break;
-      case 3: /** wsrep_last_applied */
-        set_field_ulong(f, m_row.wsrep_last_applied);
+      case 4: /** wsrep_last_applied */
+        set_field_ulonglong(f, m_row.wsrep_last_applied);
         break;
-      case 4: /** wsrep_last_committed */
-        set_field_ulong(f, m_row.wsrep_last_committed);
+      case 5: /** wsrep_last_committed */
+        set_field_ulonglong(f, m_row.wsrep_last_committed);
         break;
-      case 5: /** wsrep_replicated */
-        set_field_ulong(f, m_row.wsrep_replicated);
+      case 6: /** wsrep_replicated */
+        set_field_ulonglong(f, m_row.wsrep_replicated);
         break;
-      case 6: /** wsrep_replicated_bytes */
-        set_field_ulong(f, m_row.wsrep_replicated_bytes);
+      case 7: /** wsrep_replicated_bytes */
+        set_field_ulonglong(f, m_row.wsrep_replicated_bytes);
         break;
-      case 7: /** wsrep_received */
-        set_field_ulong(f, m_row.wsrep_received);
+      case 8: /** wsrep_received */
+        set_field_ulonglong(f, m_row.wsrep_received);
         break;
-      case 8: /** wsrep_received_bytes */
-        set_field_ulong(f, m_row.wsrep_received_bytes);
+      case 9: /** wsrep_received_bytes */
+        set_field_ulonglong(f, m_row.wsrep_received_bytes);
         break;
-      case 9: /** wsrep_local_bf_aborts */
-        set_field_ulong(f, m_row.wsrep_local_bf_aborts);
+      case 10: /** wsrep_local_bf_aborts */
+        set_field_ulonglong(f, m_row.wsrep_local_bf_aborts);
         break;
-      case 10: /** wsrep_local_commits */
-        set_field_ulong(f, m_row.wsrep_local_commits);
+      case 11: /** wsrep_local_commits */
+        set_field_ulonglong(f, m_row.wsrep_local_commits);
         break;
-      case 11: /** wsrep_local_cert_failures */
-        set_field_ulong(f, m_row.wsrep_local_cert_failures);
+      case 12: /** wsrep_local_cert_failures */
+        set_field_ulonglong(f, m_row.wsrep_local_cert_failures);
         break;
-      case 12: /** wsrep_apply_window */
-        set_field_ulong(f, m_row.wsrep_apply_window);
+      case 13: /** wsrep_apply_window */
+        set_field_ulonglong(f, m_row.wsrep_apply_window);
         break;
-      case 13: /** wsrep_commit_window */
-        set_field_ulong(f, m_row.wsrep_commit_window);
+      case 14: /** wsrep_commit_window */
+        set_field_ulonglong(f, m_row.wsrep_commit_window);
         break;
       default:
         DBUG_ASSERT(false);
