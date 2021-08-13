@@ -3532,10 +3532,11 @@ int wsrep_to_isolation_begin(THD *thd, const char *db_, const char *table_,
 
     switch (ret) {
     case 0: /* wsrep_TOI_begin should set toi mode */
-      if (thd->variables.wsrep_OSU_method == WSREP_OSU_TOI)
+      if (wsrep_OSU_method_get(thd) == WSREP_OSU_TOI ||
+          wsrep_OSU_method_get(thd) == WSREP_OSU_NBO)
       {
         /*
-          TOI operations ignore the provided lock_wait_timeout once replicated,
+          TOI/NBO operations ignore the provided lock_wait_timeout once replicated,
           and restore it after operation is done.
          */
         thd->variables.saved_lock_wait_timeout= thd->variables.lock_wait_timeout;
@@ -3543,8 +3544,8 @@ int wsrep_to_isolation_begin(THD *thd, const char *db_, const char *table_,
       }
       break;
     case 1:
-        /* TOI replication skipped, treat as success */
-        ret= 0;
+      /* TOI replication skipped, treat as success */
+      ret= 0;
       break;
     case -1:
       /* TOI replication failed, treat as error */
@@ -3559,6 +3560,7 @@ void wsrep_to_isolation_end(THD *thd)
 {
   if (wsrep_thd_is_nbo(thd))
   {
+    thd->variables.lock_wait_timeout= thd->variables.saved_lock_wait_timeout;
     wsrep_NBO_end(thd);
   }
   else if (wsrep_thd_is_local_toi(thd))
