@@ -12297,5 +12297,12 @@ WARN_INDEX_HINTS_IGNORED
         ukr "Підказки по використанню индексів ігноруются тому що вони несумісні з RETURNING"
 ER_SIGNAL_SKIP_ROW_FROM_TRIGGER
         eng "The row is skipped by a trigger implementation"
+
+# reserved
+skip-to-error-number 5000
+
+# MariaDB ES extra error numbers start here
+skip-to-error-number 6000
+
 ER_BLACKBOX_ERROR
 	eng "%s Black Box failed: %s"
