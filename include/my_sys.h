@@ -47,6 +47,9 @@ C_MODE_START
 #define MYSYS_ERRMSG_SIZE   (512)
 #define MYSYS_STRERROR_SIZE (256)
 
+#define MAX_ERROR_RANGES 4      /* of ER_xxx error messages */
+#define ERRORS_PER_RANGE 1000
+
 #define MY_FILE_ERROR	((size_t) -1)
 
 	/* General bitmaps for my_func's */

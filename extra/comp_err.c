@@ -34,8 +34,6 @@
 #include <ctype.h>
 
 #define MAX_ROWS  3000
-#define ERRORS_PER_RANGE 1000
-#define MAX_SECTIONS 4
 #define HEADER_LENGTH 32                /* Length of header in errmsg.sys */
 #define ERRMSG_VERSION 5                /* Version number of errmsg.sys */
 #define DEFAULT_CHARSET_DIR "../sql/share/charsets"
@@ -57,7 +55,7 @@ uchar file_head[]= { 254, 254, 2, ERRMSG_VERSION };
 /* Store positions to each error message row to store in errmsg.sys header */
 uint file_pos[MAX_ROWS+1];
 uint section_count,section_start;
-uchar section_header[MAX_SECTIONS*2];
+uchar section_header[MAX_ERROR_RANGES*2];
 
 const char *empty_string= "";			/* For empty states */
 /*
@@ -509,10 +507,10 @@ static uint parse_input_file(const char *file_name, struct errors **top_error,
       }
       if (skip)
       {
-        if (section_count >= MAX_SECTIONS-1)
+        if (section_count >= MAX_ERROR_RANGES-1)
         {
           fprintf(stderr, "Found too many skip-to-error-number entries. "
-                  "We only support %d entries\n", MAX_SECTIONS);
+                  "We only support %d entries\n", MAX_ERROR_RANGES);
           DBUG_RETURN(0);
         }
         int2store(section_header + section_count*2,

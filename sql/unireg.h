@@ -43,9 +43,6 @@
 #define PLUGINDIR	"lib/plugin"
 #endif
 
-#define MAX_ERROR_RANGES 4  /* 1000-2000, 2000-3000, 3000-4000, 4000-5000 */
-#define ERRORS_PER_RANGE 1000
-
 #define DEFAULT_ERRMSGS           my_default_lc_messages->errmsgs->errmsgs
 #define CURRENT_THD_ERRMSGS       (current_thd)->variables.errmsgs
 
