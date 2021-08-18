@@ -2129,19 +2129,36 @@ static char escaped_char(char c)
 }
 
 
-static int write_log(const char *message, size_t len, int take_lock)
+/*
+  Write to the log
+
+  @param wrlock_taken  If set, take a read lock (or write lock on rotate).
+                       If not set, the caller has a already taken a write lock
+*/
+
+static int write_log(const char *message, size_t len, int wrlock_taken)
 {
   int result= 0;
-  if (take_lock)
-    mysql_prlock_rdlock(&lock_operations);
 
   if (output_type == OUTPUT_FILE)
   {
-    if (logfile &&
-        (is_active= (logger_write(logfile, message, len) == (int)len)))
-      goto exit;
-    ++log_write_failures;
-    result= 1;
+    if (logfile)
+    {
+      my_bool allow_rotate= wrlock_taken; /* Allow rotate if caller write lock */
+      if (!wrlock_taken && logger_time_to_rotate(logfile))
+      {
+        /* We have to rotate the log, change above read lock to write lock */
+        mysql_prlock_unlock(&lock_operations);
+        mysql_prlock_wrlock(&lock_operations);
+        allow_rotate= 1;
+      }
+      if (!(is_active= (logger_write_r(logfile, allow_rotate, message, len) ==
+                        (int) len)))
+      {
+        ++log_write_failures;
+        result= 1;
+      }
+    }
   }
   else if (output_type == OUTPUT_SYSLOG)
   {
@@ -2149,9 +2166,6 @@ static int write_log(const char *message, size_t len, int take_lock)
            syslog_priority_codes[syslog_priority],
            "%s %.*s", syslog_info, (int)len, message);
   }
-exit:
-  if (take_lock)
-    mysql_prlock_unlock(&lock_operations);
   return result;
 }
 
@@ -2252,7 +2266,7 @@ static int log_config(MYSQL_THD thd, const char *var_name, const char *value)
   csize+= my_snprintf(message+csize, sizeof(message) - 1 - csize,
     ",%.*s,%s=%s,%d\n", (int) db_len, db, var_name, value, status);
 
-  return write_log(message, csize, 0);
+  return write_log(message, csize, 1);
 }
 
 
@@ -2292,7 +2306,7 @@ static int log_proxy(MYSQL_THD thd,
                      (int)proxy_host_len, proxy_host,
                      event->status);
   message[csize]= '\n';
-  return write_log(message, csize + 1, 1);
+  return write_log(message, csize + 1, 0);
 }
 
 
@@ -3096,12 +3110,14 @@ static void rotate_log(MYSQL_THD thd  __attribute__((unused)),
                        void *var_ptr  __attribute__((unused)),
                        const void *save  __attribute__((unused)))
 {
+  mysql_prlock_wrlock(&lock_operations);
   log_config(thd, "file_rotate_now", "ON");
   if (output_type == OUTPUT_FILE && logfile && *(my_bool*) save)
   {
     (void) logger_rotate(logfile);
     log_start_file(thd);
   }
+  mysql_prlock_unlock(&lock_operations);
 }
 
 
@@ -3255,13 +3271,13 @@ static void update_file_rotations(MYSQL_THD thd  __attribute__((unused)),
   error_header();
   fprintf(stderr, "Log file rotations was changed to '%d'.\n", rotations);
 
+  mysql_prlock_wrlock(&lock_operations);
+
   log_uint_config(thd, "file_rotattions", rotations);
 
-  if (!logging || output_type != OUTPUT_FILE)
-    return;
+  if (logging && output_type == OUTPUT_FILE)
+    logfile->rotations= rotations;
 
-  mysql_prlock_wrlock(&lock_operations);
-  logfile->rotations= rotations;
   mysql_prlock_unlock(&lock_operations);
 }
 
@@ -3274,7 +3290,9 @@ static void update_query_log_limit(MYSQL_THD thd  __attribute__((unused)),
   error_header();
   fprintf(stderr, "Query log limit was changed to '%d'.\n", query_log_limit);
 
+  mysql_prlock_wrlock(&lock_operations);
   log_uint_config(thd, "query_log_Limit", query_log_limit);
+  mysql_prlock_unlock(&lock_operations);
 
 }
 
@@ -3287,13 +3305,12 @@ static void update_file_rotate_size(MYSQL_THD thd  __attribute__((unused)),
   error_header();
   fprintf(stderr, "Log file rotate size was changed to '%lld'.\n",
           file_rotate_size);
+  mysql_prlock_wrlock(&lock_operations);
   log_uint_config(thd, "rotate_size", file_rotate_size);
 
-  if (!logging || output_type != OUTPUT_FILE)
-    return;
+  if (logging && output_type == OUTPUT_FILE)
+    logfile->size_limit= file_rotate_size;
 
-  mysql_prlock_wrlock(&lock_operations);
-  logfile->size_limit= file_rotate_size;
   mysql_prlock_unlock(&lock_operations);
 }
 
@@ -3334,12 +3351,14 @@ static void update_syslog_facility(MYSQL_THD thd  __attribute__((unused)),
   if (syslog_facility == new_facility)
     return;
 
+  mysql_prlock_wrlock(&lock_operations);
   log_config(thd, "syslog_facility", syslog_facility_names[new_facility]);
   error_header();
   fprintf(stderr, "SysLog facility was changed from '%s' to '%s'.\n",
           syslog_facility_names[syslog_facility],
           syslog_facility_names[new_facility]);
   syslog_facility= new_facility;
+  mysql_prlock_unlock(&lock_operations);
 }
 
 
@@ -3351,12 +3370,14 @@ static void update_syslog_priority(MYSQL_THD thd  __attribute__((unused)),
   if (syslog_priority == new_priority)
     return;
 
+  mysql_prlock_wrlock(&lock_operations);
   log_config(thd, "syslog_priority", syslog_priority_names[new_priority]);
   error_header();
   fprintf(stderr, "SysLog priority was changed from '%s' to '%s'.\n",
           syslog_priority_names[syslog_priority],
           syslog_priority_names[new_priority]);
   syslog_priority= new_priority;
+  mysql_prlock_unlock(&lock_operations);
 }
 
 
@@ -3431,10 +3452,10 @@ static void update_syslog_ident(MYSQL_THD thd  __attribute__((unused)),
   syslog_ident_buffer[sizeof(syslog_ident_buffer)-1]= 0;
   syslog_ident= syslog_ident_buffer;
   ADD_ATOMIC(internal_stop_logging, 1);
+  mysql_prlock_wrlock(&lock_operations);
   log_config(thd, "syslog_ident", syslog_ident);
   error_header();
   fprintf(stderr, "SYSYLOG ident was changed to '%s'\n", syslog_ident);
-  mysql_prlock_wrlock(&lock_operations);
   if (logging && output_type == OUTPUT_SYSLOG)
   {
     stop_logging();
