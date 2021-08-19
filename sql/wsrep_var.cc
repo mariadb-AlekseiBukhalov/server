@@ -191,7 +191,8 @@ bool wsrep_on_check(sys_var *self, THD* thd, set_var* var)
     }
   }
 
-  if (thd->in_active_multi_stmt_transaction())
+  if (thd->in_active_multi_stmt_transaction() ||
+      thd->transaction->xid_state.is_explicit_XA())
   {
     my_error(ER_CANT_DO_THIS_DURING_AN_TRANSACTION, MYF(0));
     return true;

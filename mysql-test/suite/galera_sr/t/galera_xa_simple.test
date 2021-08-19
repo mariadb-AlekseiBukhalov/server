@@ -242,3 +242,28 @@ XA END 'a';
 XA PREPARE 'a';
 XA COMMIT 'a';
 SET @@session.pseudo_slave_mode=DEFAULT;
+SET SESSION TRANSACTION READ WRITE;
+
+
+#
+# MENT-1286: Assertion `state_ == s_exec' failed in
+# int wsrep::client_state::append_key(const wsrep::key&)
+#
+# Do not allow SET GLOBAL wsrep_on=OFF while XA transaction is in progress
+#
+
+--connection node_1
+
+CREATE TABLE t1(c1 INT);
+XA START 'a';
+XA END 'a';
+LOAD INDEX INTO CACHE t1 INDEX (`PRIMARY`) IGNORE LEAVES;
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
+SET GLOBAL wsrep_on = OFF;
+--error ER_XAER_RMFAIL
+XA COMMIT 'a';
+--error ER_XAER_RMFAIL
+INSERT t1 VALUES (1);
+# cleanup
+XA ROLLBACK 'a';
+DROP TABLE t1;

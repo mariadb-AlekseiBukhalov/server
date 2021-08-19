@@ -190,3 +190,21 @@ XA COMMIT 'a';
 SET @@session.pseudo_slave_mode=DEFAULT;
 Warnings:
 Warning	1231	Slave applier execution mode not active, statement ineffective.
+SET SESSION TRANSACTION READ WRITE;
+connection node_1;
+CREATE TABLE t1(c1 INT);
+XA START 'a';
+XA END 'a';
+LOAD INDEX INTO CACHE t1 INDEX (`PRIMARY`) IGNORE LEAVES;
+Table	Op	Msg_type	Msg_text
+test.t1	preload_keys	Error	XAER_RMFAIL: The command cannot be executed when global transaction is in the  IDLE state
+test.t1	preload_keys	Error	XAER_RMFAIL: The command cannot be executed when global transaction is in the  IDLE state
+test.t1	preload_keys	error	Corrupt
+SET GLOBAL wsrep_on = OFF;
+ERROR 25000: You are not allowed to execute this command in a transaction
+XA COMMIT 'a';
+ERROR XAE07: XAER_RMFAIL: The command cannot be executed when global transaction is in the  IDLE state
+INSERT t1 VALUES (1);
+ERROR XAE07: XAER_RMFAIL: The command cannot be executed when global transaction is in the  IDLE state
+XA ROLLBACK 'a';
+DROP TABLE t1;
