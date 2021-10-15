@@ -130,10 +130,19 @@ static inline int wsrep_check_pk(THD* thd)
 
 static inline bool wsrep_streaming_enabled(THD* thd)
 {
-  // XA ignores streaming settings, as wsrep patch
-  // does not support streaming within XA.
-  return (!thd->wsrep_trx().is_xa() &&
-          thd->wsrep_sr().fragment_size() > 0);
+  return (thd->wsrep_sr().fragment_size() > 0);
+}
+
+static inline bool wsrep_enable_streaming(THD* thd)
+{
+  bool ret = false;
+  if (!thd->wsrep_applier && thd->variables.wsrep_trx_fragment_size)
+  {
+    ret = thd->wsrep_cs().enable_streaming(
+      wsrep_fragment_unit(thd->variables.wsrep_trx_fragment_unit),
+      size_t(thd->variables.wsrep_trx_fragment_size));
+  }
+  return ret;
 }
 
 /*
@@ -148,8 +157,10 @@ static inline size_t wsrep_fragments_certified_for_stmt(THD* thd)
 static inline int wsrep_start_transaction(THD* thd, wsrep_trx_id_t trx_id)
 {
   if (thd->wsrep_cs().state() != wsrep::client_state::s_none) {
-    if (wsrep_is_active(thd) == false)
+    if (wsrep_is_active(thd) == false) {
+      wsrep_enable_streaming(thd);
       return thd->wsrep_cs().start_transaction(wsrep::transaction_id(trx_id));
+    }
   }
   return 0;
 }
@@ -173,6 +184,13 @@ static inline void wsrep_assign_xid(THD* thd)
   {
     Wsrep_xid xid(thd->lex->xid);
     thd->wsrep_cs().assign_xid(xid);
+    if (!thd->wsrep_applier)
+    {
+      // Wsrep patch does not support streaming within XA.
+      // We temporarily disable streaming here, and re-enable it
+      // on the next call to wsrep_start_transaction().
+      thd->wsrep_cs().disable_streaming();
+    }
   }
 }
 
@@ -583,12 +601,7 @@ static inline void wsrep_open(THD* thd)
     DBUG_ASSERT(WSREP_PROVIDER_EXISTS_);
     thd->wsrep_cs().open(wsrep::client_id(thd->thread_id));
     thd->wsrep_cs().debug_log_level(wsrep_debug);
-    if (!thd->wsrep_applier && thd->variables.wsrep_trx_fragment_size)
-    {
-      thd->wsrep_cs().enable_streaming(
-        wsrep_fragment_unit(thd->variables.wsrep_trx_fragment_unit),
-        size_t(thd->variables.wsrep_trx_fragment_size));
-    }
+    wsrep_enable_streaming(thd);
   }
   DBUG_VOID_RETURN;
 }
