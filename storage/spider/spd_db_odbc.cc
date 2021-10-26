@@ -2174,20 +2174,29 @@ int spider_db_odbc::set_trx_isolation(
   RETCODE ret;
   DBUG_ENTER("spider_db_odbc::set_trx_isolation");
   DBUG_PRINT("info",("spider this=%p", this));
+  /*
+    If it fails to set the given isolation level, try stricter ones.
+  */
   switch (trx_isolation)
   {
     case ISO_READ_UNCOMMITTED:
       ret = SQLSetConnectAttr(hdbc, SQL_ATTR_TXN_ISOLATION,
         (SQLPOINTER) SQL_TXN_READ_UNCOMMITTED, SQL_IS_UINTEGER);
-      break;
+      if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO)
+        break;
+      /* fall through */
     case ISO_READ_COMMITTED:
       ret = SQLSetConnectAttr(hdbc, SQL_ATTR_TXN_ISOLATION,
         (SQLPOINTER) SQL_TXN_READ_COMMITTED, SQL_IS_UINTEGER);
-      break;
+      if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO)
+        break;
+      /* fall through */
     case ISO_REPEATABLE_READ:
       ret = SQLSetConnectAttr(hdbc, SQL_ATTR_TXN_ISOLATION,
         (SQLPOINTER) SQL_TXN_REPEATABLE_READ, SQL_IS_UINTEGER);
-      break;
+      if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO)
+        break;
+      /* fall through */
     case ISO_SERIALIZABLE:
       ret = SQLSetConnectAttr(hdbc, SQL_ATTR_TXN_ISOLATION,
         (SQLPOINTER) SQL_TXN_SERIALIZABLE, SQL_IS_UINTEGER);
