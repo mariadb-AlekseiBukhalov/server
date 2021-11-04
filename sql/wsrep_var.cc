@@ -627,6 +627,12 @@ bool wsrep_cluster_address_check (sys_var *self, THD* thd, set_var* var)
 {
   char addr_buf[FN_REFLEN];
 
+  if (thd->transaction->xid_state.is_explicit_XA())
+  {
+    my_error(ER_CANT_DO_THIS_DURING_AN_TRANSACTION, MYF(0));
+    return true;
+  }
+
   if ((! var->save_result.string_value.str) ||
       (var->save_result.string_value.length >= sizeof(addr_buf))) // safety
     goto err;
