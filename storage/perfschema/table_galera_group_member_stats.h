@@ -13,9 +13,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA */
 
-
-#ifndef TABLE_GALERA_GROUP_MEMBER_STATS_H
-#define TABLE_GALERA_GROUP_MEMBER_STATS_H
+#pragma once
 
 /**
   @file storage/perfschema/table_galera_group_member_stats.h
@@ -35,10 +33,8 @@
   @{
 */
 
-#define PFS_GALERA_MAX_CLUSTER_SIZE 128
-
-/** Table PERFORMANCE_SCHEMA.GALERA_GROUP_MEMBER_STATS. */
-class table_galera_group_member_stats: public PFS_engine_table
+/** Table PERFORMANCE_SCHEMA.galera_group_member_stats. */
+class table_galera_group_member_stats final : public PFS_engine_table
 {
 public:
   static PFS_engine_table_share_state m_share_state;
@@ -54,17 +50,17 @@ private:
   /** Fields definition. */
   static TABLE_FIELD_DEF m_field_def;
   /** True if the current row exists. */
-  bool m_row_exists;
+  bool m_row_exists= false;
   /** Current row. */
   wsrep_node_stat_t m_row;
+  /** Rows array. */
+  wsrep_node_stat_t* m_entries= nullptr;
   /** Number of rows. */
-  uint32_t m_rows;
-  /** Row cache. */
-  wsrep_node_stat_t m_entries[PFS_GALERA_MAX_CLUSTER_SIZE];
+  uint32_t m_rows= 0;
   /** Current position. */
-  PFS_simple_index m_pos;
+  PFS_simple_index m_pos= 0;
   /** Next position. */
-  PFS_simple_index m_next_pos;
+  PFS_simple_index m_next_pos= 0;
 
 protected:
   /**
@@ -90,9 +86,7 @@ public:
   int rnd_init(bool) override;
   int rnd_next() override;
   int rnd_pos(const void *pos) override;
-  void reset_position(void) override;
-
+  void reset_position() override;
 };
 
 /** @} */
-#endif

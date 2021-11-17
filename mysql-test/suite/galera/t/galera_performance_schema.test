@@ -24,27 +24,43 @@ ORDER BY name;
 SELECT COUNT(*) > 0 FROM threads WHERE name LIKE 'thread/sql/wsrep_provider%';
 --enable_ps_protocol
 
+# Check for a compatible version of the Galera library:
+--let $rows = `SELECT COUNT(*) FROM galera_group_members`
+if ($rows == 0)
+{
+   die Incompatible or old version of the Galera library;
+}
+
 # Let's keep the initial values of the most characteristic fields:
 
---let $wsrep_last_committed   = `SELECT wsrep_last_committed   FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_replicated       = `SELECT wsrep_replicated       FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_replicated_bytes = `SELECT wsrep_replicated_bytes FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_local_commits    = `SELECT wsrep_local_commits    FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_apply_window     = `SELECT wsrep_apply_window     FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_commit_window    = `SELECT wsrep_commit_window    FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_repl_keys        = `SELECT wsrep_repl_keys        FROM galera_group_member_stats WHERE wsrep_local_index = 0`
---let $wsrep_repl_keys_bytes  = `SELECT wsrep_repl_keys_bytes  FROM galera_group_member_stats WHERE wsrep_local_index = 0`
---let $wsrep_repl_data_bytes  = `SELECT wsrep_repl_data_bytes  FROM galera_group_member_stats WHERE wsrep_local_index = 0`
+--let $index1 = `SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_local_index';`
+
+--let $wsrep_last_committed   = `SELECT wsrep_last_committed   FROM galera_group_members WHERE wsrep_local_index = $index1`
+--let $wsrep_replicated       = `SELECT wsrep_replicated       FROM galera_group_members WHERE wsrep_local_index = $index1`
+--let $wsrep_replicated_bytes = `SELECT wsrep_replicated_bytes FROM galera_group_members WHERE wsrep_local_index = $index1`
+--let $wsrep_local_commits    = `SELECT wsrep_local_commits    FROM galera_group_members WHERE wsrep_local_index = $index1`
+--let $wsrep_repl_keys        = `SELECT wsrep_repl_keys        FROM galera_group_member_stats WHERE wsrep_local_index = $index1`
+--let $wsrep_repl_keys_bytes  = `SELECT wsrep_repl_keys_bytes  FROM galera_group_member_stats WHERE wsrep_local_index = $index1`
+--let $wsrep_repl_data_bytes  = `SELECT wsrep_repl_data_bytes  FROM galera_group_member_stats WHERE wsrep_local_index = $index1`
+
+--let $wsrep_apply_window     = `SELECT CEILING(wsrep_apply_window)  FROM galera_group_members WHERE wsrep_local_index = $index1`
+--let $wsrep_commit_window    = `SELECT CEILING(wsrep_commit_window) FROM galera_group_members WHERE wsrep_local_index = $index1`
 
 --connection node_2
 
+--let $wait_condition = SELECT VARIABLE_VALUE = 2 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
+--source include/wait_condition.inc
+
 use performance_schema;
 
---let $wsrep_last_committed2 = `SELECT wsrep_last_committed FROM galera_group_members WHERE wsrep_local_index = 1`
---let $wsrep_received2       = `SELECT wsrep_received       FROM galera_group_members WHERE wsrep_local_index = 1`
---let $wsrep_received_bytes2 = `SELECT wsrep_received_bytes FROM galera_group_members WHERE wsrep_local_index = 1`
---let $wsrep_apply_window2   = `SELECT wsrep_apply_window   FROM galera_group_members WHERE wsrep_local_index = 1`
---let $wsrep_commit_window2  = `SELECT wsrep_commit_window  FROM galera_group_members WHERE wsrep_local_index = 1`
+--let $index2 = `SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_local_index';`
+
+--let $wsrep_last_committed2 = `SELECT wsrep_last_committed FROM galera_group_members WHERE wsrep_local_index = $index2`
+--let $wsrep_received2       = `SELECT wsrep_received       FROM galera_group_members WHERE wsrep_local_index = $index2`
+--let $wsrep_received_bytes2 = `SELECT wsrep_received_bytes FROM galera_group_members WHERE wsrep_local_index = $index2`
+
+--let $wsrep_apply_window2   = `SELECT CEILING(wsrep_apply_window)  FROM galera_group_members WHERE wsrep_local_index = $index2`
+--let $wsrep_commit_window2  = `SELECT CEILING(wsrep_commit_window) FROM galera_group_members WHERE wsrep_local_index = $index2`
 
 use test;
 
@@ -73,15 +89,16 @@ select * from t1;
 
 # Let's request new values for the most characteristic fields:
 
---let $wsrep_last_committed_new   = `SELECT wsrep_last_committed   FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_replicated_new       = `SELECT wsrep_replicated       FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_replicated_bytes_new = `SELECT wsrep_replicated_bytes FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_local_commits_new    = `SELECT wsrep_local_commits    FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_apply_window_new     = `SELECT wsrep_apply_window     FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_commit_window_new    = `SELECT wsrep_commit_window    FROM galera_group_members WHERE wsrep_local_index = 0`
---let $wsrep_repl_keys_new        = `SELECT wsrep_repl_keys        FROM galera_group_member_stats WHERE wsrep_local_index = 0`
---let $wsrep_repl_keys_bytes_new  = `SELECT wsrep_repl_keys_bytes  FROM galera_group_member_stats WHERE wsrep_local_index = 0`
---let $wsrep_repl_data_bytes_new  = `SELECT wsrep_repl_data_bytes  FROM galera_group_member_stats WHERE wsrep_local_index = 0`
+--let $wsrep_last_committed_new   = `SELECT wsrep_last_committed   FROM galera_group_members WHERE wsrep_local_index = $index1`
+--let $wsrep_replicated_new       = `SELECT wsrep_replicated       FROM galera_group_members WHERE wsrep_local_index = $index1`
+--let $wsrep_replicated_bytes_new = `SELECT wsrep_replicated_bytes FROM galera_group_members WHERE wsrep_local_index = $index1`
+--let $wsrep_local_commits_new    = `SELECT wsrep_local_commits    FROM galera_group_members WHERE wsrep_local_index = $index1`
+--let $wsrep_repl_keys_new        = `SELECT wsrep_repl_keys        FROM galera_group_member_stats WHERE wsrep_local_index = $index1`
+--let $wsrep_repl_keys_bytes_new  = `SELECT wsrep_repl_keys_bytes  FROM galera_group_member_stats WHERE wsrep_local_index = $index1`
+--let $wsrep_repl_data_bytes_new  = `SELECT wsrep_repl_data_bytes  FROM galera_group_member_stats WHERE wsrep_local_index = $index1`
+
+--let $wsrep_apply_window_new     = `SELECT CEILING(wsrep_apply_window)  FROM galera_group_members WHERE wsrep_local_index = $index1`
+--let $wsrep_commit_window_new    = `SELECT CEILING(wsrep_commit_window) FROM galera_group_members WHERE wsrep_local_index = $index1`
 
 # Let's calculate the differences between the old and new values:
 
@@ -89,8 +106,6 @@ select * from t1;
 --let $wsrep_replicated_diff       = `SELECT $wsrep_replicated_new       - $wsrep_replicated`
 --let $wsrep_replicated_bytes_diff = `SELECT $wsrep_replicated_bytes_new - $wsrep_replicated_bytes`
 --let $wsrep_local_commits_diff    = `SELECT $wsrep_local_commits_new    - $wsrep_local_commits`
---let $wsrep_apply_window_diff     = `SELECT $wsrep_apply_window_new     - $wsrep_apply_window`
---let $wsrep_commit_window_diff    = `SELECT $wsrep_commit_window_new    - $wsrep_commit_window`
 --let $wsrep_repl_keys_diff        = `SELECT $wsrep_repl_keys_new        - $wsrep_repl_keys`
 --let $wsrep_repl_keys_bytes_diff  = `SELECT $wsrep_repl_keys_bytes_new  - $wsrep_repl_keys_bytes`
 --let $wsrep_repl_data_bytes_diff  = `SELECT $wsrep_repl_data_bytes_new  - $wsrep_repl_data_bytes`
@@ -117,14 +132,14 @@ if ($wsrep_local_commits_new < 1)
    die bad wsrep_local_commits difference: $wsrep_local_commits_new;
 }
 
-if ($wsrep_apply_window_new != 1)
+if ($wsrep_apply_window_new < 0)
 {
-   die bad wsrep_apply_window difference: $wsrep_apply_window_new;
+   die bad wsrep_apply_window: $wsrep_apply_window_new;
 }
 
-if ($wsrep_commit_window_new != 1)
+if ($wsrep_commit_window_new < 0)
 {
-   die bad wsrep_commit_window difference: $wsrep_commit_window_new;
+   die bad wsrep_commit_window: $wsrep_commit_window_new;
 }
 
 if ($wsrep_repl_keys_diff != 6)
@@ -148,11 +163,12 @@ if ($wsrep_repl_data_bytes_diff <= 0)
 
 use performance_schema;
 
---let $wsrep_last_committed_new2 = `SELECT wsrep_last_committed FROM galera_group_members WHERE wsrep_local_index = 1`
---let $wsrep_received_new2       = `SELECT wsrep_received       FROM galera_group_members WHERE wsrep_local_index = 1`
---let $wsrep_received_bytes_new2 = `SELECT wsrep_received_bytes FROM galera_group_members WHERE wsrep_local_index = 1`
---let $wsrep_apply_window_new2   = `SELECT wsrep_apply_window   FROM galera_group_members WHERE wsrep_local_index = 1`
---let $wsrep_commit_window_new2  = `SELECT wsrep_commit_window  FROM galera_group_members WHERE wsrep_local_index = 1`
+--let $wsrep_last_committed_new2 = `SELECT wsrep_last_committed FROM galera_group_members WHERE wsrep_local_index = $index2`
+--let $wsrep_received_new2       = `SELECT wsrep_received       FROM galera_group_members WHERE wsrep_local_index = $index2`
+--let $wsrep_received_bytes_new2 = `SELECT wsrep_received_bytes FROM galera_group_members WHERE wsrep_local_index = $index2`
+
+--let $wsrep_apply_window_new2   = `SELECT CEILING(wsrep_apply_window)  FROM galera_group_members WHERE wsrep_local_index = $index2`
+--let $wsrep_commit_window_new2  = `SELECT CEILING(wsrep_commit_window) FROM galera_group_members WHERE wsrep_local_index = $index2`
 
 use test;
 
@@ -161,8 +177,6 @@ use test;
 --let $wsrep_last_committed_diff2 = `SELECT $wsrep_last_committed_new2 - $wsrep_last_committed2`
 --let $wsrep_received_diff2       = `SELECT $wsrep_received_new2       - $wsrep_received2`
 --let $wsrep_received_bytes_diff2 = `SELECT $wsrep_received_bytes_new2 - $wsrep_received_bytes2`
---let $wsrep_apply_window_diff2   = `SELECT $wsrep_apply_window_new2   - $wsrep_apply_window2`
---let $wsrep_commit_window_diff2  = `SELECT $wsrep_commit_window_new2  - $wsrep_commit_window2`
 
 # Check that the fields have changed to the correct values:
 
@@ -181,14 +195,14 @@ if ($wsrep_received_bytes_diff2 <= 0)
    die bad wsrep_received_bytes difference: $wsrep_received_bytes_diff2;
 }
 
-if ($wsrep_apply_window_new2 != 1)
+if ($wsrep_apply_window_new2 < 0)
 {
-   die bad wsrep_apply_window difference: $wsrep_apply_window_new2;
+   die bad wsrep_apply_window: $wsrep_apply_window_new2;
 }
 
-if ($wsrep_commit_window_new2 != 1)
+if ($wsrep_commit_window_new2 < 0)
 {
-   die bad wsrep_commit_window difference: $wsrep_commit_window_new2;
+   die bad wsrep_commit_window: $wsrep_commit_window_new2;
 }
 
 --connection node_1

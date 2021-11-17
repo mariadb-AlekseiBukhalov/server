@@ -48,110 +48,139 @@ table_galera_group_members::m_share=
   sizeof(PFS_simple_index), /* ref length */
   &m_table_lock,
   { C_STRING_WITH_LEN("CREATE TABLE galera_group_members("
-                      "wsrep_node_id char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null,"
-                      "wsrep_local_index INTEGER UNSIGNED not null,"
-                      "wsrep_cluster_state_uuid char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null,"
-                      "wsrep_local_state_uuid char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null,"
-                      "wsrep_last_applied BIGINT UNSIGNED not null,"
-                      "wsrep_last_committed BIGINT UNSIGNED not null,"
-                      "wsrep_replicated BIGINT UNSIGNED not null,"
-                      "wsrep_replicated_bytes BIGINT UNSIGNED not null,"
-                      "wsrep_received BIGINT UNSIGNED not null,"
-                      "wsrep_received_bytes BIGINT UNSIGNED not null,"
-                      "wsrep_local_bf_aborts BIGINT UNSIGNED not null,"
-                      "wsrep_local_commits BIGINT UNSIGNED not null,"
-                      "wsrep_local_cert_failures BIGINT UNSIGNED not null,"
-                      "wsrep_apply_window BIGINT UNSIGNED not null,"
-                      "wsrep_commit_window BIGINT UNSIGNED not null)") },
+                      "wsrep_node_id char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null comment 'Unique node ID (UUID)',"
+                      "wsrep_local_index INTEGER UNSIGNED not null comment 'Index of this node in the Galera cluster nodes table',"
+                      "wsrep_cluster_state_uuid char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null comment 'The UUID of the cluster',"
+                      "wsrep_local_state_uuid char(" STRINGIFY(WSREP_UUID_STR_LEN) ") not null comment 'The UUID of the state stored on this node',"
+                      "wsrep_last_applied BIGINT UNSIGNED not null comment 'Sequence number of the last applied transaction',"
+                      "wsrep_last_committed BIGINT UNSIGNED not null comment 'Sequence number of the last committed transaction',"
+                      "wsrep_replicated BIGINT UNSIGNED not null comment 'Total number of write-sets replicated',"
+                      "wsrep_replicated_bytes BIGINT UNSIGNED not null comment 'Total size of write-sets replicated (in bytes)',"
+                      "wsrep_received BIGINT UNSIGNED not null comment 'Total number of write-sets received',"
+                      "wsrep_received_bytes BIGINT UNSIGNED not null comment 'Total size of write-sets received (in bytes)',"
+                      "wsrep_local_bf_aborts BIGINT UNSIGNED not null comment 'Total number of local transactions that were aborted by slave transactions while in execution',"
+                      "wsrep_local_commits BIGINT UNSIGNED not null comment 'Total number of local transactions committed',"
+                      "wsrep_local_cert_failures BIGINT UNSIGNED not null comment 'Total number of local transactions that failed certification test',"
+                      "wsrep_apply_window DOUBLE PRECISION not null comment 'Average distance between the highest and lowest concurrently applied seqno',"
+                      "wsrep_commit_window DOUBLE PRECISION not null comment 'Average distance between the highest and lowest concurrently committed seqno')") },
   false, /* m_perpetual */
   false, /* m_optional */
   &m_share_state
 };
 
-PFS_engine_table* table_galera_group_members::create(void)
+PFS_engine_table* table_galera_group_members::create()
 {
   return new table_galera_group_members();
 }
 
 static std::atomic<wsrep_ps_fetch_cluster_info_t> fetch_cluster_info;
+static std::atomic<wsrep_ps_free_cluster_info_t> free_cluster_info;
 
 static wsrep_ps_fetch_cluster_info_t init_once()
 {
   if (auto f= fetch_cluster_info.load(std::memory_order_acquire))
     return f;
 
+  auto dlh= static_cast<wsrep_t*>
+    (Wsrep_server_state::instance().get_provider().native())->dlh;
+
   union
   {
     void* sym;
     wsrep_ps_fetch_cluster_info_t func;
   } obj;
-  obj.sym= dlsym(
-    ((wsrep_t*)Wsrep_server_state::instance().get_provider().native())->dlh,
-    WSREP_PS_FETCH_CLUSTER_INFO_FUNC);
-  if (obj.func)
-    fetch_cluster_info.store(obj.func, std::memory_order_release);
+
+  obj.sym= dlsym(dlh, WSREP_PS_FETCH_CLUSTER_INFO_FUNC);
+
+  union
+  {
+    void* sym;
+    wsrep_ps_free_cluster_info_t func;
+  } obj2;
+
+  obj2.sym= obj.func ? dlsym(dlh, WSREP_PS_FREE_CLUSTER_INFO_FUNC) : nullptr;
+
+  if (!obj.sym || !obj2.sym)
+  {
+    WSREP_WARN("Performance Schema for Galera: incompatible or "
+               "old version of the Galera library");
+    return nullptr;
+  }
+
   DBUG_PRINT("info", ("Initialized galera PS fetch cluster info: %p %p",
-                      ((wsrep_t*)Wsrep_server_state::instance().
-                       get_provider().native())->dlh,
-                      obj.sym));
+                      dlh, obj.sym));
+
+  free_cluster_info.store(obj2.func, std::memory_order_relaxed);
+  fetch_cluster_info.store(obj.func, std::memory_order_release);
+
   return obj.func;
 }
 
 table_galera_group_members::table_galera_group_members()
-  : PFS_engine_table(&m_share, &m_pos),
-    m_row_exists(false), m_pos(0), m_next_pos(0)
-{}
+  : PFS_engine_table(&m_share, &m_pos)
+{
+}
+
+static void free_rows(wsrep_node_info_t* entries)
+{
+  if (entries)
+  {
+    auto free_func= free_cluster_info.load(std::memory_order_relaxed);
+    free_func(static_cast<wsrep_t*>
+              (Wsrep_server_state::instance().get_provider().native()),
+              entries);
+  }
+}
 
 table_galera_group_members::~table_galera_group_members()
-{}
+{
+  free_rows(m_entries);
+}
 
-void table_galera_group_members::reset_position(void)
+void table_galera_group_members::reset_position()
 {
   m_pos.m_index= 0;
   m_next_pos.m_index= 0;
 }
 
-ha_rows table_galera_group_members::get_row_count(void)
+ha_rows table_galera_group_members::get_row_count()
 {
-  if (WSREP_ON)
-  {
-    if (!init_once())
-      return 0;
-    ha_rows total= wsrep_cluster_size;
-    if (total > PFS_GALERA_MAX_CLUSTER_SIZE)
-    {
-      total= PFS_GALERA_MAX_CLUSTER_SIZE;
-    }
-    return total;
-  }
-  return 0;
+  return WSREP_ON && init_once() ? wsrep_cluster_size : 0;
 }
 
-int table_galera_group_members::rnd_init(bool) {
-  m_rows= 0;
+int table_galera_group_members::rnd_init(bool)
+{
   if (!WSREP_ON)
     return 0;
-  auto fetch= init_once();
-  if (!fetch)
-    return 0;
-  uint32_t size= PFS_GALERA_MAX_CLUSTER_SIZE;
-  wsrep_status_t ret=
-    fetch((wsrep_t*)Wsrep_server_state::instance().get_provider().native(),
-          m_entries, &size);
-  if (ret == WSREP_OK)
+  if (auto fetch= init_once())
   {
-    m_rows= size;
+    free_rows(m_entries);
+    m_entries= nullptr;
+    m_rows= 0;
+    uint32_t size;
+    int32_t my_index;
+    wsrep_node_info_t* entries;
+    wsrep_status_t ret=
+      fetch(static_cast<wsrep_t*>
+            (Wsrep_server_state::instance().get_provider().native()),
+            &entries, &size, &my_index, WSREP_PS_API_VERSION);
+    if (ret == WSREP_OK && size &&
+        entries[0].wsrep_version <= WSREP_PS_API_VERSION)
+    {
+      m_entries= entries;
+      m_rows= size;
+    }
   }
   return 0;
 }
 
-int table_galera_group_members::rnd_next(void)
+int table_galera_group_members::rnd_next()
 {
   if (!WSREP_ON)
     return HA_ERR_END_OF_FILE;
 
   for (m_pos.set_at(&m_next_pos);
-       m_pos.m_index < get_row_count();
+       m_pos.m_index < m_rows;
        m_pos.next())
   {
     make_row(m_pos.m_index);
@@ -168,7 +197,7 @@ int table_galera_group_members::rnd_pos(const void *pos)
     return HA_ERR_END_OF_FILE;
 
   set_position(pos);
-  DBUG_ASSERT(m_pos.m_index < get_row_count());
+  DBUG_ASSERT(m_pos.m_index < m_rows);
   make_row(m_pos.m_index);
 
   return 0;
@@ -177,6 +206,7 @@ int table_galera_group_members::rnd_pos(const void *pos)
 void table_galera_group_members::make_row(uint index)
 {
   DBUG_ENTER("table_galera_group_members::make_row");
+
   // Set default values.
   m_row_exists= false;
 
@@ -260,10 +290,10 @@ int table_galera_group_members::read_row_values(TABLE *table,
         set_field_ulonglong(f, m_row.wsrep_local_cert_failures);
         break;
       case 13: /** wsrep_apply_window */
-        set_field_ulonglong(f, m_row.wsrep_apply_window);
+        set_field_double(f, m_row.wsrep_apply_window);
         break;
       case 14: /** wsrep_commit_window */
-        set_field_ulonglong(f, m_row.wsrep_commit_window);
+        set_field_double(f, m_row.wsrep_commit_window);
         break;
       default:
         DBUG_ASSERT(false);
