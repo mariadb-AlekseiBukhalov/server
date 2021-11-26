@@ -18,6 +18,8 @@ export DEB_BUILD_OPTIONS="nocheck $DEB_BUILD_OPTIONS"
 
 # shellcheck source=/dev/null
 source ./VERSION
+MYSQL_VERSION_EXTRA=${MYSQL_VERSION_EXTRA/-/.}
+
 
 architecture=$(dpkg-architecture -q DEB_BUILD_ARCH)
 uname_machine=$(uname -m)

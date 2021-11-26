@@ -337,7 +337,7 @@ let DATADIR= $MYSQLD_DATADIR;
 perl;
   my $ver= $ENV{'MYSQL_SERVER_VERSION'} or die "MYSQL_SERVER_VERSION not set";
   my $file= $ENV{'DATADIR'} or die "MYSQLD_DATADIR not set";
-  $ver =~ s/^(\d*)\.(\d*).(\d*)(.*)/$1.$2.0$4/;
+  $ver =~ s/^(\d*)\.(\d*).(\d+-\d+)(.*)/$1.$2.0$4/;
   open(FILE, ">$file/mariadb_upgrade_info") or die "Failed to open $file";
   binmode FILE;
   print FILE "$ver\n";
