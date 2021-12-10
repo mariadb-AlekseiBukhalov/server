@@ -75,6 +75,7 @@ SET(PLUGINS_NOT_SUPPORTED
   "simple_parser"
   "sphinx"
   "test_sql_discovery"
+  "test_sql_service"
   "test_versioning"
   "type_mysql_json"
   "wsrep_info"
