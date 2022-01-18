@@ -1,7 +1,7 @@
 #
 # Streaming within XA is currently not supported.
 # Test that parameters wsrep_trx_fragment_size and
-# wsrep_trx_fragment_unit are ignore by XA transacitons.
+# wsrep_trx_fragment_unit are ignored by XA transactions.
 #
 
 --source include/galera_cluster.inc
@@ -63,6 +63,18 @@ SELECT COUNT(*) `expect 0` FROM mysql.wsrep_streaming_log;
 --connection node_1
 XA END 't';
 XA PREPARE 't';
+XA ROLLBACK 't';
+
+
+#
+# Can't change wsrep_trx_fragment_size during
+# XA transaction
+#
+
+XA START 't';
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
+SET SESSION wsrep_trx_fragment_size = 10;
+XA END 't';
 XA ROLLBACK 't';
 
 

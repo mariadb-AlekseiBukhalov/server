@@ -1,0 +1,25 @@
+#
+# MENT-1151 - Assertion `ret == 0 || state() == s_aborted' failed in
+# int wsrep::transaction::after_statement()
+#
+
+--source include/galera_cluster.inc
+
+--connection node_1
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY);
+INSERT INTO t1 VALUES(1),(2),(3);
+
+XA START 'b';
+SET SESSION wsrep_trx_fragment_unit='statements';
+DELETE FROM t1;
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
+SET SESSION wsrep_trx_fragment_size=1;
+--error ER_XAER_RMFAIL
+CREATE TEMPORARY SEQUENCE s1;
+XA END 'b';
+XA PREPARE 'b';
+XA COMMIT 'b';
+
+SELECT * FROM t1;
+
+DROP TABLE t1;
