@@ -6,7 +6,7 @@ eval SELECT * INTO OUTFILE '$MYSQLTEST_VARDIR/tmp/spider_filedsn.dsn' FROM (
   SELECT 'Driver=MariaDB ODBC 3.0 Driver' UNION ALL
   SELECT 'Servername=127.0.0.1' UNION ALL
   SELECT 'Database=auto_test_remote' UNION ALL
-  SELECT 'UserName=root' UNION ALL
+  SELECT 'User=root' UNION ALL
   SELECT 'Password=' UNION ALL
   SELECT 'Port=$CHILD2_1_MYPORT'
 ) a;
