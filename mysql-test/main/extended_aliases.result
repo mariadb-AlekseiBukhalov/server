@@ -1,0 +1,657 @@
+set @save_sql_mode= @@sql_mode;
+#
+# basic tests of resolving
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+select a+b as c from t1 where c > 5;
+ERROR 42S22: Unknown column 'c' in 'WHERE'
+set sql_mode="EXTENDED_ALIASES";
+# field
+select a as c from t1 where c > 5;
+c
+10
+# expression
+select a+b as c from t1 where c > 10;
+c
+20
+select a+b as c, c*2 as d from t1 where c <= 10;
+c	d
+2	4
+10	20
+select a+b as c, c*2 as d from t1 where c <= 10 and d < 20;
+c	d
+2	4
+# stored procedures
+prepare stmt1 from
+"select a+b as c, c*2 as d from t1 where c <= 10 and d < 20";
+prepare stmt2 from
+"select a as c from t1 where c > 5";
+execute stmt1;
+c	d
+2	4
+execute stmt1;
+c	d
+2	4
+execute stmt2;
+c
+10
+execute stmt2;
+c
+10
+# prepared statements keep the mode
+set sql_mode="";
+execute stmt1;
+c	d
+2	4
+execute stmt2;
+c
+10
+set sql_mode="EXTENDED_ALIASES";
+execute stmt1;
+c	d
+2	4
+execute stmt1;
+c	d
+2	4
+execute stmt2;
+c
+10
+execute stmt2;
+c
+10
+# priority have alias
+select a+a as b from t1 where b > 10;
+b
+20
+explain extended
+select a+a as b from t1 where b > 10;
+id	select_type	table	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	t1	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
+Warnings:
+Note	1003	select `test`.`t1`.`a` + `test`.`t1`.`a` AS `b` from `test`.`t1` where `b` > 10
+create view v1 as select a+a as b from t1 where b > 10;
+select * from v1;
+b
+20
+show create view v1;
+View	Create View	character_set_client	collation_connection
+v1	SET STATEMENT SQL_MODE='EXTENDED_ALIASES' FOR CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` + `t1`.`a` AS `b` from `t1` where `b` > 10	latin1	latin1_swedish_ci
+drop view v1;
+set sql_mode="";
+SET STATEMENT SQL_MODE='EXTENDED_ALIASES' FOR CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` + `t1`.`a` AS `b` from `t1` where `b` > 10;
+select * from v1;
+b
+20
+show create view v1;
+View	Create View	character_set_client	collation_connection
+v1	SET STATEMENT SQL_MODE='EXTENDED_ALIASES' FOR CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` + `t1`.`a` AS `b` from `t1` where `b` > 10	latin1	latin1_swedish_ci
+drop view v1;
+drop table t1;
+set @@sql_mode= @save_sql_mode;
+#
+# resolving in ON
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+create table t2 (d int, e int);
+insert into t2 values (1,2), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+#
+# ON is not supported
+#
+select a+b as c, a,b,c,d from t1 join t2 on c=t2.e;
+ERROR 42S22: Unknown column 'c' in 'ON'
+drop table t1, t2;
+set @@sql_mode= @save_sql_mode;
+#
+# VIEW test
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+# expression
+create view v1 as select a+b as c from t1 where c > 10;
+# field
+create view v2 as select a as c from t1 where c > 5;
+select * from v1;
+c
+20
+show create view v1;
+View	Create View	character_set_client	collation_connection
+v1	SET STATEMENT SQL_MODE='EXTENDED_ALIASES' FOR CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` + `t1`.`b` AS `c` from `t1` where `c` > 10	latin1	latin1_swedish_ci
+select * from v2;
+c
+10
+show create view v2;
+View	Create View	character_set_client	collation_connection
+v2	SET STATEMENT SQL_MODE='EXTENDED_ALIASES' FOR CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v2` AS select `t1`.`a` AS `c` from `t1` where `c` > 5	latin1	latin1_swedish_ci
+set sql_mode="";
+select * from v1;
+c
+20
+select * from v2;
+c
+10
+set sql_mode="EXTENDED_ALIASES";
+prepare stmt1 from
+"select * from v1";
+prepare stmt2 from
+"select * from v2";
+execute stmt1;
+c
+20
+execute stmt1;
+c
+20
+execute stmt2;
+c
+10
+execute stmt2;
+c
+10
+# views are not dependent on the mode after creation
+set sql_mode="";
+execute stmt1;
+c
+20
+execute stmt1;
+c
+20
+execute stmt2;
+c
+10
+execute stmt2;
+c
+10
+set sql_mode="EXTENDED_ALIASES";
+execute stmt1;
+c
+20
+execute stmt1;
+c
+20
+drop view v1, v2;
+drop table t1;
+#
+# PROCEDURES test
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+# expression
+create procedure p1() select a+b as c from t1 where c > 10;
+call p1();
+c
+20
+call p1();
+c
+20
+set sql_mode="";
+call p1();
+c
+20
+call p1();
+c
+20
+set sql_mode="EXTENDED_ALIASES";
+call p1();
+c
+20
+call p1();
+c
+20
+drop procedure p1;
+drop table t1;
+#
+# aggregate functions test
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+select sum(a) as c from t1 where c > 10;
+ERROR 42S22: Reference 'c' not supported (reference to group or window function)
+drop table t1;
+#
+#
+# FORWARD resolving tests
+#
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+create table t3 (d int);
+insert into t3 values (1), (2), (6);
+set sql_mode="EXTENDED_ALIASES";
+select a, t1.a + 1 as a, t1.a + 1 as a from t1;
+ERROR 23000: Column 'a' in SELECT-list is ambiguous
+select a as b, b as a from t1;
+ERROR 42S22: Reference 'b' not supported (cyclic reference)
+#
+# forward reference (first a+1) and
+# don't resolve inside alias (second a+1)
+#
+select a+1, a + 1 as a, t1.a from t1;
+a+1	a	a
+3	2	1
+7	6	5
+12	11	10
+prepare stmt from "select a+1, a + 1 as a, t1.a from t1";
+execute stmt;
+a+1	a	a
+3	2	1
+7	6	5
+12	11	10
+execute stmt;
+a+1	a	a
+3	2	1
+7	6	5
+12	11	10
+#
+# WHERE reference expression
+#
+select a + 1 as a, t1.a from t1 where a = 6;
+a	a
+6	5
+prepare stmt from "select a + 1 as a, t1.a from t1 where a = 6";
+execute stmt;
+a	a
+6	5
+execute stmt;
+a	a
+6	5
+#
+# WHERE reference no expression
+#
+select a - 1 as a, t1.a from t1 where a;
+a	a
+4	5
+9	10
+prepare stmt from "select a - 1 as a, t1.a from t1 where a";
+execute stmt;
+a	a
+4	5
+9	10
+execute stmt;
+a	a
+4	5
+9	10
+#
+# inside aggregate and forward reference
+#
+select max(a), a + 1 as a, t1.a from t1;
+max(a)	a	a
+11	2	1
+prepare stmt from "select max(a), a + 1 as a, t1.a from t1";
+execute stmt;
+max(a)	a	a
+11	2	1
+execute stmt;
+max(a)	a	a
+11	2	1
+#
+# reference on aggregate from SELECT LIST
+#
+select a, max(a + 1) as a, t1.a from t1;
+ERROR 42S22: Reference 'a' not supported (reference to group or window function)
+#
+# reference on aggregate from SELECT LIST
+#
+select max(a + 1) as a, t1.a from t1 where a > 2;
+ERROR 42S22: Reference 'a' not supported (reference to group or window function)
+#
+# normal outer field resolution still works
+#
+select a from t1 where (select 1 from t3 where a=d);
+a
+1
+#
+# outer alias reference (forward)
+#
+explain extended
+select (select 1 from t3 where a=d), a+1 as a from t1;
+id	select_type	table	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	PRIMARY	t1	ALL	NULL	NULL	NULL	NULL	3	100.00	
+2	DEPENDENT SUBQUERY	t3	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
+Warnings:
+Note	1276	Field or reference 'a' of SELECT #2 was resolved in SELECT #1
+Note	1003	/* select#1 */ select <expr_cache><`a`>((/* select#2 */ select 1 from `test`.`t3` where `a` = `test`.`t3`.`d`)) AS `(select 1 from t3 where a=d)`,`test`.`t1`.`a` + 1 AS `a` from `test`.`t1`
+select (select 1 from t3 where a=d), a+1 as a from t1;
+(select 1 from t3 where a=d)	a
+1	2
+1	6
+NULL	11
+prepare stmt from "select (select 1 from t3 where a=d), a+1 as a from t1";
+execute stmt;
+(select 1 from t3 where a=d)	a
+1	2
+1	6
+NULL	11
+execute stmt;
+(select 1 from t3 where a=d)	a
+1	2
+1	6
+NULL	11
+#
+# outer reference from WHERE
+#
+explain extended
+select a+1 as a from t1 where (select 1 from t3 where a=d);
+id	select_type	table	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	PRIMARY	t1	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
+Warnings:
+Note	1276	Field or reference 'a' of SELECT #2 was resolved in SELECT #1
+Note	1003	/* select#1 */ select `test`.`t1`.`a` + 1 AS `a` from `test`.`t1` where <expr_cache><`a`>((/* select#2 */ select 1 from `test`.`t3` where `a` = `test`.`t3`.`d`))
+select a+1 as a from t1 where (select 1 from t3 where a=d);
+a
+2
+6
+prepare stmt from "select a+1 as a from t1 where (select 1 from t3 where a=d)";
+execute stmt;
+a
+2
+6
+execute stmt;
+a
+2
+6
+#
+# do not resolve outer alias in the same expression
+#
+explain extended
+select (select 1 from t3 where a=d) as a, t1.a from t1;
+id	select_type	table	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	PRIMARY	t1	ALL	NULL	NULL	NULL	NULL	3	100.00	
+2	DEPENDENT SUBQUERY	t3	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
+Warnings:
+Note	1276	Field or reference 'test.t1.a' of SELECT #2 was resolved in SELECT #1
+Note	1003	/* select#1 */ select <expr_cache><`test`.`t1`.`a`>((/* select#2 */ select 1 from `test`.`t3` where `test`.`t1`.`a` = `test`.`t3`.`d`)) AS `a`,`test`.`t1`.`a` AS `a` from `test`.`t1`
+select (select 1 from t3 where a=d) as a, t1.a from t1;
+a	a
+1	1
+NULL	5
+NULL	10
+prepare stmt from "select (select 1 from t3 where a=d) as a, t1.a from t1";
+execute stmt;
+a	a
+1	1
+NULL	5
+NULL	10
+execute stmt;
+a	a
+1	1
+NULL	5
+NULL	10
+drop tables t1,t3;
+#
+# test of possible table alias problem
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+create view v1 as select a, (select t1.a from t1 limit 1) as cc from t1;
+show create view v1;
+View	Create View	character_set_client	collation_connection
+v1	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` AS `a`,(select `t1`.`a` from `t1` limit 1) AS `cc` from `t1`	latin1	latin1_swedish_ci
+select * from v1;
+a	cc
+1	1
+5	1
+10	1
+select a, (select t1.a from t1 limit 1) as cc from t1;
+a	cc
+1	1
+5	1
+10	1
+drop view v1;
+drop table t1;
+#
+# test of view with outer reference and changing sql_mode
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (2,2), (10, 10);
+create view v1 as select a+1 as d, (select b from t1 where d=a) as cc from t1;
+show create view v1;
+View	Create View	character_set_client	collation_connection
+v1	SET STATEMENT SQL_MODE='EXTENDED_ALIASES' FOR CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` + 1 AS `d`,(select `t1`.`b` from `t1` where `d` = `t1`.`a`) AS `cc` from `t1`	latin1	latin1_swedish_ci
+select * from v1;
+d	cc
+2	2
+3	NULL
+11	NULL
+select a+1 as d, (select b from t1 where d=a) as cc from t1;
+d	cc
+2	2
+3	NULL
+11	NULL
+set sql_mode="";
+select * from v1;
+d	cc
+2	2
+3	NULL
+11	NULL
+set sql_mode="EXTENDED_ALIASES";
+drop view v1;
+drop table t1;
+#
+# complex cases with aggregate functions
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+#
+# outer reference on field of groupping
+#
+select a as c, min(b) as d from t1 where 5 < (select max(t.b) from t1 as t where t1.a < 2) group by c;
+c	d
+1	1
+# shoud be the same as above
+select a as c, min(b) as d from t1 where 5 < (select max(t.b) from t1 as t where c < 2) group by c;
+c	d
+1	1
+#
+# outer reference on aggregated field
+#
+SELECT a x, MAX(b) as m, (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=m) FROM t1 group by a;
+x	m	(SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=m)
+1	1	1
+5	5	5
+10	10	10
+# shoud be the same as above
+SELECT a x, MAX(b) as m, (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=MAX(t1.b)) FROM t1 group by a;
+x	m	(SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=MAX(t1.b))
+1	1	1
+5	5	5
+10	10	10
+#
+# aggregate reference from WHERE
+#
+SELECT a x, MAX(b) as m FROM t1 where (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=m) group by a;
+ERROR 42S22: Reference 'm' not supported (reference to group or window function)
+SELECT a x, MAX(b) as m FROM t1 where (SELECT t.a FROM t1 AS t WHERE x=t.a
+AND t.b=max(t1.b)) group by a;
+ERROR HY000: Invalid use of group function
+#
+# aggregate reference from HAVING
+#
+SELECT a x, MAX(b) as m FROM t1 group by a having (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=m);
+x	m
+1	1
+5	5
+10	10
+SELECT a x, MAX(b) as m FROM t1 group by a having (SELECT t.a FROM t1 AS t
+WHERE x=t.a AND t.b=MAX(t1.b));
+x	m
+1	1
+5	5
+10	10
+#
+# aggregate reference from ORDER BY
+#
+SELECT a x, MAX(b) as m FROM t1 group by a order by (SELECT t.a FROM t1 AS t WHERE  t.b=MAX(t1.b));
+x	m
+1	1
+5	5
+10	10
+SELECT a x, MAX(b) as m FROM t1 group by a order by (SELECT t.a FROM t1 AS t WHERE t.b=m);
+x	m
+1	1
+5	5
+10	10
+#
+# aggregate reference from GROUP BY
+#
+SELECT a x, MAX(b) as m FROM t1 group by (SELECT t.a FROM t1 AS t WHERE t.b=m);
+ERROR 42S22: Reference 'm' not supported (reference to group or window function)
+SELECT a x, MAX(b) as m FROM t1 group by (SELECT t.a FROM t1 AS t WHERE  t.b=MAX(t1.b));
+ERROR HY000: Invalid use of group function
+drop table t1;
+#
+# outer forward reference
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+select (select a from t1 where b < c limit 1) as d, a as c from t1;
+d	c
+NULL	1
+1	5
+1	10
+drop table t1;
+#
+# window function tests
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+select a as c, sum(b) over (partition by c order by c) as wf from t1;
+c	wf
+1	1
+5	5
+10	10
+# should be the same as above
+select a as c, sum(b) over (partition by a order by a) as wf from t1;
+c	wf
+1	1
+5	5
+10	10
+select a as c, sum(b) over (partition by c order by c) as wf from t1 where wf > 6;
+ERROR 42S22: Reference 'wf' not supported (reference to group or window function)
+drop table t1;
+#
+# reference loop over a subquery
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+select a+d as e, (select a from t1 where b < c limit 1) as d, a+e as c from t1;
+ERROR 42S22: Reference 'c' not supported (cyclic reference)
+# should be the same as above
+prepare stmt from "select a+d as e, (select a from t1 where b < c limit 1) as d, a+e as c from t1";
+ERROR 42S22: Reference 'c' not supported (cyclic reference)
+select (select a from t1 where b < c limit 1) as d, a+d as c from t1;
+ERROR 42S22: Reference 'c' not supported (cyclic reference)
+# should be the same as above
+prepare stmt from "select (select a from t1 where b < c limit 1) as d, a+d as c from t1";
+ERROR 42S22: Reference 'c' not supported (cyclic reference)
+#check that there is no problems for expression in WHERE
+select a as e, a+e as c from t1 where (select max(a) from t1 where b < c) > 5;
+e	c
+10	20
+prepare stmt from "select a as e, a+e as c from t1 where (select max(a) from t1 where b < c) > 5";
+execute stmt;
+e	c
+10	20
+execute stmt;
+e	c
+10	20
+drop table t1;
+#
+# complex cases with aggregate functions
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+SELECT a x FROM t1 group by a order by (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=MAX(t1.b));
+x
+1
+10
+5
+# should be the same as above
+SELECT a x FROM t1 group by a order by (SELECT t.a FROM t1 AS t WHERE t1.a=t.a AND t.b=MAX(t1.b));
+x
+1
+10
+5
+SELECT a x FROM t1 order by (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=MAX(t1.b));
+x
+1
+# should be the same as above
+SELECT a x FROM t1 order by (SELECT t.a FROM t1 AS t WHERE t1.a=t.a AND t.b=MAX(t1.b));
+x
+1
+drop table t1;
+#
+# MENT-1247: Server crashes in Item_ident::pre_fix_aliases
+# with EXTENDED_ALIASES
+#
+SET sql_mode= EXTENDED_ALIASES;
+SELECT * FROM information_schema.tables WHERE table_schema IN ('sys');
+#
+# the same aliases processing
+#
+set sql_mode="EXTENDED_ALIASES";
+create table t1 (a int, b int);
+insert into t1 values (0,1);
+select a as b, b from t1 where b < 1;
+b	b
+0	0
+create table t2 select a as b, b from t1 where b < 1;
+ERROR 42S21: Duplicate column name 'b'
+create view v1 as select a as b, b from t1 where b < 1;
+ERROR 42S21: Duplicate column name 'b'
+drop table t1;
+#
+# more reference checks
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+create table t2 (a int, b int);
+insert into t2 values (6,6);
+set sql_mode="EXTENDED_ALIASES";
+select (select a+c from t2 limit 1) as sq1, b+sq2 as c, (select a from t2 limit 1) as sq2 from t1;
+sq1	c	sq2
+13	7	6
+17	11	6
+22	16	6
+select (select a+c from t2 limit 1) as sq1, b+sq2 as c, (select a+d from t2 limit 1) as sq2, b+sq1 as d from t1;
+ERROR 42S22: Reference 'd' not supported (cyclic reference)
+with cte(b,a) as (select a,b from t1) select * from t1;
+a	b
+1	1
+5	5
+10	10
+create view v1(b,a) as select a, b from t1;
+select * from v1;
+b	a
+1	1
+5	5
+10	10
+show create view v1;
+View	Create View	character_set_client	collation_connection
+v1	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` AS `b`,`t1`.`b` AS `a` from `t1`	latin1	latin1_swedish_ci
+drop view v1;
+drop tables t1, t2;
+#
+# reference which shoud be "fixed" by resolving
+#
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+create table t2 (a int, b int);
+insert into t2 values (6,6);
+set sql_mode="EXTENDED_ALIASES";
+select (select a+c from t2 limit 1) as sq1, b+sq2 as c, (select a+c from t2 as t limit 1) as sq2 from t1;
+ERROR 42S22: Reference 'c' not supported (cyclic reference)
+drop tables t1, t2;
+# End of 10.6ES tests
+set @@sql_mode= @save_sql_mode;

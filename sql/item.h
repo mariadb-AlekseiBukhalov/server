@@ -304,6 +304,31 @@ struct Name_resolution_context: Sql_alloc
   }
 };
 
+class Dependence_list :public Sql_alloc
+{
+public:
+
+  Dependence_list *next;
+  uint index;
+
+  void add_to(Dependence_list **list)
+  {
+    next= (*list);
+    (*list)= this;
+  }
+};
+
+bool add_to_dependence(THD *thd, Dependence_list **list, uint idx);
+
+struct dependence_tracker
+{
+  Dependence_list **dependence_array;
+  uint dependence_array_num;
+  Item **current_select_list_fix; /* during prepare reference on current
+                                     select list element or NULL */
+  uint current_select_list_num;    /* like above but index or UINT_MAX */
+};
+
 
 /*
   Store and restore the current state of a name resolution context.
@@ -1228,6 +1253,13 @@ public:
     DBUG_ASSERT(0);
   }
 
+  virtual transform_result resolve_aliases(THD *, Item **, uchar*)
+  {
+    DBUG_ENTER("Item::resolve_aliases");
+    // most Items do nothing for preliminry aliases resolvimg
+    DBUG_RETURN(OK_AND_CONTINUE);
+  }
+
   /*
     Fix after some tables has been pulled out. Basically re-calculate all
     attributes that are dependent on the tables.
@@ -1620,6 +1652,7 @@ public:
      - Item_ref
      - Item_cache_wrapper
      - Item_direct_ref
+     - Item_ref_alias
      - Item_direct_view_ref
      - Item_ref_null_helper
      - Item_name_const
@@ -3736,6 +3769,12 @@ public:
     Collect outer references
   */
   bool collect_outer_ref_processor(void *arg) override;
+  transform_result resolve_aliases(THD *, Item **, uchar *) override;
+
+  bool create_ref_alias(THD *thd, Item **found_ref,
+                        Name_resolution_context *outer_context,
+                        Item **reference, enum enum_parsing_place place,
+                        uint num_in_list);
   friend bool insert_fields(THD *thd, Name_resolution_context *context,
                             const LEX_CSTRING &db_name,
                             const LEX_CSTRING &table_name,
@@ -5165,7 +5204,7 @@ public:
   {
     max_length= length;
   }
-  bool check_vcol_func_processor(void *arg) override 
+  bool check_vcol_func_processor(void *arg) override
   {
     return mark_unsupported_function("safe_string", arg, VCOL_IMPOSSIBLE);
   }
@@ -6317,6 +6356,12 @@ public:
   {
     set_properties();
   }
+  transform_result resolve_aliases(THD *, Item **, uchar *) override
+  {
+    DBUG_ENTER("Item_direct_ref::resolve_aliases");
+    // do nothing for preliminry aliases resolvimg
+    DBUG_RETURN(OK_AND_CONTINUE);
+  }
 
 protected:
   Item *shallow_copy(THD *thd) const override
@@ -6354,6 +6399,31 @@ public:
   { ident->print(str, query_type); }
 };
 
+
+/**
+  This class is the same as Item_direct_ref but created to point to
+  an expression with alias in SELECT list for preliminary alias resolving
+*/
+
+class Item_ref_alias :public Item_direct_ref
+{
+  Name_resolution_context *outer_finding;
+  uint num_in_list;
+  enum enum_parsing_place place;
+public:
+  Item_ref_alias(THD *thd, Item **item, Name_resolution_context *context,
+                 Name_resolution_context *outer,
+                 enum enum_parsing_place place_arg, uint num):
+    Item_direct_ref(thd, context, item, {NULL, 0},
+                    item[0]->name, TRUE),
+    outer_finding(outer), num_in_list(num), place(place_arg)
+  {
+    ref= item;
+    base_flags&= ~item_base_t::FIXED;
+  }
+
+  bool fix_fields(THD *thd, Item **it) override;
+};
 
 class Item_cache;
 class Expression_cache;
@@ -6731,6 +6801,7 @@ public:
 class Item_sum;
 class Item_outer_ref :public Item_direct_ref
 {
+  enum enum_parsing_place place;
 public:
   Item *outer_ref;
   /* The aggregate function under which this outer ref is used, if any. */
@@ -6745,6 +6816,7 @@ public:
                  Item_field *outer_field_arg):
     Item_direct_ref(thd, context_arg, 0, outer_field_arg->table_name,
                     outer_field_arg->field_name),
+    place(NO_MATTER),
     outer_ref(outer_field_arg), in_sum_func(0),
     found_in_select_list(0), found_in_group_by(0)
   {
@@ -6755,10 +6827,13 @@ public:
   }
   Item_outer_ref(THD *thd, Name_resolution_context *context_arg, Item **item,
                  const LEX_CSTRING &table_name_arg, LEX_CSTRING &field_name_arg,
-                 bool alias_name_used_arg):
+                 bool alias_name_used_arg,
+                 enum enum_parsing_place place_arg= NO_MATTER):
     Item_direct_ref(thd, context_arg, item, table_name_arg, field_name_arg,
                     alias_name_used_arg),
-    outer_ref(0), in_sum_func(0), found_in_select_list(1), found_in_group_by(0)
+    place(place_arg),
+    outer_ref(0), in_sum_func(0), found_in_select_list(1),
+    found_in_group_by(0)
   {}
   void save_in_result_field(bool no_conversions) override
   {
@@ -6774,6 +6849,7 @@ public:
   table_map not_null_tables() const override { return 0; }
   Ref_Type ref_type() override { return OUTER_REF; }
   bool check_inner_refs_processor(void * arg) override;
+  enum enum_parsing_place from_place() { return place; }
 protected:
   Item *shallow_copy(THD *thd) const override
   { return get_item_copy<Item_outer_ref>(thd, this); }
@@ -6818,6 +6894,12 @@ public:
 protected:
   Item *shallow_copy(THD *thd) const override
   { return get_item_copy<Item_ref_null_helper>(thd, this); }
+  transform_result resolve_aliases(THD *, Item **, uchar *) override
+  {
+    DBUG_ENTER("Item_ref_null_helper::resolve_aliases");
+    // do nothing for preliminry aliases resolvimg
+    DBUG_RETURN(OK_AND_CONTINUE);
+  }
 };
 
 /*

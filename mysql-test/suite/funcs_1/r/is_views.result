@@ -39,6 +39,7 @@ SECURITY_TYPE	varchar(7)	NO		NULL
 CHARACTER_SET_CLIENT	varchar(32)	NO		NULL	
 COLLATION_CONNECTION	varchar(64)	NO		NULL	
 ALGORITHM	varchar(10)	NO		NULL	
+CREATE_OPTIONS	varchar(100)	NO		NULL	
 SHOW CREATE TABLE information_schema.VIEWS;
 Table	Create Table
 VIEWS	CREATE TEMPORARY TABLE `VIEWS` (
@@ -52,7 +53,8 @@ VIEWS	CREATE TEMPORARY TABLE `VIEWS` (
   `SECURITY_TYPE` varchar(7) NOT NULL,
   `CHARACTER_SET_CLIENT` varchar(32) NOT NULL,
   `COLLATION_CONNECTION` varchar(64) NOT NULL,
-  `ALGORITHM` varchar(10) NOT NULL
+  `ALGORITHM` varchar(10) NOT NULL,
+  `CREATE_OPTIONS` varchar(100) NOT NULL
 )  DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci
 SHOW COLUMNS FROM information_schema.VIEWS;
 Field	Type	Null	Key	Default	Extra
@@ -67,6 +69,7 @@ SECURITY_TYPE	varchar(7)	NO		NULL
 CHARACTER_SET_CLIENT	varchar(32)	NO		NULL	
 COLLATION_CONNECTION	varchar(64)	NO		NULL	
 ALGORITHM	varchar(10)	NO		NULL	
+CREATE_OPTIONS	varchar(100)	NO		NULL	
 SELECT table_catalog, table_schema, table_name
 FROM information_schema.views WHERE table_catalog <> 'def';
 table_catalog	table_schema	table_name
@@ -90,24 +93,24 @@ GRANT SELECT ON db_datadict.v_granted_to_1 TO 'testuser1'@'localhost';
 GRANT SHOW VIEW, CREATE VIEW ON db_datadict.* TO 'testuser2'@'localhost';
 SELECT * FROM information_schema.views
 WHERE table_schema = 'db_datadict' ORDER BY table_name;
-TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM
-def	db_datadict	v_granted_glob	select `db_datadict`.`t1`.`f2` AS `f2`,`db_datadict`.`t1`.`f3` AS `f3` from `db_datadict`.`t1`	NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED
-def	db_datadict	v_granted_to_1	select `db_datadict`.`t1`.`f1` AS `f1`,`db_datadict`.`t1`.`f2` AS `f2`,`db_datadict`.`t1`.`f3` AS `f3` from `db_datadict`.`t1`	NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED
+TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM	CREATE_OPTIONS
+def	db_datadict	v_granted_glob	select `db_datadict`.`t1`.`f2` AS `f2`,`db_datadict`.`t1`.`f3` AS `f3` from `db_datadict`.`t1`	NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED	
+def	db_datadict	v_granted_to_1	select `db_datadict`.`t1`.`f1` AS `f1`,`db_datadict`.`t1`.`f2` AS `f2`,`db_datadict`.`t1`.`f3` AS `f3` from `db_datadict`.`t1`	NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED	
 connect  testuser1, localhost, testuser1, ,"*NO-ONE*";
 SELECT * FROM information_schema.views
 WHERE table_schema = 'db_datadict' ORDER BY table_name;
-TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM
-def	db_datadict	v_granted_to_1		NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED
+TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM	CREATE_OPTIONS
+def	db_datadict	v_granted_to_1		NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED	
 connect  testuser2, localhost, testuser2, ,"*NO-ONE*";
 SELECT * FROM information_schema.views
 WHERE table_schema = 'db_datadict' ORDER BY table_name;
-TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM
-def	db_datadict	v_granted_glob		NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED
-def	db_datadict	v_granted_to_1		NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED
+TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM	CREATE_OPTIONS
+def	db_datadict	v_granted_glob		NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED	
+def	db_datadict	v_granted_to_1		NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED	
 connect  test_no_views, localhost, test_no_views, ,"*NO-ONE*";
 SELECT * FROM information_schema.views
 WHERE table_schema = 'db_datadict' ORDER BY table_name;
-TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM
+TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM	CREATE_OPTIONS
 connection default;
 disconnect testuser1;
 disconnect testuser2;
@@ -130,17 +133,17 @@ CREATE USER 'testuser1'@'localhost';
 SELECT * FROM information_schema.views
 WHERE table_name LIKE 't1_%'
 ORDER BY table_schema, table_name;
-TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM
+TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM	CREATE_OPTIONS
 CREATE VIEW test.t1_view AS SELECT DISTINCT f1 FROM test.t1_table;
 CREATE ALGORITHM=MERGE VIEW test.t1_view1 AS SELECT f1 FROM test.t1_table;
 CREATE ALGORITHM=TEMPTABLE VIEW test.t1_view2 AS SELECT f1 FROM test.t1_table;
 SELECT * FROM information_schema.views
 WHERE table_name LIKE 't1_%'
 ORDER BY table_schema, table_name;
-TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM
-def	test	t1_view	select distinct `test`.`t1_table`.`f1` AS `f1` from `test`.`t1_table`	NONE	NO	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED
-def	test	t1_view1	select `test`.`t1_table`.`f1` AS `f1` from `test`.`t1_table`	NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	MERGE
-def	test	t1_view2	select `test`.`t1_table`.`f1` AS `f1` from `test`.`t1_table`	NONE	NO	root@localhost	DEFINER	latin1	latin1_swedish_ci	TEMPTABLE
+TABLE_CATALOG	TABLE_SCHEMA	TABLE_NAME	VIEW_DEFINITION	CHECK_OPTION	IS_UPDATABLE	DEFINER	SECURITY_TYPE	CHARACTER_SET_CLIENT	COLLATION_CONNECTION	ALGORITHM	CREATE_OPTIONS
+def	test	t1_view	select distinct `test`.`t1_table`.`f1` AS `f1` from `test`.`t1_table`	NONE	NO	root@localhost	DEFINER	latin1	latin1_swedish_ci	UNDEFINED	
+def	test	t1_view1	select `test`.`t1_table`.`f1` AS `f1` from `test`.`t1_table`	NONE	YES	root@localhost	DEFINER	latin1	latin1_swedish_ci	MERGE	
+def	test	t1_view2	select `test`.`t1_table`.`f1` AS `f1` from `test`.`t1_table`	NONE	NO	root@localhost	DEFINER	latin1	latin1_swedish_ci	TEMPTABLE	
 DROP VIEW test.t1_view1;
 DROP VIEW test.t1_view2;
 SELECT table_name,definer FROM information_schema.views

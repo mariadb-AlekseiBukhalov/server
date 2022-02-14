@@ -12754,10 +12754,12 @@ order_clause:
           {
             thd->where= THD_WHERE::ORDER_CLAUSE;
             thd->lex->clause_winfuncs.empty();
+            Select->parsing_place= IN_ORDER_BY;
           }
           order_list
           {
             $$= $4;
+            Select->parsing_place= NO_MATTER;
           }
          ;
 

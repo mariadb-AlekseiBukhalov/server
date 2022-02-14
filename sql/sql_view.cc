@@ -40,6 +40,8 @@
 #include "wsrep_mysqld.h"
 
 const LEX_CSTRING view_type= { STRING_WITH_LEN("VIEW") };
+const LEX_CSTRING view_create_option_alias=
+  { STRING_WITH_LEN("EXTENDED_ALIASES") };
 
 static int mysql_register_view(THD *thd, DDL_LOG_STATE *ddl_log_state,
                                TABLE_LIST *view, enum_view_create_mode mode,
@@ -818,7 +820,7 @@ static void make_view_filename(LEX_CSTRING *dir, char *dir_buff,
 }
 
 /* number of required parameters for making view */
-static const int required_view_parameters= 15;
+static const int required_view_parameters= 16;
 
 /*
   table of VIEW .frm field descriptors
@@ -869,6 +871,9 @@ static File_option view_parameters[]=
  {{(char*) STRING_WITH_LEN("view_body_utf8")},
   my_offsetof(TABLE_LIST, view_body_utf8),
   FILE_OPTIONS_ESTRING},
+ {{ STRING_WITH_LEN("create_options") },
+    my_offsetof(TABLE_LIST, view_create_options),
+    FILE_OPTIONS_STRLIST},
  {{ STRING_WITH_LEN("mariadb-version")},
   my_offsetof(TABLE_LIST, mariadb_version),
   FILE_OPTIONS_ULONGLONG},
@@ -1219,6 +1224,13 @@ loop_out:
     goto err;
   }
 
+  if (lex->nm_resolve_mode == NMRESOLVE_ALIAS)
+  {
+    DBUG_ASSERT(view->view_create_options.elements == 0);
+    view->view_create_options.
+      push_back((LEX_CSTRING *)&view_create_option_alias);
+  }
+
   ddl_log_create_view(ddl_log_state, &path, old_view_exists ?
                       DDL_CREATE_VIEW_PHASE_DELETE_VIEW_COPY :
                       DDL_CREATE_VIEW_PHASE_NO_OLD_VIEW);
@@ -1286,6 +1298,25 @@ bool mariadb_view_version_get(TABLE_SHARE *share)
 
   return FALSE;
 }
+
+
+bool TABLE_LIST::is_view_in_aliases_in_WHERE_mode()
+{
+  if (view_create_options.elements > 0)
+  {
+    LEX_CSTRING *opt;
+    List_iterator_fast<LEX_CSTRING> it(view_create_options);
+    while ((opt= it++))
+    {
+      if (opt->length == view_create_option_alias.length &&
+          strncmp(view_create_option_alias.str, opt->str,
+                  view_create_option_alias.length) == 0)
+        return TRUE;
+    }
+  }
+  return FALSE;
+}
+
 
 /**
   read VIEW .frm and create structures
@@ -1499,6 +1530,10 @@ bool mysql_make_view(THD *thd, TABLE_SHARE *share, TABLE_LIST *table,
       goto end;
 
     lex_start(thd);
+
+    if (table->is_view_in_aliases_in_WHERE_mode())
+      lex->nm_resolve_mode= NMRESOLVE_ALIAS;
+
     lex->stmt_lex= old_lex;
 
     Sql_mode_save_for_frm_handling sql_mode_save(thd);
@@ -2343,6 +2378,7 @@ mysql_rename_view(THD *thd,
     view_def.reset();
     view_def.hr_timestamp.str= view_def.timestamp_buffer;
     view_def.view_suid= TRUE;
+    view_def.view_create_options.empty();
 
     /* get view definition and source */
     if (parser->parse((uchar*)&view_def, thd->mem_root, view_parameters,

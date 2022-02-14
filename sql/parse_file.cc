@@ -900,6 +900,13 @@ File_parser::parse(uchar* base, MEM_ROOT *mem_root,
           list= (List<LEX_STRING>*)(base + parameter->offset);
 
 	  list->empty();
+
+          if (*(ptr) == '\n') // empty list
+          {
+            ptr++;
+            break;
+          }
+
 	  // list parsing
 	  while (ptr < end)
 	  {

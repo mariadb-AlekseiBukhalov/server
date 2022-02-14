@@ -115,6 +115,12 @@ enum enum_view_suid
   VIEW_SUID_DEFAULT= 2
 };
 
+enum enum_nmresolve
+{
+  NMRESOLVE_NONE= 0,
+  NMRESOLVE_NORMAL= 1,
+  NMRESOLVE_ALIAS= 2
+};
 
 enum plsql_cursor_attr_t
 {
@@ -1008,6 +1014,8 @@ public:
   Item *cond_pushed_into_where;  /* condition pushed into WHERE  */
   Item *cond_pushed_into_having; /* condition pushed into HAVING */
   Item *where_cond_after_prepare;
+  /* Alias cyclic check control block */
+  dependence_tracker dep_check;
 
   /*
     nest_levels are local to the query or VIEW,
@@ -3452,6 +3460,8 @@ public:
   uint8 derived_tables;
   uint8 context_analysis_only;
   uint8 lex_options; // see OPTION_LEX_*
+
+  enum_nmresolve nm_resolve_mode;
 
   Alter_info alter_info;
   Lex_prepared_stmt prepared_stmt;

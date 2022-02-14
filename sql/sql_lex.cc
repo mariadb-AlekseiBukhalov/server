@@ -1343,6 +1343,8 @@ void LEX::start(THD *thd_arg)
   has_returning_list= false;
 
   memset(&trg_chistics, 0, sizeof(trg_chistics));
+  nm_resolve_mode= NMRESOLVE_NONE;
+
   DBUG_VOID_RETURN;
 }
 
@@ -3161,6 +3163,12 @@ void st_select_lex::init_select()
   type= 0;
   db= null_clex_str;
   having= 0;
+
+  dep_check.dependence_array= 0;
+  dep_check.dependence_array_num= 0;
+  dep_check.current_select_list_fix= 0;
+  dep_check.current_select_list_num= UINT_MAX;
+
   table_join_options= 0;
   select_lock= select_lock_type::NONE;
   in_sum_expr= with_wild= 0;

@@ -336,6 +336,7 @@ enum enum_parsing_place
   AFTER_LIST,
   FOR_LOOP_BOUND,
   IN_RETURNING,
+  SUM_FUNCTION,
   PARSING_PLACE_SIZE /* always should be the last */
 };
 

@@ -479,8 +479,8 @@ set sql_mode=2147483648*2*2*2;
 select @@sql_mode;
 @@sql_mode
 TIME_ROUND_FRACTIONAL
-set sql_mode=2147483648*2*2*2*2;
-ERROR 42000: Variable 'sql_mode' can't be set to the value of '34359738368'
+set sql_mode=2147483648*2*2*2*2*2;
+ERROR 42000: Variable 'sql_mode' can't be set to the value of '68719476736'
 select @@sql_mode;
 @@sql_mode
 TIME_ROUND_FRACTIONAL

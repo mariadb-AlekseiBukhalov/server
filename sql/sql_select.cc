@@ -739,8 +739,17 @@ fix_inner_refs(THD *thd, List<Item> &all_fields, SELECT_LEX *select,
   for (ORDER *group= select->join->group_list; group;  group= group->next)
   {
     (*group->item)->walk(&Item::check_inner_refs_processor, TRUE, &ref_it);
-  } 
-    
+    while ((ref= ref_it++))
+    {
+      if ((*group->item) == *(ref->ref))
+      {
+        if (ref->from_place() == IN_WHERE)
+          ref->found_in_group_by= TRUE;
+      }
+    }
+    ref_it.rewind();
+  }
+
   while ((ref= ref_it++))
   {
     bool direct_ref= false;
@@ -1586,8 +1595,16 @@ JOIN::prepare(TABLE_LIST *tables_init, COND *conds_init, uint og_num,
     }
   }
 
+  if ((select_lex->parent_lex->nm_resolve_mode == NMRESOLVE_ALIAS ||
+       (select_lex->parent_lex->nm_resolve_mode == NMRESOLVE_NONE &&
+        thd->variables.sql_mode & MODE_EXTENDED_ALIASES)) &&
+      resolve_aliases(thd, fields_list, &conds,
+                      &select_lex->dep_check))
+    DBUG_RETURN(-1);
+
   if (setup_fields(thd, ref_ptrs, fields_list, select_lex->item_list_usage,
-                   &all_fields, &select_lex->pre_fix, 1))
+                   &all_fields, &select_lex->pre_fix, 1,
+                   THD_WHERE::DEFAULT_WHERE, &select_lex->dep_check))
     DBUG_RETURN(-1);
   thd->lex->current_select->context_analysis_place= save_place;
 

@@ -2754,6 +2754,11 @@ static int show_create_view(THD *thd, TABLE_LIST *table, String *buff)
     }
   }
 
+  if (!foreign_db_mode && table->is_view_in_aliases_in_WHERE_mode())
+  {
+     buff->append(
+       STRING_WITH_LEN("SET STATEMENT SQL_MODE='EXTENDED_ALIASES' FOR "));
+  }
   buff->append(STRING_WITH_LEN("CREATE "));
   if (!foreign_db_mode)
   {
@@ -7622,6 +7627,10 @@ static int get_schema_views_record(THD *thd, TABLE_LIST *tables,
     table->field[9]->store(&tables->view_creation_ctx->
                            get_connection_cl()->coll_name, cs);
     table->field[10]->store(view_algorithm(tables), cs);
+    if (tables->is_view_in_aliases_in_WHERE_mode())
+      table->field[11]->store({ STRING_WITH_LEN("EXTENDED_ALIASES") }, cs);
+    else
+      table->field[11]->store({ STRING_WITH_LEN("") }, cs);
 
     if (schema_table_store_record(thd, table))
       DBUG_RETURN(1);
@@ -10233,6 +10242,7 @@ ST_FIELD_INFO view_fields_info[]=
   Column("CHARACTER_SET_CLIENT", CSName(),   NOT_NULL, OPEN_FRM_ONLY),
   Column("COLLATION_CONNECTION", CLName(),   NOT_NULL, OPEN_FRM_ONLY),
   Column("ALGORITHM",            Varchar(10),NOT_NULL, OPEN_FRM_ONLY),
+  Column("CREATE_OPTIONS",      Varchar(100),NOT_NULL, OPEN_FRM_ONLY),
   CEnd()
 };
 

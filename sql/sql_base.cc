@@ -7014,7 +7014,7 @@ find_field_in_tables(THD *thd, Item_ident *item,
           If the field was an outer referencee, mark all selects using this
           sub query as dependent on the outer query
         */
-        if (!all_merged && current_sel != last_select)
+        if (!all_merged && current_sel != last_select && ref)
         {
           mark_select_range_as_dependent(thd, last_select, current_sel,
                                          found, *ref, item, true);
@@ -8196,6 +8196,101 @@ int setup_wild(THD *thd, TABLE_LIST *tables, List<Item> &fields,
   DBUG_RETURN(0);
 }
 
+enum check_dep_loops_res {LOOP_OK, LOOP_DETECTED, LOOP_ERROR};
+
+static enum check_dep_loops_res check_dep_loops(THD* thd,
+                                                Dependence_list **base,
+                                                uint base_idx,
+                                                uint check_idx)
+{
+  if (base[check_idx] == NULL)
+    return LOOP_OK;
+  void *i;
+  if (check_stack_overrun(thd, STACK_MIN_SIZE, (unsigned char*)&i))
+    return LOOP_ERROR;				// Fatal error flag is set!
+  for (Dependence_list *c= base[check_idx]; c; c=c->next)
+  {
+    if (base_idx == c->index)
+      return LOOP_DETECTED;
+    enum check_dep_loops_res res= check_dep_loops(thd, base, base_idx,
+                                                  c->index);
+    if (res != LOOP_OK)
+      return res;
+  }
+  return LOOP_OK;
+}
+
+
+bool check_dependence_loops(THD *thd, Dependence_list **base, uint base_idx,
+                            uint check_idx, const char * name)
+{
+  enum check_dep_loops_res res= check_dep_loops(thd, base, base_idx, check_idx);
+  if (res == LOOP_DETECTED)
+    my_error(ER_ILLEGAL_REFERENCE, MYF(0),
+             name, "cyclic reference");
+  if (res != LOOP_OK)
+    return TRUE;
+  return FALSE;
+}
+
+
+bool resolve_aliases(THD *thd,  List<Item> &fields, Item **conds,
+                     dependence_tracker *dep_check)
+{
+  List_iterator<Item> it(fields);
+  uint num= fields.elements;
+  DBUG_ENTER("resolve_aliases");
+
+  // Process SELECT-list
+
+  if (dep_check->dependence_array_num == UINT_MAX)
+    DBUG_RETURN(FALSE); // pre-resolving is done
+
+  Dependence_list **ctrl= dep_check->dependence_array= (Dependence_list **)
+      alloc_root(thd->mem_root, num * sizeof(Dependence_list *));
+  dep_check->dependence_array_num= num;
+  if (!ctrl)
+    DBUG_RETURN(1);
+  for (uint i= 0;  i < num; i++)
+  {
+    ctrl[i]= NULL;
+  }
+
+  for (uint i= 0; i < num; i++)
+  {
+    Item *item= it++;
+    dep_check->current_select_list_fix= it.ref();
+    dep_check->current_select_list_num= i;
+
+    if (item->recursive_transform(thd, &Item::resolve_aliases, it.ref(),
+                                  (uchar*)dep_check) ==
+        ERROR_AND_ABORT)
+      DBUG_RETURN(1);
+  }
+  dep_check->current_select_list_fix= NULL;
+  dep_check->current_select_list_num= UINT_MAX;
+
+  // check loops
+  it.rewind();
+  for (uint i= 0; i < num; i++)
+  {
+    Item *item= it++;
+    if (check_dependence_loops(thd, ctrl, i, i, item->name.str))
+      DBUG_RETURN(1);
+  }
+
+  // Process conditions
+  if (conds[0])
+  {
+    if (conds[0]->recursive_transform(thd, &Item::resolve_aliases, conds,
+                                      (uchar*)dep_check) ==
+        ERROR_AND_ABORT)
+      DBUG_RETURN(1);
+  }
+  dep_check->dependence_array_num= UINT_MAX; // signal that loop check is done
+  DBUG_RETURN(0);
+}
+
 /****************************************************************************
 ** Check that all given fields exists and fill struct with current data
 ****************************************************************************/
@@ -8203,10 +8298,12 @@ int setup_wild(THD *thd, TABLE_LIST *tables, List<Item> &fields,
 bool setup_fields(THD *thd, Ref_ptr_array ref_pointer_array,
                   List<Item> &fields, enum_column_usage column_usage,
                   List<Item> *sum_func_list, List<Item> *pre_fix,
-                  bool allow_sum_func, THD_WHERE where)
+                  bool allow_sum_func, THD_WHERE where,
+                  dependence_tracker *dep_check)
 {
   Item *item;
   LEX * const lex= thd->lex;
+  dependence_tracker unused= {NULL, 0, NULL, UINT_MAX};
   enum_column_usage saved_column_usage= thd->column_usage;
   nesting_map save_allow_sum_func= lex->allow_sum_func;
   List_iterator<Item> it(fields);
@@ -8214,6 +8311,8 @@ bool setup_fields(THD *thd, Ref_ptr_array ref_pointer_array,
   bool make_pre_fix= (pre_fix && (pre_fix->elements == 0));
   DBUG_ENTER("setup_fields");
   DBUG_PRINT("enter", ("ref_pointer_array: %p", ref_pointer_array.array()));
+  if (!dep_check)
+    dep_check= &unused;
 
   thd->column_usage= column_usage;
   DBUG_PRINT("info", ("thd->column_usage: %d", thd->column_usage));
@@ -8268,8 +8367,11 @@ bool setup_fields(THD *thd, Ref_ptr_array ref_pointer_array,
 
   Ref_ptr_array ref= ref_pointer_array;
   lex->current_select->cur_pos_in_select_list= 0;
-  while ((item= it++))
+  for (uint i= 0; (item= it++); i++)
   {
+    dep_check->current_select_list_fix= it.ref();
+    dep_check->current_select_list_num= i;
+
     if (make_pre_fix)
     {
       DBUG_EXECUTE_IF("assert_no_alloc_pre_fix", { DBUG_ASSERT(0); });
@@ -8320,6 +8422,8 @@ bool setup_fields(THD *thd, Ref_ptr_array ref_pointer_array,
     lex->current_select->cur_pos_in_select_list++;
     lex->current_select->rownum_in_field_list |= item->with_rownum_func();
   }
+  dep_check->current_select_list_fix= NULL;
+  dep_check->current_select_list_num= UINT_MAX;
   lex->current_select->is_item_list_lookup= save_is_item_list_lookup;
   lex->current_select->cur_pos_in_select_list= UNDEF_POS;
 

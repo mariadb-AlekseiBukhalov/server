@@ -6070,6 +6070,7 @@ TABLE_LIST::TABLE_LIST(THD *thd,
   ignore_leaves= table_options & TL_OPTION_IGNORE_LEAVES;
   sequence= table_options & TL_OPTION_SEQUENCE;
   derived= table_ident->sel;
+  view_create_options.empty();
 
   if (!table_ident->sel && info_schema)
   {

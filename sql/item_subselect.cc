@@ -122,7 +122,7 @@ void Item_subselect::init(st_select_lex *select_lex,
       they can access original table fields
     */
     parsing_place= (outer_select->in_sum_expr ?
-                    NO_MATTER :
+                    SUM_FUNCTION :
                     outer_select->parsing_place);
     if (unit->is_unit_op() &&
         (unit->first_select()->next_select() || unit->fake_select_lex))
@@ -132,6 +132,7 @@ void Item_subselect::init(st_select_lex *select_lex,
       engine= new (thd->mem_root)
         subselect_single_select_engine(select_lex, result, this);
   }
+  DBUG_ASSERT(parsing_place != NO_MATTER || unit->thd->lex->sql_command != SQLCOM_SELECT);
   DBUG_PRINT("info", ("engine: %p", engine));
   DBUG_VOID_RETURN;
 }

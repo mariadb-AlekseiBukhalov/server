@@ -194,7 +194,12 @@ int setup_returning_fields(THD* thd, TABLE_LIST* table_list);
 bool setup_fields(THD *thd, Ref_ptr_array ref_pointer_array,
                   List<Item> &item, enum_column_usage column_usage,
                   List<Item> *sum_func_list, List<Item> *pre_fix,
-                  bool allow_sum_func, THD_WHERE where= THD_WHERE::DEFAULT_WHERE);
+                  bool allow_sum_func,
+                  THD_WHERE where= THD_WHERE::DEFAULT_WHERE,
+                  dependence_tracker *dep_check= NULL);
+bool resolve_aliases(THD*, List<Item> &, Item **, dependence_tracker *);
+bool check_dependence_loops(THD *thd, Dependence_list **base, uint base_idx,
+                            uint check_idx, const char * name);
 void unfix_fields(List<Item> &items);
 bool fill_record(THD * thd, TABLE *table_arg, List<Item> &fields,
                  List<Item> &values, bool ignore_errors, bool update);

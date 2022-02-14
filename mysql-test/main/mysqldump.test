@@ -2872,6 +2872,7 @@ drop sequence d.s1, d.s2, d.s3, d.s4;
 drop database d;
 drop database d2;
 --enable_ps2_protocol
+use test;
 
 --echo #
 --echo # MDEV-20070
@@ -2993,6 +2994,21 @@ DROP DATABASE test1;
 --remove_file $MYSQLTEST_VARDIR/tmp/dumptest1.sql
 
 --echo # End of 10.3 tests
+
+--echo #
+--echo # dump of view in EXTENDED_ALIASES
+--echo #
+
+use test;
+set @save_sql_mode= @@sql_mode;
+set sql_mode="EXTENDED_ALIASES";
+create table t1(a int);
+create view v1 as select a, a+1 as a  from t1;
+set @@sql_mode= @save_sql_mode;
+--exec $MYSQL_DUMP --default-character-set=utf8mb4 --skip-comments test
+drop view v1;
+drop table t1;
+--echo #
 
 --echo #
 --echo # MDEV-31092 mysqldump --force doesn't ignore error as it should

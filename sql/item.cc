@@ -40,6 +40,7 @@
 #include "sql_expression_cache.h"
 #include "sql_lex.h"                   // empty_clex_str
 #include "my_json_writer.h"            // for dbug_print_opt_trace()
+#include "sql_parse.h"                 // check_stack_overrun
 
 const String my_null_string("NULL", 4, default_charset_info);
 const String my_default_string("DEFAULT", 7, default_charset_info);
@@ -768,6 +769,200 @@ bool Item_ident::collect_outer_ref_processor(void *param)
   return FALSE;
 }
 
+
+/**
+  Create Item_ref_alias based on this Item and put it to the reference
+
+  @param thd             thread handle
+  @param found_ref       reference of the item
+  @param outer_context   for local resolving - NULL otherwise outer context
+  @param reference       pointer where to put the new item
+
+  @retval TRUE  Error
+  @retval FALSE OK
+
+*/
+
+bool
+Item_ident::create_ref_alias(THD *thd, Item **found_ref,
+                             Name_resolution_context *outer_context,
+                             Item **reference, enum enum_parsing_place place,
+                             uint num_in_list)
+{
+
+  Query_arena backup;
+  Query_arena *arena= thd->activate_stmt_arena_if_needed(&backup);
+
+  Item_ref_alias *rf=
+    new(thd->mem_root) Item_ref_alias(thd, found_ref, context,
+                                      outer_context, place, num_in_list);
+
+  if (arena)
+    thd->restore_active_arena(arena, &backup);
+
+  /*
+    Mark lex only if we really resolved an alias
+  */
+  context->select_lex->parent_lex->nm_resolve_mode= NMRESOLVE_ALIAS;
+
+  if (!rf)
+    return TRUE;
+  rf->name= name;
+  if (is_explicit_name())
+    rf->base_flags|= item_base_t::IS_EXPLICIT_NAME;
+  (*reference)= rf;
+  return FALSE;
+}
+
+
+/**
+  Resolve aliases with loop check data prepare if needed
+
+  @param thd             thread handle
+  @param reference       resolving Item refrence
+  @param curr            current resolving expression descriptor
+  @param all_dep         array of all descriptors or NULL if it is not
+                         SELECT-list
+
+  @retval TRUE  Error
+  @retval FALSE OK
+*/
+
+transform_result
+Item_ident::resolve_aliases(THD *thd, Item **reference, uchar *argument)
+{
+  dependence_tracker *curr_dep_check= (dependence_tracker *) argument;
+  DBUG_ENTER("Item_ident::resolve_aliases");
+  if (context == 0 || // createed for a certain field of table
+      !field_name.length || // alas has field name
+      ((db_name.str && db_name.str[0]) ||
+       (table_name.str && table_name.str[0])))
+    DBUG_RETURN(OK_AND_CONTINUE); // alias can not have database or table
+
+  Dependence_list **all_dep;
+  uint curr;
+  if (curr_dep_check->current_select_list_num == UINT_MAX)
+  {
+    all_dep= NULL;
+    curr= 0;
+  }
+  else
+  {
+    all_dep= curr_dep_check->dependence_array;
+    curr= curr_dep_check->current_select_list_num;
+  }
+  List_iterator<Item> it(context->select_lex->item_list);
+  Item *item, **found_ref= NULL;
+  uint found_index= 0;
+
+  for(uint i= 0; (item= it++); i++)
+  {
+    if (!item->is_explicit_name() || // no explicit name == no alias
+        (all_dep && (i == curr))) // do not resolve self-references
+      continue;
+    if (item->name.length == field_name.length &&
+        strncmp(item->name.str, field_name.str, field_name.length) == 0)
+    {
+      if (found_ref)
+      {
+        // duplicates check
+        my_error(ER_NON_UNIQ_ERROR, MYF(0),
+                field_name.str, "SELECT-list");
+        DBUG_RETURN (ERROR_AND_ABORT);
+      }
+      found_ref= it.ref();
+      found_index= i;
+    }
+  }
+  if (found_ref)
+  {
+    if (create_ref_alias(thd, found_ref, NULL, reference,
+                         NO_MATTER, found_index))
+      DBUG_RETURN(ERROR_AND_ABORT);
+    if (all_dep) // infor for loop detection
+      if (add_to_dependence(thd, all_dep + curr, found_index))
+        DBUG_RETURN(ERROR_AND_ABORT);
+    DBUG_RETURN(OK_AND_CONTINUE);
+  }
+
+  // check outer references
+  Name_resolution_context *cnt= context, *last_checked;
+  for(;;)
+  {
+
+    if (!cnt->outer_context)
+      break; // there is no outer context, nothing to check
+
+    Field *fld= find_field_in_tables(thd, this,
+                                     cnt->first_name_resolution_table,
+                                     cnt->last_name_resolution_table,
+                                     cnt->ignored_tables,
+		                     NULL, IGNORE_ERRORS,
+                                     FALSE, FALSE);
+    if (fld != not_found_field)
+      break; // the field found or an error happend (fix_field will handle it)
+
+    last_checked= cnt;
+    cnt= cnt->outer_context;
+
+    if (!cnt)
+      break; // top of name resolution scope is reached
+
+    // check outer context
+    Item **self_ref= cnt->select_lex->dep_check.current_select_list_fix;
+    List_iterator<Item> it(cnt->select_lex->item_list);
+    for(uint i= 0; (item= it++); i++)
+    {
+      if (!item->is_explicit_name() || // no explicit name == no alias
+          it.ref() == self_ref)        // skip self reference
+        continue;
+      if (item->name.length == field_name.length &&
+          strncmp(item->name.str, field_name.str, field_name.length) == 0)
+      {
+        if (found_ref)
+        {
+          // duplicates check
+          my_error(ER_NON_UNIQ_ERROR, MYF(0),
+                  field_name.str, "SELECT-list");
+          DBUG_RETURN(ERROR_AND_ABORT);
+        }
+        found_ref= it.ref();
+        found_index= i;
+      }
+    }
+    if (found_ref)
+    {
+      if (create_ref_alias(thd, found_ref, cnt, reference,
+                           last_checked->select_lex->master_unit()->
+                             item->place(), found_index))
+        DBUG_RETURN(ERROR_AND_ABORT);
+
+      dependence_tracker *dep_check= &cnt->select_lex->dep_check;
+      if (dep_check->current_select_list_num != UINT_MAX)
+      {
+        // can not be more then maximum
+        DBUG_ASSERT(dep_check->current_select_list_num <
+                    dep_check->dependence_array_num);
+        // can not be self pointing
+        DBUG_ASSERT(found_index !=
+                    dep_check->dependence_array_num);
+        // the array shoud be allocated already
+        Dependence_list **base= dep_check->dependence_array;
+        if (add_to_dependence(thd, base + dep_check->current_select_list_num,
+                              found_index))
+          DBUG_RETURN(ERROR_AND_ABORT);
+        if (check_dependence_loops(thd, base,
+                                   dep_check->current_select_list_num,
+                                   found_index,
+                                   name.str))
+          DBUG_RETURN(ERROR_AND_ABORT);
+      }
+      DBUG_RETURN(OK_AND_CONTINUE);
+    }
+  }
+
+  DBUG_RETURN(OK_AND_CONTINUE);
+}
 
 /**
   Store the pointer to this item field into a list if not already there.
@@ -2918,6 +3113,7 @@ Item_func_or_sum::recursive_transform(THD *thd,
        return ERROR_AND_ABORT;
   }
 }
+
 
 Item_sp::Item_sp(THD *thd, Name_resolution_context *context_arg,
                  sp_name *name_arg) :
@@ -8800,6 +8996,115 @@ error:
 }
 
 
+bool Item_ref_alias::fix_fields(THD *thd, Item **reference)
+{
+  if (outer_finding)
+  {
+    if (!(*ref)->fixed())
+    {
+      //TODO: get read of using current_select
+      SELECT_LEX *save_current= thd->lex->current_select;
+      Item ** save_current_select_list_fix=
+        outer_finding->select_lex->dep_check.current_select_list_fix;
+      uint save_current_select_list_num=
+        outer_finding->select_lex->dep_check.current_select_list_num;
+
+      thd->lex->current_select= outer_finding->select_lex;
+      outer_finding->select_lex->dep_check.current_select_list_fix=
+        ref;
+      outer_finding->select_lex->dep_check.current_select_list_num=
+        num_in_list;
+
+      if ((*ref)->fix_fields(thd, ref) || (*ref)->check_cols(1))
+        return TRUE;
+
+      thd->lex->current_select= save_current;
+      outer_finding->select_lex->dep_check.current_select_list_fix=
+        save_current_select_list_fix;
+      outer_finding->select_lex->dep_check.current_select_list_num=
+        save_current_select_list_num;
+    }
+
+    Item **outer_ref= ref;
+    if (with_sum_func() || with_window_func())
+    {
+      if (place == SELECT_LIST || place == IN_HAVING ||
+          place == IN_ORDER_BY )
+      {
+        outer_ref= &outer_finding->select_lex->ref_pointer_array[num_in_list];
+        for (Name_resolution_context *cnt= context;
+             cnt && cnt != outer_finding;
+             cnt= cnt->outer_context)
+          cnt->select_lex->master_unit()->item->with_flags|=
+            item_with_t::SUM_FUNC;
+      }
+      else
+        goto agg_error;
+    }
+    // for grouping SELECTs use reference via ref_pointer_array
+    if (outer_finding->select_lex->with_sum_func ||
+        outer_finding->select_lex->group_list.elements)
+      outer_ref= &outer_finding->select_lex->ref_pointer_array[num_in_list];
+
+    DBUG_ASSERT(outer_ref[0] == ref[0]);
+
+    // It is outer resolved field
+    Item_outer_ref *rf= new(thd->mem_root) Item_outer_ref(thd, context,
+                                                          outer_ref,
+                                                          {0, 0}, name,
+                                                          true, place);
+    if (!rf)
+      return TRUE;
+    rf->outer_ref= *ref;
+    thd->change_item_tree(reference, rf);
+    outer_finding->select_lex->inner_refs_list.push_back(rf, thd->mem_root);
+    rf->in_sum_func= thd->lex->in_sum_func;
+
+    mark_as_dependent(thd, outer_finding->select_lex, context->select_lex,
+                      this, rf, FALSE);
+
+    (*reference)= rf;
+
+    return FALSE;
+  }
+
+  // it is probably forard reference, but loops was checked
+  if (!(*ref)->fixed())
+  {
+    Item ** save_current_select_list_fix=
+      context->select_lex->dep_check.current_select_list_fix;
+    uint save_current_select_list_num=
+      context->select_lex->dep_check.current_select_list_num;
+
+    context->select_lex->dep_check.current_select_list_fix=
+      ref;
+    context->select_lex->dep_check.current_select_list_num=
+      num_in_list;
+
+    if ((*ref)->fix_fields(thd, ref) || (*ref)->check_cols(1))
+      return TRUE;
+
+    context->select_lex->dep_check.current_select_list_fix=
+      save_current_select_list_fix;
+    context->select_lex->dep_check.current_select_list_num=
+      save_current_select_list_num;
+  }
+
+  if ((*ref)->with_sum_func() || (*ref)->with_window_func())
+    goto agg_error;
+
+  set_properties();
+  return FALSE;
+
+agg_error:
+    my_error(ER_ILLEGAL_REFERENCE, MYF(0),
+             name.str,"reference to group or window function");
+
+    context->process_error(thd);
+    return TRUE;
+}
+
+
 void Item_ref::set_properties()
 {
   Type_std_attributes::set(*ref);
@@ -11738,4 +12043,14 @@ bool ignored_list_includes_table(ignored_tables_list_t list, TABLE_LIST *tbl)
       return true;
   }
   return false;
+}
+
+bool add_to_dependence(THD *thd, Dependence_list **list, uint idx)
+{
+  Dependence_list *node= new (thd->mem_root) Dependence_list();
+  if (!node)
+    return TRUE;
+  node->index= idx;
+  node->add_to(list);
+  return FALSE;
 }

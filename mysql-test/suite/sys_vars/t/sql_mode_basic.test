@@ -313,11 +313,11 @@ SELECT @@global.sql_mode;
 SET @@global.sql_mode = 17179869184;
 SELECT @@global.sql_mode;
 
-SET @@global.sql_mode = 34359738367;
+SET @@global.sql_mode = 34359738368*2-1;
 SELECT @@global.sql_mode;
 
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@global.sql_mode = 34359738368;
+SET @@global.sql_mode = 34359738368*2;
 
 # use of decimal values
 

@@ -1,0 +1,500 @@
+
+set @save_sql_mode= @@sql_mode;
+
+--echo #
+--echo # basic tests of resolving
+--echo #
+create table t1 (a int, b int);
+
+insert into t1 values (1,1), (5,5), (10, 10);
+
+--error ER_BAD_FIELD_ERROR
+select a+b as c from t1 where c > 5;
+
+set sql_mode="EXTENDED_ALIASES";
+
+--echo # field
+select a as c from t1 where c > 5;
+
+--echo # expression
+select a+b as c from t1 where c > 10;
+
+select a+b as c, c*2 as d from t1 where c <= 10;
+
+select a+b as c, c*2 as d from t1 where c <= 10 and d < 20;
+
+--echo # stored procedures
+prepare stmt1 from
+  "select a+b as c, c*2 as d from t1 where c <= 10 and d < 20";
+prepare stmt2 from
+  "select a as c from t1 where c > 5";
+
+execute stmt1;
+execute stmt1;
+
+execute stmt2;
+execute stmt2;
+
+
+--echo # prepared statements keep the mode
+set sql_mode="";
+execute stmt1;
+execute stmt2;
+
+set sql_mode="EXTENDED_ALIASES";
+execute stmt1;
+execute stmt1;
+
+execute stmt2;
+execute stmt2;
+
+
+--echo # priority have alias
+select a+a as b from t1 where b > 10;
+explain extended
+select a+a as b from t1 where b > 10;
+create view v1 as select a+a as b from t1 where b > 10;
+select * from v1;
+show create view v1;
+
+drop view v1;
+
+set sql_mode="";
+
+SET STATEMENT SQL_MODE='EXTENDED_ALIASES' FOR CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` + `t1`.`a` AS `b` from `t1` where `b` > 10;
+select * from v1;
+show create view v1;
+
+drop view v1;
+drop table t1;
+
+set @@sql_mode= @save_sql_mode;
+
+--echo #
+--echo # resolving in ON
+--echo #
+
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+
+create table t2 (d int, e int);
+insert into t2 values (1,2), (5,5), (10, 10);
+
+set sql_mode="EXTENDED_ALIASES";
+
+--echo #
+--echo # ON is not supported
+--echo #
+--error ER_BAD_FIELD_ERROR
+select a+b as c, a,b,c,d from t1 join t2 on c=t2.e;
+
+drop table t1, t2;
+set @@sql_mode= @save_sql_mode;
+
+--echo #
+--echo # VIEW test
+--echo #
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+--echo # expression
+create view v1 as select a+b as c from t1 where c > 10;
+--echo # field
+create view v2 as select a as c from t1 where c > 5;
+
+select * from v1;
+show create view v1;
+select * from v2;
+show create view v2;
+
+set sql_mode="";
+select * from v1;
+select * from v2;
+
+set sql_mode="EXTENDED_ALIASES";
+prepare stmt1 from
+  "select * from v1";
+prepare stmt2 from
+  "select * from v2";
+
+
+execute stmt1;
+execute stmt1;
+
+execute stmt2;
+execute stmt2;
+
+
+--echo # views are not dependent on the mode after creation
+set sql_mode="";
+execute stmt1;
+execute stmt1;
+execute stmt2;
+execute stmt2;
+
+set sql_mode="EXTENDED_ALIASES";
+execute stmt1;
+execute stmt1;
+
+drop view v1, v2;
+drop table t1;
+
+
+--echo #
+--echo # PROCEDURES test
+--echo #
+
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+--echo # expression
+create procedure p1() select a+b as c from t1 where c > 10;
+call p1();
+call p1();
+set sql_mode="";
+call p1();
+call p1();
+set sql_mode="EXTENDED_ALIASES";
+call p1();
+call p1();
+
+
+drop procedure p1;
+drop table t1;
+
+--echo #
+--echo # aggregate functions test
+--echo #
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+
+--error ER_ILLEGAL_REFERENCE
+select sum(a) as c from t1 where c > 10;
+
+drop table t1;
+
+--echo #
+--echo #
+--echo # FORWARD resolving tests
+--echo #
+--echo #
+
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+create table t3 (d int);
+insert into t3 values (1), (2), (6);
+
+set sql_mode="EXTENDED_ALIASES";
+
+--error ER_NON_UNIQ_ERROR
+select a, t1.a + 1 as a, t1.a + 1 as a from t1;
+--error ER_ILLEGAL_REFERENCE
+select a as b, b as a from t1;
+
+--echo #
+--echo # forward reference (first a+1) and
+--echo # don't resolve inside alias (second a+1)
+--echo #
+select a+1, a + 1 as a, t1.a from t1;
+prepare stmt from "select a+1, a + 1 as a, t1.a from t1";
+execute stmt;
+execute stmt;
+
+--echo #
+--echo # WHERE reference expression
+--echo #
+select a + 1 as a, t1.a from t1 where a = 6;
+prepare stmt from "select a + 1 as a, t1.a from t1 where a = 6";
+execute stmt;
+execute stmt;
+
+--echo #
+--echo # WHERE reference no expression
+--echo #
+select a - 1 as a, t1.a from t1 where a;
+prepare stmt from "select a - 1 as a, t1.a from t1 where a";
+execute stmt;
+execute stmt;
+
+--echo #
+--echo # inside aggregate and forward reference
+--echo #
+select max(a), a + 1 as a, t1.a from t1;
+prepare stmt from "select max(a), a + 1 as a, t1.a from t1";
+execute stmt;
+execute stmt;
+
+--echo #
+--echo # reference on aggregate from SELECT LIST
+--echo #
+--error ER_ILLEGAL_REFERENCE
+select a, max(a + 1) as a, t1.a from t1;
+
+--echo #
+--echo # reference on aggregate from SELECT LIST
+--echo #
+--error ER_ILLEGAL_REFERENCE
+select max(a + 1) as a, t1.a from t1 where a > 2;
+
+--echo #
+--echo # normal outer field resolution still works
+--echo #
+select a from t1 where (select 1 from t3 where a=d);
+
+--echo #
+--echo # outer alias reference (forward)
+--echo #
+explain extended
+select (select 1 from t3 where a=d), a+1 as a from t1;
+select (select 1 from t3 where a=d), a+1 as a from t1;
+prepare stmt from "select (select 1 from t3 where a=d), a+1 as a from t1";
+execute stmt;
+execute stmt;
+
+--echo #
+--echo # outer reference from WHERE
+--echo #
+explain extended
+select a+1 as a from t1 where (select 1 from t3 where a=d);
+select a+1 as a from t1 where (select 1 from t3 where a=d);
+prepare stmt from "select a+1 as a from t1 where (select 1 from t3 where a=d)";
+execute stmt;
+execute stmt;
+
+--echo #
+--echo # do not resolve outer alias in the same expression
+--echo #
+explain extended
+select (select 1 from t3 where a=d) as a, t1.a from t1;
+select (select 1 from t3 where a=d) as a, t1.a from t1;
+prepare stmt from "select (select 1 from t3 where a=d) as a, t1.a from t1";
+execute stmt;
+execute stmt;
+
+drop tables t1,t3;
+
+--echo #
+--echo # test of possible table alias problem
+--echo #
+
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+create view v1 as select a, (select t1.a from t1 limit 1) as cc from t1;
+show create view v1;
+select * from v1;
+select a, (select t1.a from t1 limit 1) as cc from t1;
+drop view v1;
+drop table t1;
+
+--echo #
+--echo # test of view with outer reference and changing sql_mode
+--echo #
+create table t1 (a int, b int);
+insert into t1 values (1,1), (2,2), (10, 10);
+create view v1 as select a+1 as d, (select b from t1 where d=a) as cc from t1;
+show create view v1;
+select * from v1;
+select a+1 as d, (select b from t1 where d=a) as cc from t1;
+set sql_mode="";
+select * from v1;
+set sql_mode="EXTENDED_ALIASES";
+drop view v1;
+drop table t1;
+
+--echo #
+--echo # complex cases with aggregate functions
+--echo #
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+
+--echo #
+--echo # outer reference on field of groupping
+--echo #
+select a as c, min(b) as d from t1 where 5 < (select max(t.b) from t1 as t where t1.a < 2) group by c;
+--echo # shoud be the same as above
+select a as c, min(b) as d from t1 where 5 < (select max(t.b) from t1 as t where c < 2) group by c;
+
+--echo #
+--echo # outer reference on aggregated field
+--echo #
+SELECT a x, MAX(b) as m, (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=m) FROM t1 group by a;
+--echo # shoud be the same as above
+SELECT a x, MAX(b) as m, (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=MAX(t1.b)) FROM t1 group by a;
+
+--echo #
+--echo # aggregate reference from WHERE
+--echo #
+-- error ER_ILLEGAL_REFERENCE
+SELECT a x, MAX(b) as m FROM t1 where (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=m) group by a;
+-- error ER_INVALID_GROUP_FUNC_USE
+SELECT a x, MAX(b) as m FROM t1 where (SELECT t.a FROM t1 AS t WHERE x=t.a
+AND t.b=max(t1.b)) group by a;
+
+--echo #
+--echo # aggregate reference from HAVING
+--echo #
+SELECT a x, MAX(b) as m FROM t1 group by a having (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=m);
+SELECT a x, MAX(b) as m FROM t1 group by a having (SELECT t.a FROM t1 AS t
+WHERE x=t.a AND t.b=MAX(t1.b));
+
+
+--echo #
+--echo # aggregate reference from ORDER BY
+--echo #
+SELECT a x, MAX(b) as m FROM t1 group by a order by (SELECT t.a FROM t1 AS t WHERE  t.b=MAX(t1.b));
+SELECT a x, MAX(b) as m FROM t1 group by a order by (SELECT t.a FROM t1 AS t WHERE t.b=m);
+
+--echo #
+--echo # aggregate reference from GROUP BY
+--echo #
+--error ER_ILLEGAL_REFERENCE
+SELECT a x, MAX(b) as m FROM t1 group by (SELECT t.a FROM t1 AS t WHERE t.b=m);
+--error ER_INVALID_GROUP_FUNC_USE
+SELECT a x, MAX(b) as m FROM t1 group by (SELECT t.a FROM t1 AS t WHERE  t.b=MAX(t1.b));
+
+drop table t1;
+
+--echo #
+--echo # outer forward reference
+--echo #
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+
+select (select a from t1 where b < c limit 1) as d, a as c from t1;
+
+drop table t1;
+
+
+--echo #
+--echo # window function tests
+--echo #
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+
+select a as c, sum(b) over (partition by c order by c) as wf from t1;
+--echo # should be the same as above
+select a as c, sum(b) over (partition by a order by a) as wf from t1;
+
+--error ER_ILLEGAL_REFERENCE 
+select a as c, sum(b) over (partition by c order by c) as wf from t1 where wf > 6;
+
+drop table t1;
+
+
+--echo #
+--echo # reference loop over a subquery
+--echo #
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+
+--error ER_ILLEGAL_REFERENCE 
+select a+d as e, (select a from t1 where b < c limit 1) as d, a+e as c from t1;
+--echo # should be the same as above
+--error ER_ILLEGAL_REFERENCE 
+prepare stmt from "select a+d as e, (select a from t1 where b < c limit 1) as d, a+e as c from t1";
+
+--error ER_ILLEGAL_REFERENCE 
+select (select a from t1 where b < c limit 1) as d, a+d as c from t1;
+--echo # should be the same as above
+--error ER_ILLEGAL_REFERENCE 
+prepare stmt from "select (select a from t1 where b < c limit 1) as d, a+d as c from t1";
+
+
+--echo #check that there is no problems for expression in WHERE
+select a as e, a+e as c from t1 where (select max(a) from t1 where b < c) > 5;
+prepare stmt from "select a as e, a+e as c from t1 where (select max(a) from t1 where b < c) > 5";
+execute stmt;
+execute stmt;
+
+drop table t1;
+
+--echo #
+--echo # complex cases with aggregate functions
+--echo #
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+set sql_mode="EXTENDED_ALIASES";
+
+--sorted_result
+SELECT a x FROM t1 group by a order by (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=MAX(t1.b));
+--echo # should be the same as above
+--sorted_result
+SELECT a x FROM t1 group by a order by (SELECT t.a FROM t1 AS t WHERE t1.a=t.a AND t.b=MAX(t1.b));
+--sorted_result
+SELECT a x FROM t1 order by (SELECT t.a FROM t1 AS t WHERE x=t.a AND t.b=MAX(t1.b));
+--echo # should be the same as above
+--sorted_result
+SELECT a x FROM t1 order by (SELECT t.a FROM t1 AS t WHERE t1.a=t.a AND t.b=MAX(t1.b));
+
+drop table t1;
+
+
+--echo #
+--echo # MENT-1247: Server crashes in Item_ident::pre_fix_aliases
+--echo # with EXTENDED_ALIASES
+--echo #
+
+SET sql_mode= EXTENDED_ALIASES;
+--disable_result_log
+SELECT * FROM information_schema.tables WHERE table_schema IN ('sys');
+--enable_result_log
+
+--echo #
+--echo # the same aliases processing
+--echo #
+set sql_mode="EXTENDED_ALIASES";
+create table t1 (a int, b int);
+insert into t1 values (0,1);
+select a as b, b from t1 where b < 1;
+--error ER_DUP_FIELDNAME
+create table t2 select a as b, b from t1 where b < 1;
+--error ER_DUP_FIELDNAME
+create view v1 as select a as b, b from t1 where b < 1;
+drop table t1;
+
+--echo #
+--echo # more reference checks
+--echo #
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+create table t2 (a int, b int);
+insert into t2 values (6,6);
+set sql_mode="EXTENDED_ALIASES";
+
+select (select a+c from t2 limit 1) as sq1, b+sq2 as c, (select a from t2 limit 1) as sq2 from t1;
+--error ER_ILLEGAL_REFERENCE
+select (select a+c from t2 limit 1) as sq1, b+sq2 as c, (select a+d from t2 limit 1) as sq2, b+sq1 as d from t1;
+
+with cte(b,a) as (select a,b from t1) select * from t1;
+
+create view v1(b,a) as select a, b from t1;
+select * from v1;
+show create view v1;
+drop view v1;
+
+drop tables t1, t2;
+
+--echo #
+--echo # reference which shoud be "fixed" by resolving
+--echo #
+create table t1 (a int, b int);
+insert into t1 values (1,1), (5,5), (10, 10);
+create table t2 (a int, b int);
+insert into t2 values (6,6);
+set sql_mode="EXTENDED_ALIASES";
+
+--error ER_ILLEGAL_REFERENCE
+select (select a+c from t2 limit 1) as sq1, b+sq2 as c, (select a+c from t2 as t limit 1) as sq2 from t1;
+
+drop tables t1, t2;
+
+
+--echo # End of 10.6ES tests
+
+set @@sql_mode= @save_sql_mode;

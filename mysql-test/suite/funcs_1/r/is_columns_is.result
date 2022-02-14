@@ -607,6 +607,7 @@ def	information_schema	VIEWS	ALGORITHM	11	NULL	NO	varchar	10	30	NULL	NULL	NULL	u
 def	information_schema	VIEWS	CHARACTER_SET_CLIENT	9	NULL	NO	varchar	32	96	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	varchar(32)			select		NEVER	NULL	NO	NO
 def	information_schema	VIEWS	CHECK_OPTION	5	NULL	NO	varchar	8	24	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	varchar(8)			select		NEVER	NULL	NO	NO
 def	information_schema	VIEWS	COLLATION_CONNECTION	10	NULL	NO	varchar	64	192	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	varchar(64)			select		NEVER	NULL	NO	NO
+def	information_schema	VIEWS	CREATE_OPTIONS	12	NULL	NO	varchar	100	300	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	varchar(100)			select		NEVER	NULL	NO	NO
 def	information_schema	VIEWS	DEFINER	7	NULL	NO	varchar	384	1152	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	varchar(384)			select		NEVER	NULL	NO	NO
 def	information_schema	VIEWS	IS_UPDATABLE	6	NULL	NO	varchar	3	9	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	varchar(3)			select		NEVER	NULL	NO	NO
 def	information_schema	VIEWS	SECURITY_TYPE	8	NULL	NO	varchar	7	21	NULL	NULL	NULL	utf8mb3	utf8mb3_general_ci	varchar(7)			select		NEVER	NULL	NO	NO
@@ -1289,3 +1290,4 @@ NULL	information_schema	USER_STATISTICS	MAX_STATEMENT_TIME_EXCEEDED	bigint	NULL	
 3.0000	information_schema	VIEWS	CHARACTER_SET_CLIENT	varchar	32	96	utf8mb3	utf8mb3_general_ci	varchar(32)
 3.0000	information_schema	VIEWS	COLLATION_CONNECTION	varchar	64	192	utf8mb3	utf8mb3_general_ci	varchar(64)
 3.0000	information_schema	VIEWS	ALGORITHM	varchar	10	30	utf8mb3	utf8mb3_general_ci	varchar(10)
+3.0000	information_schema	VIEWS	CREATE_OPTIONS	varchar	100	300	utf8mb3	utf8mb3_general_ci	varchar(100)

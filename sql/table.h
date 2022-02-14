@@ -2956,6 +2956,11 @@ struct TABLE_LIST
 
   LEX_CSTRING view_body_utf8;
 
+  /*
+    List of view creation parameters (so far only "EXTENDED_ALIASES")
+  */
+  List<LEX_CSTRING> view_create_options;
+
    /* End of view definition context. */
 
   /**
@@ -3253,6 +3258,9 @@ struct TABLE_LIST
     tabledef_version.str= (const uchar *) version->str;
     tabledef_version.length= version->length;
   }
+
+  bool is_view_in_aliases_in_WHERE_mode();
+
 private:
   bool prep_check_option(THD *thd, uint8 check_opt_type);
   bool prep_where(THD *thd, Item **conds, bool no_where_clause);
