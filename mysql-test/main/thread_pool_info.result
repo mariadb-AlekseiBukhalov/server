@@ -111,8 +111,8 @@ disconnect con2;
 connection default;
 DESC INFORMATION_SCHEMA.THREAD_POOL_CONNECTIONS;
 Field	Type	Null	Key	Default	Extra
-CONNECTION_ID	bigint(19) unsigned	NO		0	
-GROUP_ID	int(6)	NO		0	
+CONNECTION_ID	bigint(19) unsigned	NO		NULL	
+GROUP_ID	int(6)	NO		NULL	
 SET @save_thread_pool_reshuffle_group_period = @@global.thread_pool_reshuffle_group_period;
 SET GLOBAL thread_pool_reshuffle_group_period = 0;
 SET @save_thread_pool_size=@@global.thread_pool_size;
