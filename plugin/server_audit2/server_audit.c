@@ -2447,7 +2447,8 @@ static size_t escape_string_hide_passwords(const char *str, unsigned int len,
       else
         result+= d_len;
 
-      len-= (uint)(next_s - str);
+      c= next_s - str;
+      len= (c > len) ? 0:(uint) (len - c);
       str= next_s;
       continue;
     }
