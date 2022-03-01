@@ -1,0 +1,24 @@
+#
+# MENT-1278: Assertion `!killed_err || killed != NOT_KILLED'
+# failed in int THD::killed_errno()
+#
+
+--source include/galera_cluster.inc
+
+--let $wsrep_max_ws_size_orig = `SELECT @@wsrep_max_ws_size`
+
+XA START 'a';
+SET GLOBAL wsrep_provider_options='repl.max_ws_size=512';
+SET max_session_mem_used=50000;
+XA END 'a';
+--error ER_XA_RBDEADLOCK
+XA PREPARE 'a';
+--error ER_LOCK_DEADLOCK
+CALL sys.statement_performance_analyzer ('overALL', NULL, 'with_full_table_scans');
+--error ER_OPTION_PREVENTS_STATEMENT
+CALL sys.statement_performance_analyzer ('overALL', NULL, 'with_full_table_scans');
+
+# cleanup
+XA ROLLBACK 'a';
+SET max_session_mem_used=DEFAULT;
+--eval SET GLOBAL wsrep_max_ws_size = $wsrep_max_ws_size_orig
