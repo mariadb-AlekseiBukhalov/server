@@ -1,0 +1,20 @@
+connection node_2;
+connection node_1;
+connection node_1;
+SET SESSION wsrep_trx_fragment_size=1;
+CREATE TABLE ti (c1 INT, c2 INT) ENGINE=InnoDB;
+CREATE TABLE t1 (c1 VARCHAR(10));
+XA START 'trx1';
+SET SESSION wsrep_trx_fragment_unit='statements';
+ERROR 25000: You are not allowed to execute this command in a transaction
+INSERT IGNORE t1 VALUES ('test');
+LOAD INDEX INTO CACHE t1 KEY(PRIMARY,inx_b);
+Table	Op	Msg_type	Msg_text
+test.t1	preload_keys	Error	Streaming replication not supported with binlog_format=STATEMENT
+test.t1	preload_keys	error	Corrupt
+SET SESSION wsrep_trx_fragment_unit='bytes';
+ERROR 25000: You are not allowed to execute this command in a transaction
+INSERT INTO ti VALUES (1111,111);
+XA END 'trx1';
+XA ROLLBACK 'trx1';
+DROP TABLE ti,t1;

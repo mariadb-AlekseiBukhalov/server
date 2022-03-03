@@ -1,0 +1,24 @@
+#
+# MENT-1418 Assertion `streaming_context_.rolled_back() == false ||
+# state() == s_must_abort' failed
+#
+
+--source include/galera_cluster.inc
+
+--connection node_1
+SET SESSION wsrep_trx_fragment_size=1;
+CREATE TABLE ti (c1 INT, c2 INT) ENGINE=InnoDB;
+CREATE TABLE t1 (c1 VARCHAR(10));
+XA START 'trx1';
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
+SET SESSION wsrep_trx_fragment_unit='statements';
+INSERT IGNORE t1 VALUES ('test');
+LOAD INDEX INTO CACHE t1 KEY(PRIMARY,inx_b);
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
+SET SESSION wsrep_trx_fragment_unit='bytes';
+INSERT INTO ti VALUES (1111,111);
+
+# cleanup
+XA END 'trx1';
+XA ROLLBACK 'trx1';
+DROP TABLE ti,t1;

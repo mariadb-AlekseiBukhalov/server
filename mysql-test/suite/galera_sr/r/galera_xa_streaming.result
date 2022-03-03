@@ -45,6 +45,16 @@ SET SESSION wsrep_trx_fragment_size = 10;
 ERROR 25000: You are not allowed to execute this command in a transaction
 XA END 't';
 XA ROLLBACK 't';
+XA START 't';
+SET SESSION wsrep_trx_fragment_unit = 'rows';
+ERROR 25000: You are not allowed to execute this command in a transaction
+XA END 't';
+XA ROLLBACK 't';
+XA START 't';
+SET SESSION wsrep_trx_fragment_unit = 'rows';
+ERROR 25000: You are not allowed to execute this command in a transaction
+XA END 't';
+XA ROLLBACK 't';
 START TRANSACTION;
 INSERT INTO t1 VALUES (6);
 connection node_2;
