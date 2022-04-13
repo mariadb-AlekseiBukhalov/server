@@ -994,7 +994,7 @@ bool trans_xa_detach(THD *thd)
   thd->transaction->xid_state.xid_cache_element= 0;
   thd->transaction->cleanup();
 #ifdef WITH_WSREP
-  if (WSREP(thd) && !wsrep_must_replay(thd))
+  if (wsrep_is_active(thd) && !wsrep_must_replay(thd))
   {
     wsrep_xa_detach(thd);
   }

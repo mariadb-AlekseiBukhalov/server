@@ -242,8 +242,8 @@ static inline int wsrep_commit_or_rollback_by_xid(THD* thd,
 
 static inline void wsrep_xa_detach(THD* thd)
 {
-  DBUG_ASSERT(thd->wsrep_trx().state() == wsrep::transaction::s_prepared);
-  if (thd->wsrep_trx().state() == wsrep::transaction::s_prepared)
+  DBUG_ASSERT(wsrep_is_active(thd));
+  if (wsrep_is_active(thd))
   {
     thd->wsrep_cs().xa_detach();
   }
@@ -310,7 +310,7 @@ static inline bool wsrep_run_commit_hook(THD* thd, bool all)
        be skipped and the wsrep transaction is terminated in
        wsrep_commit_empty() */
     if (thd->wsrep_trx().state() == wsrep::transaction::s_executing &&
-        !(thd->lex->sql_command == SQLCOM_XA_PREPARE))
+        !(WSREP(thd) && thd->lex->sql_command == SQLCOM_XA_PREPARE))
     {
       ret= false;
     }

@@ -483,15 +483,18 @@ int Wsrep_client_service::bf_rollback()
 {
   DBUG_ASSERT(m_thd == current_thd);
   DBUG_ENTER("Wsrep_client_service::bf_rollback");
-
-  int ret= 1;
-  if (m_thd->wsrep_trx().is_xa())
+  int ret= 0;
+  XID_STATE *xs= &m_thd->transaction->xid_state;
+  if (!xs->is_explicit_XA())
   {
-    wsrep_trans_xa_force_rollback(m_thd);
+    ret= (trans_rollback_stmt(m_thd) || trans_rollback(m_thd));
   }
   else
   {
-    ret= (trans_rollback_stmt(m_thd) || trans_rollback(m_thd));
+    if (m_thd->wsrep_trx().is_xa() || xs->get_state_code() != XA_PREPARED)
+    {
+      ret= wsrep_trans_xa_force_rollback(m_thd);
+    }
   }
 
   WSREP_DEBUG("::bf_rollback() thread: %lu, client_state %s "

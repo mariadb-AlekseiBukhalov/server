@@ -1667,11 +1667,6 @@ void THD::cleanup(void)
   DBUG_ASSERT(cleanup_done == 0);
 
   set_killed(KILL_CONNECTION);
-#ifdef WITH_WSREP
-  if (wsrep_cs().state() != wsrep::client_state::s_none)
-    wsrep_cs().cleanup();
-  wsrep_client_thread= false;
-#endif /* WITH_WSREP */
 
   DEBUG_SYNC(this, "THD_cleanup_after_set_killed");
 
@@ -1687,6 +1682,12 @@ void THD::cleanup(void)
     trans_rollback(this);
 
   DEBUG_SYNC(this, "THD_cleanup_after_trans_cleanup");
+
+#ifdef WITH_WSREP
+  if (wsrep_cs().state() != wsrep::client_state::s_none)
+    wsrep_cs().cleanup();
+  wsrep_client_thread= false;
+#endif /* WITH_WSREP */
 
   DBUG_ASSERT(open_tables == NULL);
   DBUG_ASSERT(m_transaction_psi == NULL);
