@@ -6,6 +6,8 @@
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
 
+call mtr.add_suppression("WSREP: CREATE TABLE isolation failure");
+
 CREATE TABLE t1 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
 
 SET SESSION wsrep_osu_method='NBO';
