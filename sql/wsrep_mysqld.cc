@@ -924,7 +924,12 @@ int wsrep_init()
   if (!wsrep_data_home_dir || strlen(wsrep_data_home_dir) == 0)
     wsrep_data_home_dir= mysql_real_data_home;
 
-  Wsrep_server_state::init_provider_services();
+  if (!Wsrep_server_state::init_provider_services())
+  {
+    WSREP_ERROR("Failed to initialize required WSREP services");
+    Wsrep_server_state::deinit_provider_services();
+    return 1;
+  }
   if (Wsrep_server_state::instance().load_provider(
       wsrep_provider,
       wsrep_provider_options,

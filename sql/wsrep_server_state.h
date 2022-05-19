@@ -69,7 +69,7 @@ public:
     return (get_provider().capabilities() & capability);
   }
 
-  static void init_provider_services();
+  static bool init_provider_services();
   static void deinit_provider_services();
 
   static const wsrep::provider::services& provider_services()

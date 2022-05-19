@@ -150,7 +150,7 @@ void Wsrep_server_state::destroy()
   }
 }
 
-void Wsrep_server_state::init_provider_services()
+bool Wsrep_server_state::init_provider_services()
 {
   m_provider_services.allowlist_service= wsrep_allowlist_service_init();
   m_provider_services.event_service= Wsrep_event_service::instance();
@@ -161,9 +161,30 @@ void Wsrep_server_state::init_provider_services()
   WSREP_DEBUG("Wsrep_ssl_mode: %lu", wsrep_ssl_mode);
   if (wsrep_ssl_mode != WSREP_SSL_MODE_PROVIDER)
   {
+    if (!opt_use_ssl || !(opt_ssl_key  && *opt_ssl_key) ||
+                        !(opt_ssl_cert && *opt_ssl_cert))
+    {
+      if (wsrep_ssl_mode == WSREP_SSL_MODE_SERVER_X509)
+      {
+        WSREP_ERROR("Each node must be configured to use TLS as specified "
+                    "in the MariaDB Enterprise Server documentation. "
+                    "If MariaDB Enterprise Server is not configured to "
+                    "use TLS on the node, then the node cannot connect "
+                    "to the cluster.");
+        return false;
+      }
+      else
+      {
+        WSREP_INFO("Initialization of the TLS service for WSREP was skipped "
+                   "because the server was not configured to use SSL");
+        return true;
+      }
+    }
     WSREP_INFO("Using server side SSL for provider connections");
     m_provider_services.tls_service= wsrep_tls_service_init();
+    return m_provider_services.tls_service != nullptr;
   }
+  return true;
 }
 
 void Wsrep_server_state::deinit_provider_services()

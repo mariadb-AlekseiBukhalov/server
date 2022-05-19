@@ -1,0 +1,25 @@
+connection node_2;
+connection node_1;
+connection node_1;
+connection node_2;
+connection node_2;
+connection node_1;
+# restart: with restart_parameters
+connection node_2;
+# restart: with restart_parameters
+connection node_1;
+connection node_2;
+# shutdown node 2
+connection node_1;
+# shutdown node 1
+connection node_2;
+[Note] WSREP: Initialization of the TLS service for WSREP was skipped because the server was not configured to use SSL
+[Note] WSREP: Initialization of the TLS service for WSREP was skipped because the server was not configured to use SSL
+[ERROR] WSREP: Each node must be configured to use TLS as specified in the MariaDB Enterprise Server documentation. If MariaDB Enterprise Server is not configured to use TLS on the node, then the node cannot connect to the cluster.
+[ERROR] WSREP: Failed to initialize required WSREP services
+connection node_1;
+# restart
+connection node_2;
+# cleaning data directory...
+# restart
+connection node_1;
