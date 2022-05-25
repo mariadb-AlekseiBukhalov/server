@@ -17,6 +17,17 @@ set -e
 export DEB_BUILD_OPTIONS="nocheck $DEB_BUILD_OPTIONS"
 # enable ColumnStore on amd64 only
 ARCH=$(dpkg --print-architecture)
+pkg_is_available() {
+  # first parameter is pkg name. 0 is true, 1 is false.
+  # return true if package is present and not in backports
+  #
+  PKG=${1}
+  if apt-cache madison ${PKG} | grep -v backports | grep ${PKG} >/dev/null 2>&1; then
+    echo "${PKG} package is available"
+    return 0
+  fi
+  return 1
+}
 
 # shellcheck source=/dev/null
 source ./VERSION
