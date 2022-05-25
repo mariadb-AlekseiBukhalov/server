@@ -1,5 +1,7 @@
 connection node_2;
 connection node_1;
+connection node_1;
+connection node_2;
 connect trx, 127.0.0.1, root, , test, $NODE_MYPORT_2;
 connect trx_prepared, 127.0.0.1, root, , test, $NODE_MYPORT_2;
 CREATE TABLE t1 (f1 INTEGER PRIMARY KEY);

@@ -5,6 +5,11 @@
 
 --source include/galera_cluster.inc
 
+# Save original auto_increment_offset values.
+--let $node_1=node_1
+--let $node_2=node_2
+--source ../galera/include/auto_increment_offset_save.inc
+
 --connect trx, 127.0.0.1, root, , test, $NODE_MYPORT_2
 --connect trx_prepared, 127.0.0.1, root, , test, $NODE_MYPORT_2
 
@@ -31,3 +36,5 @@ DROP TABLE t1;
 
 call mtr.add_suppression('Found 1 prepared XA transactions');
 call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs.');
+
+--source ../galera/include/auto_increment_offset_restore.inc
