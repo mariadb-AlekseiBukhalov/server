@@ -5775,14 +5775,6 @@ mysql_execute_command(THD *thd, bool is_called_from_prepared_stmt)
     break;
   }
   case SQLCOM_XA_START:
-#ifdef WITH_WSREP
-    if (WSREP_ON)
-    {
-      my_error(ER_NOT_SUPPORTED_YET, MYF(0),
-               "XA transactions with Galera replication");
-      break;
-    }
-#endif /* WITH_WSREP */
     if (trans_xa_start(thd))
       goto error;
     my_ok(thd);
