@@ -87,8 +87,10 @@ SET DEBUG_SYNC= 'RESET';
 --connection node_1
 CALL mtr.add_suppression("Non-blocking operation in progress, cannot donate SST");
 CALL mtr.add_suppression("Resource temporarily unavailable");
+CALL mtr.add_suppression("Cleanup after exit with status:");
 
 --connection node_2
 CALL mtr.add_suppression("Resource temporarily unavailable");
 CALL mtr.add_suppression("Will never receive state");
 CALL mtr.add_suppression("terminated unexpectedly");
+CALL mtr.add_suppression("Cleanup after exit with status:");

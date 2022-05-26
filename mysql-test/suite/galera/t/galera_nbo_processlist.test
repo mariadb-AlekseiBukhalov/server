@@ -41,11 +41,11 @@ SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';
 # The DDL applier thread can not be killed
 --disable_query_log
 --replace_regex /[0-9]+/N/
---error ER_KILL_DENIED_ERROR
+--error ER_NO_SUCH_THREAD,ER_KILL_DENIED_ERROR
 --eval KILL CONNECTION $ddl_applier_id;
 
 --replace_regex /[0-9]+/N/
---error ER_KILL_DENIED_ERROR
+--error ER_NO_SUCH_THREAD,ER_KILL_DENIED_ERROR
 --eval KILL QUERY $ddl_applier_id;
 --enable_query_log
 

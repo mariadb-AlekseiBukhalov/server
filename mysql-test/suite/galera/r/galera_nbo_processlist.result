@@ -21,8 +21,8 @@ COUNT(*) = 1
 SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';
 COUNT(*) = 1
 1
-ERROR HYN: You are not owner of thread N
-ERROR HYN: You are not owner of thread N
+Got one of the listed errors
+Got one of the listed errors
 SET DEBUG_SYNC= 'now SIGNAL signal.alter_opened_table';
 SET SESSION wsrep_sync_wait = 7;
 SELECT COUNT(*) = 0 FROM INFORMATION_SCHEMA.PROCESSLIST
