@@ -16,6 +16,9 @@ CREATE TABLE t2 (f1 INTEGER);
 LOCK TABLE t1 WRITE;
 
 --connection node_1
+SHOW CREATE TABLE t1;
+SHOW CREATE TABLE t2;
+
 SET SESSION wsrep_OSU_method=NBO;
 --send ALTER TABLE t1 LOCK=SHARED, DROP COLUMN f2;
 
@@ -40,11 +43,13 @@ SET SESSION wsrep_sync_wait = 0;
 
 # Remote operations are allowed
 --connection node_2
-INSERT INTO t2 VALUES (1);
+SET SESSION wsrep_OSU_method=TOI;
+INSERT INTO t2 VALUES (2);
 CREATE TABLE t3 (t4 INTEGER);
 
 --connection node_1a
 UNLOCK TABLES;
+SHOW CREATE TABLE t1;
 
 --connection node_1
 --reap
@@ -55,6 +60,14 @@ UNLOCK TABLES;
 SELECT * FROM t2;
 
 --connection node_2
+SHOW CREATE TABLE t1;
 SELECT * FROM t2;
+
+--connection node_1
+SET SESSION wsrep_OSU_method=TOI;
+SELECT * FROM t2;
+
+--disconnect node_1a
+--disconnect node_1b
 
 DROP TABLE t1, t2, t3;
