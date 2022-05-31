@@ -1,4 +1,4 @@
-/* Copyright 2020-2021 Codership Oy <info@codership.com>
+/* Copyright 2020-2022 Codership Oy <info@codership.com>
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -173,10 +173,11 @@ class Wsrep_tls_service : public wsrep::tls_service
     /* Initialize SSL structures. Refer to vio/viossl.c:ssl_do() */
     int alloc_and_init_ssl();
 
+    /* Check if the error reason is short read. */
+    bool error_reason_is_short_read(unsigned long sys_error);
     /* Map SSL return codes to tls_service status and set error info. */
     enum wsrep::tls_service::status
     map_status(int ssl_error, unsigned long sys_error, const char* op);
-
     wsrep::tls_service::status client_handshake();
     wsrep::tls_service::status server_handshake();
 
@@ -346,8 +347,30 @@ int Wsrep_tls_service::Stream::alloc_and_init_ssl()
   wolfSSL_SSLSetIORecv(ssl, wsrep_wolfssl_recv);
   wolfSSL_SSLSetIOSend(ssl, wsrep_wolfssl_send);
 #endif /* HAVE_WOLFSSL */
-
+  /* Provider messages are enveloped with a header containing length of the
+     message, so they are not vulnerable for truncation attacks. Make
+     SSL shutdown silent. */
+  SSL_set_quiet_shutdown(ssl, 1);
   return 0;
+}
+
+bool
+Wsrep_tls_service::Stream::error_reason_is_short_read(unsigned long sys_error)
+{
+  /*
+    Provider messages are enveloped so they are not vulnerable
+    for truncation attacks. It is safe to suppress short read errors.
+    Error reasons are:
+    - SSL_R_SHORT_READ - OpenSSL < 3.0 and wolfSSL
+    - SSL_R_UNEXPECTED_EOF_WHILE_READING - OpenSSL >= 3.0
+  */
+#if defined(HAVE_OPENSSL) && OPENSSL_VERSION_MAJOR >= 3
+  return ERR_GET_REASON(sys_error) == SSL_R_UNEXPECTED_EOF_WHILE_READING;
+#elif defined(SSL_R_SHORT_READ)
+  return ERR_GET_REASON(sys_error) == SSL_R_SHORT_READ;
+#else
+  return false;
+#endif /* SSL_R_SHORT_READ */
 }
 
 enum wsrep::tls_service::status
@@ -372,6 +395,10 @@ Wsrep_tls_service::Stream::map_status(
       last_error= sys_error;
       last_error_category= &ssl_error_category;
       last_verify_error= SSL_get_verify_result(ssl);
+      if (error_reason_is_short_read(sys_error))
+      {
+	return wsrep::tls_service::eof;
+      }
       return wsrep::tls_service::error;
     }
   case SSL_ERROR_ZERO_RETURN:
@@ -476,10 +503,6 @@ Wsrep_tls_service::Stream::shutdown()
   {
     return wsrep::tls_service::success;
   }
-  /* Provider messages are enveloped with a header containing length of the
-     message, so they are not vulnerable for truncation attacks. Make
-     SSL shutdown silent. */
-  SSL_set_quiet_shutdown(ssl, 1);
   auto result= SSL_shutdown(ssl);
   wsrep::tls_service::status ret;
   switch (result)
