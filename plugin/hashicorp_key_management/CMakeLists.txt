@@ -28,3 +28,8 @@ ADD_FEATURE_INFO(HASHICORP_KEY_MANAGEMENT "ON" "Hashicorp Key Management Plugin"
 
 INSTALL_DOCUMENTATION(hashicorp_key_management.txt
   COMPONENT plugin-hashicorp-key-management)
+
+IF (RPM)
+  SET(CPACK_RPM_hashicorp-key-management_PRE_INSTALL_SCRIPT_FILE ${CMAKE_CURRENT_SOURCE_DIR}/hashicorp-key-management-prein.sh PARENT_SCOPE)
+  SET(CPACK_RPM_hashicorp-key-management_PACKAGE_SUMMARY "MariaDB Hashicorp Key Management plugin" PARENT_SCOPE)
+ENDIF()
