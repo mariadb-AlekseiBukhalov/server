@@ -1,0 +1,80 @@
+#!/bin/bash -e
+#
+# Hashicorp pre-installation script:
+#
+# summary of how this script can be called:
+#        * <new-preinst> install
+#        * <new-preinst> install <old-version>
+#        * <new-preinst> upgrade <old-version>
+#        * <old-preinst> abort-upgrade <new-version>
+#
+. /usr/share/debconf/confmodule
+
+step="${1:-}"
+version="${2:-}"
+if [ "$step" = 'upgrade' -a -n "$version" ]; then
+  old_family=`echo "$version" | sed -n -e 's,^[0-9]*:\([1-9][0-9]*\.[0-9][0-9]*\)\..*$,\1,p'`
+  old_minor=`echo "$version"  | sed -n -e 's,^[0-9]*:[1-9][0-9]*\.[0-9][0-9]*\.\([0-9][0-9]*\).*$,\1,p'`
+  [ -z "$old_minor" ] && old_minor=0
+  # if the old version is not 10.x, then it will not be incompatible
+  # with the new key conversion algorithm:
+  if [ "${old_family#10.}" != "$old_family" ]; then
+    # check that the old version is younger than the one in which the
+    # key conversion algorithm has changed:
+    incompatible=0
+    [ "$old_family" = "10.4" -a $old_minor -lt 25 ] && incompatible=1
+    [ "$old_family" = "10.5" -a $old_minor -lt 16 ] && incompatible=1
+    [ "$old_family" = "10.6" -a $old_minor -lt 8  ] && incompatible=1
+    if [ $incompatible -ne 0 ]; then
+      cat <<HERE >&2
+
+******************************************************************
+You have an old version of the MariaDB Hashicorp Key Management
+plugin installed ($version).
+
+The new version of this plugin uses a fixed and improved key
+conversion algorithm that is compatible with other plugins in
+the system. Unfortunately, this new version cannot decrypt data
+encrypted by the old version. Therefore, if your data is indeed
+encrypted using keys stored on the Hashicorp server, then you
+will need a manual upgrade procedure to install a new version
+of the Hashicorp Key Management plugin.
+
+You will need to either temporarily decrypt all data that is
+encrypted by the current version of the plugin, or dump all
+the data (for example, using mysqldump) in order to restore it
+later, after installing a new plugin. To install a new version
+of the Hashicorp plugin, you must also manually uninstall the
+previous one (but after decrypting all the data encrypted with
+the old version or after dumping the entire database using
+mysqldump).
+
+The sequence of actions can be something like this:
+
+- Ensure that you have a complete, working backup of your data
+  and my.cnf files;
+- Dump the database with mysqldump as described in the MariaDB
+  server documentation, or decrypt all the data encrypted with
+  an older version of the Hashicorp Key Management plugin;
+- Shut down the MariaDB server cleanly;
+- Uninstall the existing Hashicorp Key Management plugin package;
+- Install the new Hashicorp Key Management plugin package;
+- Follow all the steps necessary to restore the database from
+  the dump as described in the MariaDB server documentation or
+  re-encrypt all data using the new version of the Hashicorp
+  Key Management plugin.
+
+This is a brief description of the upgrade process. Important
+details can be found in the MariaDB manual (in the "Upgrading"
+section).
+******************************************************************
+HERE
+    fi
+  fi
+fi
+
+db_stop
+
+#DEBHELPER#
+
+exit 0

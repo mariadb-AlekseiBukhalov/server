@@ -29,7 +29,7 @@ if [ $? -eq 0 -a -n "$installed" ]; then
         cat <<HERE >&2
 
 ******************************************************************
-You have an old version of the MariaDB Hashicorp Key management
+You have an old version of the MariaDB Hashicorp Key Management
 plugin installed ($installed).
 
 The new version of this plugin uses a fixed and improved key

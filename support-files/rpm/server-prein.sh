@@ -58,7 +58,7 @@ A manual upgrade is required.
 - Ensure that the MariaDB server is started
 - Run the 'mariadb-upgrade' program
 
-This is a brief description of the upgrade process.  Important details
+This is a brief description of the upgrade process. Important details
 can be found in the MariaDB manual, in the Upgrading section.
 ******************************************************************
 HERE
