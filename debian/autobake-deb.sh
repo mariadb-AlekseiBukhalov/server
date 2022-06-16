@@ -17,6 +17,8 @@ set -e
 export DEB_BUILD_OPTIONS="nocheck $DEB_BUILD_OPTIONS"
 # enable ColumnStore on amd64 only
 ARCH=$(dpkg --print-architecture)
+CODENAME="$(lsb_release -sc)"
+
 pkg_is_available() {
   # first parameter is pkg name. 0 is true, 1 is false.
   # return true if package is present and not in backports
