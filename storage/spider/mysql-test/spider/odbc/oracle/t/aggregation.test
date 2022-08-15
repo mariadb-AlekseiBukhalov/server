@@ -1,0 +1,28 @@
+--disable_query_log
+--source ../include/init_odbc_oracle.inc
+--enable_query_log
+
+# Spider node setup
+CREATE TABLE t1 (a INT) ENGINE=SPIDER COMMENT='wrapper "odbc", dsn "ora", table "t1"';
+
+# Oracle node setup
+CALL ORACLE_DROP_TABLE_IF_EXISTS("t1");
+SELECT spider_direct_sql('CREATE TABLE "t1" ("a" INT)', '', 'dsn "ora", wrapper "odbc"');
+
+# Test body
+INSERT INTO t1 VALUES (1), (2), (3);
+
+SELECT * FROM t1 ORDER BY a;
+
+SELECT COUNT(*) FROM t1;
+SELECT SUM(a) FROM t1;
+SELECT MAX(a) FROM t1;
+SELECT MIN(a) FROM t1;
+
+# clean up
+DROP TABLE t1;
+SELECT spider_direct_sql('DROP TABLE "t1"', '', 'dsn "ora", wrapper "odbc"');
+
+--disable_query_log
+--source ../include/deinit_odbc_oracle.inc
+--enable_query_log
