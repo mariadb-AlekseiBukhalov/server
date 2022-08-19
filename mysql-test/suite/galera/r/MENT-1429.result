@@ -1,0 +1,33 @@
+connection node_2;
+connection node_1;
+CREATE TABLE ti (id INT PRIMARY KEY) ENGINE=InnoDB;
+SET SESSION sql_mode='ONLY_FULL_GROUP_BY';
+SET SESSION wsrep_trx_fragment_size = 1;
+CREATE TABLE t1 (a INT, b CHAR(8), PRIMARY KEY(a)) ENGINE=InnoDB;
+XA START 't';
+SET SESSION wsrep_trx_fragment_unit = 'bytes';
+ERROR 25000: You are not allowed to execute this command in a transaction
+INSERT INTO ti VALUES (100);
+SET GLOBAL wsrep_provider_options='repl.max_ws_size=128';
+INSERT INTO t1(a) VALUES (REPEAT('a', 2));
+Warnings:
+Warning	1366	Incorrect integer value: 'aa' for column `test`.`t1`.`a` at row 1
+SET GLOBAL wsrep_provider_options='repl.max_ws_size=2147483647';
+XA END 't';
+XA PREPARE 't';
+XA COMMIT 't';
+SELECT * FROM t1;
+a	b
+0	NULL
+SELECT * FROM ti;
+id
+100
+connection node_2;
+SET GLOBAL wsrep_sync_wait=15;
+SELECT * FROM t1;
+a	b
+0	NULL
+SELECT * FROM ti;
+id
+100
+DROP TABLE t1, ti;
