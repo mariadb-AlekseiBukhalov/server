@@ -416,7 +416,7 @@ SPIDER_DBTON spider_dbton_odbc = {
   &spider_db_odbc_utility,
   "For communicating using ODBC protocol",
   "1.0.0",
-  SPIDER_MATURITY_BETA
+  SPIDER_MATURITY_GAMMA
 };
 
 int spider_db_odbc_get_error(
