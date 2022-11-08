@@ -26,7 +26,7 @@ t1	CREATE TABLE `t1` (
   `f1` int(11) NOT NULL,
   `f2` int(11) DEFAULT NULL,
   PRIMARY KEY (`f1`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 connection node_1;
 SET SESSION wsrep_osu_method=TOI;
 DROP TABLE t1;
@@ -36,8 +36,11 @@ connection node_1;
 CALL mtr.add_suppression("Non-blocking operation in progress, cannot donate SST");
 CALL mtr.add_suppression("Resource temporarily unavailable");
 CALL mtr.add_suppression("Cleanup after exit with status:");
+CALL mtr.add_suppression("Failed to send NBO-end");
 connection node_2;
 CALL mtr.add_suppression("Resource temporarily unavailable");
 CALL mtr.add_suppression("Will never receive state");
 CALL mtr.add_suppression("terminated unexpectedly");
 CALL mtr.add_suppression("Cleanup after exit with status:");
+CALL mtr.add_suppression("Failed to send NBO-end");
+CALL mtr.add_suppression("TO isolation failed for NBO phase two:");

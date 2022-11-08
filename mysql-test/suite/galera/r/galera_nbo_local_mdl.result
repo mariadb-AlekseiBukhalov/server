@@ -12,12 +12,12 @@ Table	Create Table
 t1	CREATE TABLE `t1` (
   `f1` int(11) DEFAULT NULL,
   `f2` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 SHOW CREATE TABLE t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
   `f1` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 SET SESSION wsrep_OSU_method=NBO;
 ALTER TABLE t1 LOCK=SHARED, DROP COLUMN f2;;
 connect node_1b, 127.0.0.1, root, , test, $NODE_MYPORT_1;
@@ -37,7 +37,7 @@ SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `f1` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 connection node_1;
 connection node_1b;
 SELECT * FROM t2;
@@ -49,7 +49,7 @@ SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `f1` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 SELECT * FROM t2;
 f1
 1

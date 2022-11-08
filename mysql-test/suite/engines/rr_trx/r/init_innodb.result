@@ -54,7 +54,7 @@ t1	CREATE TABLE `t1` (
   KEY `id` (`id`),
   KEY `int1_key` (`int1_key`),
   KEY `int2_key` (`int2_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 CREATE PROCEDURE insertRows(rows INT)
 BEGIN
 SET @n = 1;
