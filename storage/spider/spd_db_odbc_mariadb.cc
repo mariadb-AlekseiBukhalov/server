@@ -601,11 +601,9 @@ int spider_odbc_mariadb_handler::append_update_where(
             odbc_share->append_column_name(str, (*field)->field_index);
             str->q_append(SPIDER_SQL_EQUAL_STR, SPIDER_SQL_EQUAL_LEN);
             (*field)->move_field_offset(ptr_diff);
-            if (
-              utility->append_column_value(spider, str, *field, NULL,
-                share->access_charset) ||
-              str->reserve(SPIDER_SQL_AND_LEN)
-            )
+            if (utility->append_column_value(spider, str, *field, NULL, FALSE,
+                                             share->access_charset) ||
+                str->reserve(SPIDER_SQL_AND_LEN))
               DBUG_RETURN(HA_ERR_OUT_OF_MEM);
             (*field)->move_field_offset(-ptr_diff);
           }
@@ -640,11 +638,9 @@ int spider_odbc_mariadb_handler::append_update_where(
           odbc_share->append_column_name(str, (*field)->field_index);
           str->q_append(SPIDER_SQL_EQUAL_STR, SPIDER_SQL_EQUAL_LEN);
           (*field)->move_field_offset(ptr_diff);
-          if (
-            utility->append_column_value(spider, str, *field, NULL,
-              share->access_charset) ||
-            str->reserve(SPIDER_SQL_AND_LEN)
-          )
+          if (utility->append_column_value(spider, str, *field, NULL, FALSE,
+                                           share->access_charset) ||
+              str->reserve(SPIDER_SQL_AND_LEN))
             DBUG_RETURN(HA_ERR_OUT_OF_MEM);
           (*field)->move_field_offset(-ptr_diff);
         }

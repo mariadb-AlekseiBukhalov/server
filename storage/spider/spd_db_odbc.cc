@@ -2673,13 +2673,12 @@ int spider_db_odbc_util::append_escaped_name_quote(
   DBUG_RETURN(0);
 }
 
-int spider_db_odbc_util::append_column_value(
-  ha_spider *spider,
-  spider_string *str,
-  Field *field,
-  const uchar *new_ptr,
-  CHARSET_INFO *access_charset
-) {
+int spider_db_odbc_util::append_column_value(ha_spider *spider,
+                                             spider_string *str, Field *field,
+                                             const uchar *new_ptr,
+                                             bool is_like,
+                                             CHARSET_INFO *access_charset)
+{
   bool float_value = FALSE;
   char buf[MAX_FIELD_WIDTH];
   spider_string tmp_str(buf, MAX_FIELD_WIDTH, field->charset());
@@ -2845,14 +2844,20 @@ int spider_db_odbc_util::append_column_value(
       spider_string tmp_str2(buf2, MAX_FIELD_WIDTH, field->charset());
       tmp_str2.init_calc_mem(309);
       tmp_str2.length(0);
-      if (
-        tmp_str2.append(ptr->ptr(), ptr->length(), field->charset()) ||
-        str->reserve(tmp_str2.length() * 2) ||
-        append_escaped_util(str, tmp_str2.get_str())
-      )
+      if (tmp_str2.append(ptr->ptr(), ptr->length(), field->charset()) ||
+          str->reserve(tmp_str2.length() * 2) ||
+          append_escaped_util(str, tmp_str2.get_str()))
+      {
         DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    } else if (str->append(*ptr))
+      }
+      if (is_like &&
+          str->append(SPIDER_SQL_PERCENT_STR, SPIDER_SQL_PERCENT_LEN))
+        DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+    else if (str->append(*ptr))
+    {
       DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
     if (str->reserve(SPIDER_SQL_VALUE_QUOTE_LEN))
       DBUG_RETURN(HA_ERR_OUT_OF_MEM);
     str->q_append(SPIDER_SQL_VALUE_QUOTE_STR, SPIDER_SQL_VALUE_QUOTE_LEN);
@@ -6596,11 +6601,9 @@ int spider_odbc_handler::append_insert_for_recovery(
         DBUG_RETURN(HA_ERR_OUT_OF_MEM);
       insert_sql->q_append(SPIDER_SQL_NULL_STR, SPIDER_SQL_NULL_LEN);
     } else {
-      if (
-        utility->append_column_value(spider, insert_sql, *field, NULL,
-          share->access_charset) ||
-        insert_sql->reserve(SPIDER_SQL_COMMA_LEN)
-      )
+      if (utility->append_column_value(spider, insert_sql, *field, NULL, FALSE,
+                                       share->access_charset) ||
+          insert_sql->reserve(SPIDER_SQL_COMMA_LEN))
         DBUG_RETURN(HA_ERR_OUT_OF_MEM);
     }
     insert_sql->q_append(SPIDER_SQL_COMMA_STR, SPIDER_SQL_COMMA_LEN);
@@ -6912,11 +6915,10 @@ int spider_odbc_handler::append_update_set(
         MY_BITMAP *tmp_map = dbug_tmp_use_all_columns(table,
           &table->read_set);
 #endif
-        if (
-          utility->append_column_value(spider, str, *fields, NULL,
-            share->access_charset) ||
-          str->reserve(SPIDER_SQL_COMMA_LEN)
-        ) {
+        if (utility->append_column_value(spider, str, *fields, NULL, FALSE,
+                                         share->access_charset) ||
+            str->reserve(SPIDER_SQL_COMMA_LEN))
+        {
 #ifndef DBUG_OFF
           dbug_tmp_restore_column_map(&table->read_set, tmp_map);
 #endif
@@ -7005,11 +7007,10 @@ int spider_odbc_handler::append_direct_update_set(
         my_bitmap_map *tmp_map = dbug_tmp_use_all_columns(table,
           table->read_set);
 #endif
-        if (
-          utility->append_column_value(spider, str, top_table_field, NULL,
-            share->access_charset) ||
-          str->reserve(SPIDER_SQL_COMMA_LEN)
-        ) {
+        if (utility->append_column_value(spider, str, top_table_field, NULL,
+                                         FALSE share->access_charset) ||
+            str->reserve(SPIDER_SQL_COMMA_LEN))
+        {
 #ifndef DBUG_OFF
           dbug_tmp_restore_column_map(table->read_set, tmp_map);
 #endif
@@ -7951,8 +7952,8 @@ int spider_odbc_handler::append_key_column_values(
       if (err > 0)
         DBUG_RETURN(err);
     } else {
-      if (utility->append_column_value(spider, str, field, ptr,
-        share->access_charset))
+      if (utility->append_column_value(spider, str, field, ptr, FALSE,
+                                       share->access_charset))
         DBUG_RETURN(HA_ERR_OUT_OF_MEM);
     }
 
@@ -8032,8 +8033,8 @@ int spider_odbc_handler::append_key_column_values_with_name(
       if (err > 0)
         DBUG_RETURN(err);
     } else {
-      if (utility->append_column_value(spider, str, field, ptr,
-        share->access_charset))
+      if (utility->append_column_value(spider, str, field, ptr, FALSE,
+                                       share->access_charset))
         DBUG_RETURN(HA_ERR_OUT_OF_MEM);
     }
 
@@ -8375,11 +8376,9 @@ int spider_odbc_handler::append_update_where(
             odbc_share->append_column_name(str, (*field)->field_index);
             str->q_append(SPIDER_SQL_EQUAL_STR, SPIDER_SQL_EQUAL_LEN);
             (*field)->move_field_offset(ptr_diff);
-            if (
-              utility->append_column_value(spider, str, *field, NULL,
-                share->access_charset) ||
-              str->reserve(SPIDER_SQL_AND_LEN)
-            )
+            if (utility->append_column_value(spider, str, *field, NULL, FALSE,
+                                             share->access_charset) ||
+                str->reserve(SPIDER_SQL_AND_LEN))
               DBUG_RETURN(HA_ERR_OUT_OF_MEM);
             (*field)->move_field_offset(-ptr_diff);
           }
@@ -8414,11 +8413,9 @@ int spider_odbc_handler::append_update_where(
           odbc_share->append_column_name(str, (*field)->field_index);
           str->q_append(SPIDER_SQL_EQUAL_STR, SPIDER_SQL_EQUAL_LEN);
           (*field)->move_field_offset(ptr_diff);
-          if (
-            utility->append_column_value(spider, str, *field, NULL,
-              share->access_charset) ||
-            str->reserve(SPIDER_SQL_AND_LEN)
-          )
+          if (utility->append_column_value(spider, str, *field, NULL, FALSE,
+                                           share->access_charset) ||
+              str->reserve(SPIDER_SQL_AND_LEN))
             DBUG_RETURN(HA_ERR_OUT_OF_MEM);
           (*field)->move_field_offset(-ptr_diff);
         }
@@ -9736,11 +9733,10 @@ int spider_odbc_handler::append_insert_values(
         }
         str->q_append(SPIDER_SQL_NULL_STR, SPIDER_SQL_NULL_LEN);
       } else {
-        if (
-          utility->append_column_value(spider, str, *field, NULL,
-            share->access_charset) ||
-          str->reserve(SPIDER_SQL_COMMA_LEN)
-        ) {
+        if (utility->append_column_value(spider, str, *field, NULL, FALSE,
+                                         share->access_charset) ||
+            str->reserve(SPIDER_SQL_COMMA_LEN))
+        {
 #ifndef DBUG_OFF
           dbug_tmp_restore_column_map(&table->read_set, tmp_map);
 #endif
