@@ -8,6 +8,7 @@
 
 [mysqld]
 wsrep-ssl-mode=SERVER
+ssl-ca=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.root.crt
 
 [mysqld.1]
 ssl-key=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.1.key
