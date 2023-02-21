@@ -16,6 +16,7 @@ usr/include/mariadb/my_alloca.h
 usr/include/mariadb/my_config.h
 usr/include/mariadb/my_global.h
 usr/include/mariadb/my_sys.h
+usr/include/mariadb/my_alloca.h
 usr/include/mariadb/mysql.h
 usr/include/mariadb/mysql/
 usr/include/mariadb/mysql/client_plugin.h
