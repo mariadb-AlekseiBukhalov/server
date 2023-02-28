@@ -1,0 +1,22 @@
+#
+# MENT-1737: SIGSEGV in wsrep_thd_trx_seqno
+#
+
+--source include/galera_cluster.inc
+
+CREATE TABLE t1 (c INT) ENGINE=INNODB;
+SET SESSION TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+CREATE TABLE t2 (c INT) ENGINE=INNODB;
+SET SESSION pseudo_slave_mode=1;
+XA START 'a';
+INSERT INTO t2 (c) VALUES (1);
+SELECT * FROM t1;
+XA END 'a';
+XA PREPARE 'a';
+
+SET SESSION innodb_lock_wait_timeout=1;
+--error ER_LOCK_WAIT_TIMEOUT
+INSERT INTO t1 (c) VALUES (0);
+
+XA ROLLBACK 'a';
+DROP TABLE t1,t2;

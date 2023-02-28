@@ -1,0 +1,17 @@
+connection node_2;
+connection node_1;
+CREATE TABLE t1 (c INT) ENGINE=INNODB;
+SET SESSION TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+CREATE TABLE t2 (c INT) ENGINE=INNODB;
+SET SESSION pseudo_slave_mode=1;
+XA START 'a';
+INSERT INTO t2 (c) VALUES (1);
+SELECT * FROM t1;
+c
+XA END 'a';
+XA PREPARE 'a';
+SET SESSION innodb_lock_wait_timeout=1;
+INSERT INTO t1 (c) VALUES (0);
+ERROR HY000: Lock wait timeout exceeded; try restarting transaction
+XA ROLLBACK 'a';
+DROP TABLE t1,t2;

@@ -101,15 +101,20 @@ extern "C" query_id_t wsrep_thd_transaction_id(const THD *thd)
 
 extern "C" long long wsrep_thd_trx_seqno(const THD *thd)
 {
-  const wsrep::client_state& cs= thd->wsrep_cs();
-  if (cs.mode() == wsrep::client_state::m_toi)
+  long long seqno= wsrep::seqno::undefined().get();
+  if (thd)
   {
-    return cs.toi_meta().seqno().get();
+    const wsrep::client_state& cs= thd->wsrep_cs();
+    if (cs.mode() == wsrep::client_state::m_toi)
+    {
+      seqno= cs.toi_meta().seqno().get();
+    }
+    else
+    {
+      seqno= cs.transaction().ws_meta().seqno().get();
+    }
   }
-  else
-  {
-    return cs.transaction().ws_meta().seqno().get();
-  }
+  return seqno;
 }
 
 extern "C" void wsrep_thd_self_abort(THD *thd)
