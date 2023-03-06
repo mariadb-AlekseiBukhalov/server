@@ -1,0 +1,21 @@
+#
+# MENT-1733: int binlog_close_connection(handlerton*, THD*):
+# Assertion `cache_mngr->trx_cache.empty()' failed.
+#
+--source include/galera_cluster.inc
+XA START '0';
+SET SESSION wsrep_trx_fragment_size=0;
+SET GLOBAL wsrep_forced_binlog_format=STATEMENT;
+SET SESSION TRANSACTION READ ONLY;
+--error ER_NOT_SUPPORTED_YET
+CREATE TEMPORARY TABLE t (i INT KEY) ENGINE=INNODB;
+XA END '0';
+XA ROLLBACK '0';
+XA START '0';
+--error ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION
+INSERT INTO t VALUES ('0');
+XA END '0';
+SET SESSION pseudo_slave_mode=1;
+XA PREPARE '0';
+XA ROLLBACK '0';
+SET GLOBAL wsrep_forced_binlog_format=DEFAULT;

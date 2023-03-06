@@ -6732,16 +6732,14 @@ int THD::decide_logging_format(TABLE_LIST *tables)
   if (WSREP_CLIENT_NNULL(this) &&
       wsrep_thd_is_local(this) &&
       wsrep_is_active(this) &&
-      variables.wsrep_trx_fragment_size > 0)
+      !is_current_stmt_binlog_disabled() &&
+      !is_current_stmt_binlog_format_row() &&
+      (wsrep_trx().is_xa() || variables.wsrep_trx_fragment_size > 0))
   {
-    if (!is_current_stmt_binlog_disabled() &&
-        !is_current_stmt_binlog_format_row())
-    {
-      my_message(ER_NOT_SUPPORTED_YET,
-                 "Streaming replication not supported with "
-                 "binlog_format=STATEMENT", MYF(0));
-      DBUG_RETURN(-1);
-    }
+    my_message(ER_NOT_SUPPORTED_YET,
+               "Streaming replication not supported with "
+               "binlog_format=STATEMENT", MYF(0));
+    DBUG_RETURN(-1);
   }
 
   /*
