@@ -139,42 +139,42 @@ auto_test_local	ta_l	1	2
 show create table mysql.spider_tables;
 Table	Create Table
 spider_tables	CREATE TABLE `spider_tables` (
-  `db_name` char(64) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
-  `table_name` char(199) COLLATE utf8mb3_bin NOT NULL DEFAULT '',
+  `db_name` char(64) NOT NULL DEFAULT '',
+  `table_name` char(199) NOT NULL DEFAULT '',
   `link_id` int(11) NOT NULL DEFAULT 0,
   `priority` bigint(20) NOT NULL DEFAULT 0,
-  `server` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
-  `scheme` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
-  `host` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
-  `port` char(5) COLLATE utf8mb3_bin DEFAULT NULL,
-  `socket` text COLLATE utf8mb3_bin DEFAULT NULL,
-  `username` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
-  `password` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
-  `ssl_ca` text COLLATE utf8mb3_bin DEFAULT NULL,
-  `ssl_capath` text COLLATE utf8mb3_bin DEFAULT NULL,
-  `ssl_cert` text COLLATE utf8mb3_bin DEFAULT NULL,
-  `ssl_cipher` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
-  `ssl_key` text COLLATE utf8mb3_bin DEFAULT NULL,
+  `server` char(64) DEFAULT NULL,
+  `scheme` char(64) DEFAULT NULL,
+  `host` char(64) DEFAULT NULL,
+  `port` char(5) DEFAULT NULL,
+  `socket` text DEFAULT NULL,
+  `username` char(64) DEFAULT NULL,
+  `password` char(64) DEFAULT NULL,
+  `ssl_ca` text DEFAULT NULL,
+  `ssl_capath` text DEFAULT NULL,
+  `ssl_cert` text DEFAULT NULL,
+  `ssl_cipher` char(64) DEFAULT NULL,
+  `ssl_key` text DEFAULT NULL,
   `ssl_verify_server_cert` tinyint(4) NOT NULL DEFAULT 0,
   `monitoring_binlog_pos_at_failing` tinyint(4) NOT NULL DEFAULT 0,
-  `default_file` text COLLATE utf8mb3_bin DEFAULT NULL,
-  `default_group` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
-  `dsn` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
-  `filedsn` text COLLATE utf8mb3_bin DEFAULT NULL,
-  `driver` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
-  `tgt_db_name` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
-  `tgt_table_name` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
+  `default_file` text DEFAULT NULL,
+  `default_group` char(64) DEFAULT NULL,
+  `dsn` char(64) DEFAULT NULL,
+  `filedsn` text DEFAULT NULL,
+  `driver` char(64) DEFAULT NULL,
+  `tgt_db_name` char(64) DEFAULT NULL,
+  `tgt_table_name` char(64) DEFAULT NULL,
   `link_status` tinyint(4) NOT NULL DEFAULT 1,
   `block_status` tinyint(4) NOT NULL DEFAULT 0,
-  `static_link_id` char(64) COLLATE utf8mb3_bin DEFAULT NULL,
+  `static_link_id` char(64) DEFAULT NULL,
   PRIMARY KEY (`db_name`,`table_name`,`link_id`),
   UNIQUE KEY `uidx1` (`db_name`,`table_name`,`static_link_id`),
   KEY `idx1` (`priority`)
 ) ENGINE=Aria DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin PAGE_CHECKSUM=1 TRANSACTIONAL=1
 select * from mysql.spider_tables;
 db_name	table_name	link_id	priority	server	scheme	host	port	socket	username	password	ssl_ca	ssl_capath	ssl_cert	ssl_cipher	ssl_key	ssl_verify_server_cert	monitoring_binlog_pos_at_failing	default_file	default_group	dsn	filedsn	driver	tgt_db_name	tgt_table_name	link_status	block_status	static_link_id
-auto_test_local	ta_l	0	1000000	s_2_1	odbc_mariadb		NULL									0	0					MariaDB ODBC 3.0 Driver	auto_test_remote	ta_r	1	0	NULL
-auto_test_local	ta_l	1	1000000	s_2_2	odbc_mariadb		NULL									0	0					MariaDB ODBC 3.0 Driver	auto_test_remote2	ta_r3	2	0	NULL
+auto_test_local	ta_l	0	1000000	s_2_1	odbc_mariadb											0	0					MariaDB ODBC 3.0 Driver	auto_test_remote	ta_r	1	0	
+auto_test_local	ta_l	1	1000000	s_2_2	odbc_mariadb											0	0					MariaDB ODBC 3.0 Driver	auto_test_remote2	ta_r3	2	0	
 SELECT spider_copy_tables('ta_l', '0', '1');
 spider_copy_tables('ta_l', '0', '1')
 1

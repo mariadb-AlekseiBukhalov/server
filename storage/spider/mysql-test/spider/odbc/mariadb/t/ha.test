@@ -326,7 +326,9 @@ if ($USE_CHILD_GROUP3)
 --connection master_1
 eval $MASTER_1_SET_RECOVERY_STATUS_2_1;
 eval $MASTER_1_CHECK_LINK_STATUS;
+--replace_regex / COLLATE .* DEFAULT NULL/DEFAULT NULL/
 show create table mysql.spider_tables;
+--replace_regex /NULL//
 select * from mysql.spider_tables;
 eval $MASTER_1_COPY_TABLES_2_1;
 if ($USE_CHILD_GROUP3)
