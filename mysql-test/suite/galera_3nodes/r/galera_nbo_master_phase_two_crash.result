@@ -17,7 +17,7 @@ SET GLOBAL debug_dbug = '';
 SET DEBUG_SYNC= 'now SIGNAL signal.wsrep_alter_locked_tables';
 connection node_3;
 connection node_2;
-ERROR HY000: Got error 8 "Exec format error" during COMMIT
+ERROR HY000: Error while appending streaming replication fragment(provider status: Fatal error, must abort.)
 SET wsrep_sync_wait=0;
 SHOW CREATE TABLE t1;
 Table	Create Table
