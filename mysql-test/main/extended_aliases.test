@@ -48,9 +48,10 @@ execute stmt1;
 execute stmt2;
 execute stmt2;
 
-
+--disable_service_connection
 --echo # priority have alias
 select a+a as b from t1 where b > 10;
+--enable_service_connection
 explain extended
 select a+a as b from t1 where b > 10;
 create view v1 as select a+a as b from t1 where b > 10;
@@ -186,6 +187,7 @@ create table t3 (d int);
 insert into t3 values (1), (2), (6);
 
 set sql_mode="EXTENDED_ALIASES";
+--disable_service_connection
 
 --error ER_NON_UNIQ_ERROR
 select a, t1.a + 1 as a, t1.a + 1 as a from t1;
@@ -271,6 +273,7 @@ select (select 1 from t3 where a=d) as a, t1.a from t1;
 prepare stmt from "select (select 1 from t3 where a=d) as a, t1.a from t1";
 execute stmt;
 execute stmt;
+--enable_service_connection
 
 drop tables t1,t3;
 
