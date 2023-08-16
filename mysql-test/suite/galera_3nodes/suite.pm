@@ -67,7 +67,6 @@ push @::global_suppressions,
      qr|WSREP: Trying to continue unpaused monitor|,
      qr|WSREP: Wait for gtid returned error 3 while waiting for prior transactions to commit before setting position|,
      qr|WSREP: Failed to report last committed|,
-     qr(WSREP: TO isolation failed for.*),
      qr(WSREP: open file.*),
    );
 
