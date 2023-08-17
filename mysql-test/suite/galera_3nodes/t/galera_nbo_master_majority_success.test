@@ -43,6 +43,7 @@ CALL mtr.add_suppression("Closing during nonblocking operation.");
 CALL mtr.add_suppression("NBO phase two begin failed for:");
 CALL mtr.add_suppression("Failed to report last committed .*");
 CALL mtr.add_suppression('last left .* greater than drain seqno');
+CALL mtr.add_suppression("WSREP: TO isolation failed for NBO phase two.*");
 
 --connection node_1
 CALL mtr.add_suppression("Failed to report last committed .*");

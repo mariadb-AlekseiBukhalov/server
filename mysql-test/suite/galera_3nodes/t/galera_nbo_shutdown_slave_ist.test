@@ -53,6 +53,7 @@ INSERT INTO t1 VALUES (1,2);
 SELECT COUNT(*) = 2 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';
 SELECT COUNT(*) = 1 FROM t1;
 CALL mtr.add_suppression("WSREP: no corresponding NBO begin found for NBO end source");
+CALL mtr.add_suppression("WSREP: TO isolation failed for NBO phase two.*");
 
 --connection node_2
 SELECT COUNT(*) = 2 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';

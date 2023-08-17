@@ -23,6 +23,7 @@ SELECT COUNT(*) = 1 FROM t1;
 COUNT(*) = 1
 1
 CALL mtr.add_suppression("WSREP: no corresponding NBO begin found for NBO end source");
+CALL mtr.add_suppression("WSREP: TO isolation failed for NBO phase two.*");
 connection node_2;
 SELECT COUNT(*) = 2 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';
 COUNT(*) = 2

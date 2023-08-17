@@ -80,5 +80,6 @@ DROP TABLE t1;
 CALL mtr.add_suppression("WSREP: exception from gcomm, backend must be restarted: Gcomm backend termination was requested by setting gmcast.isolate=2.");
 CALL mtr.add_suppression("WSREP: closing during nonblocking operation.");
 CALL mtr.add_suppression("WSREP: discarding [0-9]* message");
+CALL mtr.add_suppression("WSREP: TO isolation failed for NBO phase two.*");
 
 --source ../galera/include/auto_increment_offset_restore.inc

@@ -68,5 +68,6 @@ CALL mtr.add_suppression("TO isolation end failed");
 CALL mtr.add_suppression("SYNC message from member");
 CALL mtr.add_suppression("Failed to send NBO-end");
 CALL mtr.add_suppression("NBO phase two begin failed for:");
+CALL mtr.add_suppression("WSREP: TO isolation failed for NBO phase two.*");
 connection node_3;
 CALL mtr.add_suppression("SYNC message from member");
