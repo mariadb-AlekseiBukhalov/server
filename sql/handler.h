@@ -5532,8 +5532,6 @@ public:
   {
     return false;
   }
-  /* If the table is using sql level unique constraints on some column */
-  inline bool has_long_unique();
 
   /* Used for ALTER TABLE.
   Some engines can handle some differences in indexes by themself. */

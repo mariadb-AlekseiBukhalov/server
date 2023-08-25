@@ -1756,7 +1756,7 @@ void ha_myisam::start_bulk_insert(ha_rows rows, uint flags)
                      (ulong) rows, size));
 
   /* don't enable row cache if too few rows */
-  if ((!rows || rows > MI_MIN_ROWS_TO_USE_WRITE_CACHE) && !has_long_unique())
+  if (!rows || rows > MI_MIN_ROWS_TO_USE_WRITE_CACHE)
     mi_extra(file, HA_EXTRA_WRITE_CACHE, (void*) &size);
 
   can_enable_indexes= mi_is_all_keys_active(file->s->state.key_map,
@@ -2162,8 +2162,7 @@ int ha_myisam::info(uint flag)
 
 int ha_myisam::extra(enum ha_extra_function operation)
 {
-  if ((operation == HA_EXTRA_MMAP && !opt_myisam_use_mmap) ||
-      (operation == HA_EXTRA_WRITE_CACHE && has_long_unique()))
+  if (operation == HA_EXTRA_MMAP && !opt_myisam_use_mmap)
     return 0;
   return mi_extra(file, operation, 0);
 }
