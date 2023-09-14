@@ -81,6 +81,7 @@ select * from t3;
 end if;
 close c;
 end|
+set @@max_open_cursors=300|
 set @@max_sp_recursion_depth=255|
 set @var=1|
 call bug10100p(255, @var)|
@@ -89,6 +90,7 @@ call bug10100pv(1,255)|
 call bug10100pd(1,255)|
 call bug10100pc(1,255)|
 set @@max_sp_recursion_depth=0|
+set @@max_open_cursors=default|
 deallocate prepare stmt2|
 drop function bug10100f|
 drop procedure bug10100p|

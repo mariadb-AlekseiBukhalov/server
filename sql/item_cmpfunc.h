@@ -269,6 +269,8 @@ public:
 
 class Item_func_truth : public Item_bool_func
 {
+  bool check_arguments() const override
+  { return check_argument_types_can_return_bool(0, 1); }
 public:
   bool val_bool() override;
   bool fix_length_and_dec(THD *thd) override;
@@ -711,6 +713,8 @@ protected:
 
 class Item_func_not :public Item_bool_func
 {
+  bool check_arguments() const override
+  { return check_argument_types_can_return_bool(0, 1); }
 public:
   Item_func_not(THD *thd, Item *a): Item_bool_func(thd, a) {}
   bool val_bool() override;
@@ -1249,6 +1253,7 @@ public:
   bool date_op(THD *thd, MYSQL_TIME *ltime, date_mode_t fuzzydate) override;
   bool time_op(THD *thd, MYSQL_TIME *ltime) override;
   bool native_op(THD *thd, Native *to) override;
+  Type_ref_null ref_op(THD *thd) override;
   bool fix_length_and_dec(THD *thd) override
   {
     update_nullability_post_fix_fields();
@@ -1336,6 +1341,7 @@ public:
   bool date_op(THD *thd, MYSQL_TIME *ltime, date_mode_t fuzzydate) override;
   bool time_op(THD *thd, MYSQL_TIME *ltime) override;
   bool native_op(THD *thd, Native *to) override;
+  Type_ref_null ref_op(THD *thd) override;
   bool fix_length_and_dec(THD *thd) override
   {
     update_nullability_post_fix_fields();
@@ -1405,11 +1411,17 @@ public:
     return val_native_with_conversion_from_item(thd, find_item(), to,
                                                 type_handler());
   }
+  Type_ref_null ref_op(THD *thd) override
+  {
+    return find_item()->val_ref(thd);
+  }
 };
 
 
 class Item_func_if :public Item_func_case_abbreviation2_switch
 {
+  bool check_arguments() const override
+  { return check_argument_types_can_return_bool(0, 1); }
 protected:
   Item *find_item() const override
   { return args[0]->val_bool() ? args[1] : args[2]; }
@@ -1521,6 +1533,15 @@ public:
   String *str_op(String *str) override;
   my_decimal *decimal_op(my_decimal *) override;
   bool native_op(THD *thd, Native *to) override;
+  Type_ref_null ref_op(THD *thd) override
+  {
+    /*
+      At fix_fields() type this error is raised:
+      Illegal parameter data type for operation 'nullif'
+    */
+    DBUG_ASSERT(0);
+    return Type_ref_null();
+  }
   bool fix_length_and_dec(THD *thd) override;
   bool walk(Item_processor processor, bool walk_subquery, void *arg) override;
   LEX_CSTRING func_name_cstring() const override
@@ -2455,6 +2476,7 @@ public:
   bool date_op(THD *thd, MYSQL_TIME *ltime, date_mode_t fuzzydate) override;
   bool time_op(THD *thd, MYSQL_TIME *ltime) override;
   bool native_op(THD *thd, Native *to) override;
+  Type_ref_null ref_op(THD *thd) override;
   bool fix_fields(THD *thd, Item **ref) override;
   table_map not_null_tables() const override { return 0; }
   LEX_CSTRING func_name_cstring() const override
@@ -2476,6 +2498,8 @@ public:
 */
 class Item_func_case_searched: public Item_func_case
 {
+  bool check_arguments() const override
+  { return check_argument_types_can_return_bool(0, when_count()); }
   uint when_count() const { return arg_count / 2; }
   bool with_else() const { return arg_count % 2; }
   Item **else_expr_addr() const override
@@ -2980,6 +3004,8 @@ protected:
 
 class Item_func_like :public Item_bool_func2
 {
+  bool check_arguments() const override
+  { return check_argument_types_can_return_str(0, arg_count); }
   // Turbo Boyer-Moore data
   bool        canDoTurboBM;	// pattern is '%abcd%' case
   const char* pattern;
@@ -3224,6 +3250,8 @@ public:
 
 class Item_func_regex :public Item_bool_func
 {
+  bool check_arguments() const override
+  { return check_argument_types_can_return_str(0, arg_count); }
   Regexp_processor_pcre re;
   DTCollation cmp_collation;
 public:
@@ -3826,10 +3854,19 @@ protected:
 
 class Item_func_cursor_bool_attr: public Item_bool_func, public Cursor_ref
 {
+protected:
+  THD *m_thd;
 public:
-  Item_func_cursor_bool_attr(THD *thd, const LEX_CSTRING *name, uint offset)
-   :Item_bool_func(thd), Cursor_ref(name, offset)
+  Item_func_cursor_bool_attr(THD *thd, const Cursor_ref &ref)
+   :Item_bool_func(thd), Cursor_ref(ref), m_thd(nullptr)
   { }
+  bool fix_fields(THD *thd, Item **ref) override
+  {
+    if (Item_bool_func::fix_fields(thd, ref))
+      return true;
+    m_thd= thd;
+    return false;
+  }
   bool check_vcol_func_processor(void *arg) override
   {
     return mark_unsupported_function(func_name(), arg, VCOL_SESSION_FUNC);
@@ -3844,8 +3881,8 @@ public:
 class Item_func_cursor_isopen: public Item_func_cursor_bool_attr
 {
 public:
-  Item_func_cursor_isopen(THD *thd, const LEX_CSTRING *name, uint offset)
-   :Item_func_cursor_bool_attr(thd, name, offset) { }
+  Item_func_cursor_isopen(THD *thd, const Cursor_ref &ref)
+   :Item_func_cursor_bool_attr(thd, ref) { }
   LEX_CSTRING func_name_cstring() const override
   {
     static LEX_CSTRING name= {STRING_WITH_LEN("%ISOPEN") };
@@ -3861,8 +3898,8 @@ protected:
 class Item_func_cursor_found: public Item_func_cursor_bool_attr
 {
 public:
-  Item_func_cursor_found(THD *thd, const LEX_CSTRING *name, uint offset)
-   :Item_func_cursor_bool_attr(thd, name, offset)
+  Item_func_cursor_found(THD *thd, const Cursor_ref &ref)
+   :Item_func_cursor_bool_attr(thd, ref)
   {
     set_maybe_null();
   }
@@ -3881,8 +3918,8 @@ protected:
 class Item_func_cursor_notfound: public Item_func_cursor_bool_attr
 {
 public:
-  Item_func_cursor_notfound(THD *thd, const LEX_CSTRING *name, uint offset)
-   :Item_func_cursor_bool_attr(thd, name, offset)
+  Item_func_cursor_notfound(THD *thd, const Cursor_ref &ref)
+   :Item_func_cursor_bool_attr(thd, ref)
   {
     set_maybe_null();
   }
