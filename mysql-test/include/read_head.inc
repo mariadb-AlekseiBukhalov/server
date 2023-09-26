@@ -2,11 +2,6 @@
 #    Print first LINES_TO_READ from a file.
 #    The environment variables SEARCH_FILE and LINES_TO_READ must be set
 #    before sourcing this routine.
-# Use:
-#    When the test is slow ( example because of ASAN build) then it
-#    may not flush the lines when 'cat' command is called and the
-#    test could fail with missing lines. Hence this can be used to
-#    to print first N lines.
 #
 
 perl;
