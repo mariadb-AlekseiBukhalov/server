@@ -1,0 +1,12 @@
+#
+# MENT-1839: Assertion `(thd && (WSREP_PROVIDER_EXISTS_ && thd->variables.wsrep_on))'
+# failed in void wsrep_restore_kill_after_commit(THD*)
+#
+
+--source include/galera_cluster.inc
+
+SET WSREP_ON = 0;
+XA START 'a';
+XA END 'a';
+XA COMMIT 'a' ONE PHASE;
+SET WSREP_ON = 1;

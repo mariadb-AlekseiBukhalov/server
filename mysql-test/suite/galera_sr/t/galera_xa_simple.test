@@ -144,6 +144,10 @@ XA END 'test';
 XA PREPARE 'test';
 XA COMMIT 'test';
 
+XA START 'test';
+XA END 'test';
+XA COMMIT 'test' ONE PHASE;
+
 
 #
 # Test F: No implicit commit on XA transaction
