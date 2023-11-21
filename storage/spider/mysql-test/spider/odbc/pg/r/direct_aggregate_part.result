@@ -45,7 +45,7 @@ COUNT(*)
 5
 SHOW GLOBAL STATUS LIKE 'Spider_direct_aggregate%';
 Variable_name	Value
-Spider_direct_aggregate	2
+Spider_direct_aggregate	4
 SELECT MAX(a) FROM ta_l2;
 MAX(a)
 5
@@ -57,19 +57,19 @@ MIN(a)
 1
 SHOW GLOBAL STATUS LIKE 'Spider_direct_aggregate%';
 Variable_name	Value
-Spider_direct_aggregate	6
+Spider_direct_aggregate	4
 SELECT MAX(a) FROM ta_l2 WHERE a < 5;
 MAX(a)
 4
 SHOW GLOBAL STATUS LIKE 'Spider_direct_aggregate%';
 Variable_name	Value
-Spider_direct_aggregate	8
+Spider_direct_aggregate	4
 SELECT MIN(a) FROM ta_l2 WHERE a > 1;
 MIN(a)
 2
 SHOW GLOBAL STATUS LIKE 'Spider_direct_aggregate%';
 Variable_name	Value
-Spider_direct_aggregate	10
+Spider_direct_aggregate	4
 
 deinit
 for child3

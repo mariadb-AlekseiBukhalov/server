@@ -2360,7 +2360,7 @@ SPIDER_THDVAR_OVERRIDE_VALUE_FUNC(int, strict_group_by)
 static MYSQL_THDVAR_BOOL(
   direct_aggregate, /* name */
   PLUGIN_VAR_RQCMDARG, /* opt */
-  "Whether to enable direct aggregate",
+  "Whether to pushdown aggregation functions",
   NULL, /* check */
   NULL, /* update */
   TRUE /* def */
