@@ -1268,7 +1268,7 @@ void thd_gmt_sec_to_TIME(MYSQL_THD thd, MYSQL_TIME *ltime, my_time_t t)
 extern "C"
 unsigned long thd_query_start_sec_part(MYSQL_THD thd)
 {
-  return thd ? thd->query_start_sec_part() : 0;
+  return thd ? thd->start_time_sec_part : 0;
 }
 
 /*
@@ -8966,9 +8966,12 @@ void get_time_info(THD *thd, const char *format, size_t format_len,
   String format_str(format, format_len, str.charset());
   size_t res_len= 0;
 
-  const MY_LOCALE *lc= thd->variables.lc_time_names;
+  const MY_LOCALE *lc= thd ? thd->variables.lc_time_names
+                           : global_system_variables.lc_time_names;
+  const Time_zone *tz= thd ? thd->variables.time_zone
+                           : global_system_variables.time_zone;
 
-  make_date_time(thd, &format_str, l_time, (timestamp_type)0, lc, &str);
+  make_date_time(&format_str, l_time, (timestamp_type)0, lc, tz, &str);
 
   res_len= str.length();
 

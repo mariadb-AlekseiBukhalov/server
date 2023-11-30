@@ -2196,13 +2196,13 @@ static size_t log_header(MYSQL_THD thd, char *message, size_t message_len,
         connection_id, query_id, operation);
 
   (void) localtime_r(ts, &tm_time);
-  thd_gmt_sec_to_TIME(thd, &local_TIME, (my_time_t)(*ts));
+  thd_gmt_sec_to_TIME(0, &local_TIME, (my_time_t)(*ts));
   local_TIME.second_part= thd_query_start_sec_part(thd);
   /*
     passing the curr_timestamp buffer as part of res,
     to get current time result from make_date_time().
   */
-  get_time_info(thd, ts_format, strlen(ts_format), &local_TIME,
+  get_time_info(0, ts_format, strlen(ts_format), &local_TIME,
                 0, &res, sizeof(curr_timestamp));
 
   return my_snprintf(message, message_len,
