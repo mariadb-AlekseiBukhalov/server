@@ -14,8 +14,8 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335 USA */
 
 
-#define PLUGIN_VERSION 0x0204
-#define PLUGIN_STR_VERSION "2.4.1"
+#define PLUGIN_VERSION 0x0205
+#define PLUGIN_STR_VERSION "2.5.0"
 
 #define _my_thread_var loc_thread_var
 
