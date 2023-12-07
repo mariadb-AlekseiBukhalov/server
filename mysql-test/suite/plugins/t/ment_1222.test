@@ -1,0 +1,29 @@
+--source include/have_plugin_auth.inc
+--source include/not_embedded.inc
+
+if (!$SERVER_AUDIT2_SO) {
+  skip No SERVER_AUDIT2 plugin;
+}
+
+--disable_warnings
+CREATE TABLE IF NOT EXISTS mysql.server_audit_filters (
+    filtername char(80) COLLATE utf8_bin NOT NULL DEFAULT '',
+    rule longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'true' CHECK (json_valid(rule)),
+    CONSTRAINT c_filtername UNIQUE (filtername)
+) ENGINE=Aria;
+
+install plugin server_audit soname 'server_audit2';
+
+set global server_audit_logging= ON;
+
+INSERT INTO mysql.server_audit_filters (filtername, rule)
+  VALUES ('test_tab_ignore', '{"connect_event": ["CONNECT","DISCONNECT"],
+      "log_tables":"test.*", "ignore_tables" : "mysql.*"}');
+--error 1
+SET GLOBAL server_audit_reload_filters=ON;
+
+let $MYSQLD_DATADIR= `SELECT @@datadir`;
+remove_file $MYSQLD_DATADIR/server_audit.log;
+
+uninstall plugin server_audit;
+truncate mysql.server_audit_filters;

@@ -1195,6 +1195,7 @@ ok:
   return f;
 
 error:
+  free_cond(f->arg_list);
   free(f);
   return 0;
 }

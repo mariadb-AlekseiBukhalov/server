@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS mysql.server_audit_filters (
+filtername char(80) COLLATE utf8_bin NOT NULL DEFAULT '',
+rule longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'true' CHECK (json_valid(rule)),
+CONSTRAINT c_filtername UNIQUE (filtername)
+) ENGINE=Aria;
+install plugin server_audit soname 'server_audit2';
+set global server_audit_logging= ON;
+INSERT INTO mysql.server_audit_filters (filtername, rule)
+VALUES ('test_tab_ignore', '{"connect_event": ["CONNECT","DISCONNECT"],
+      "log_tables":"test.*", "ignore_tables" : "mysql.*"}');
+SET GLOBAL server_audit_reload_filters=ON;
+ERROR HY000: Competing TABLES and IGNORE_TABLES are not allowed. Can't parse filter's 'test_tab_ignore' definition {"connect_event": ["CONNECT","DISCONNECT"],
+      "log_tables":"test.*", "ignore_tables" : "mysql.*"}. SERVER AUDIT can't load filters - old filters are saved.
+uninstall plugin server_audit;
+truncate mysql.server_audit_filters;
