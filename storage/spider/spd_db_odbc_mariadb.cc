@@ -373,7 +373,7 @@ int spider_db_odbc_mariadb::append_lock_tables(
     conn_link_idx = tmp_spider->conn_link_idx[tmp_link_idx];
     spider_odbc_share *db_share = (spider_odbc_share *)
       tmp_spider->share->dbton_share[conn->dbton_id];
-    if (&db_share->db_names_str[conn_link_idx])
+    if (db_share->db_names_str)
     {
       db_name = db_share->db_names_str[conn_link_idx].ptr();
       db_name_length = db_share->db_names_str[conn_link_idx].length();
@@ -383,7 +383,7 @@ int spider_db_odbc_mariadb::append_lock_tables(
       db_name_length = tmp_spider->share->tgt_dbs_lengths[conn_link_idx];
       db_name_charset = system_charset_info;
     }
-    if (&db_share->table_names_str[conn_link_idx])
+    if (db_share->table_names_str)
     {
       table_name = db_share->table_names_str[conn_link_idx].ptr();
       table_name_length = db_share->table_names_str[conn_link_idx].length();
