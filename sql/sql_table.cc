@@ -1233,6 +1233,11 @@ bool mysql_rm_table(THD *thd,TABLE_LIST *tables, bool if_exists,
     }
   }
 
+#ifdef WITH_WSREP
+  if (WSREP(thd))
+    wsrep_nbo_phase_one_end(thd);
+#endif /* WITH_WSREP */
+
   /* mark for close and remove all cached entries */
   thd->push_internal_handler(&err_handler);
   error= mysql_rm_table_no_locks(thd, tables, &thd->db, (DDL_LOG_STATE*) 0,
@@ -1240,6 +1245,11 @@ bool mysql_rm_table(THD *thd,TABLE_LIST *tables, bool if_exists,
                                  false, drop_sequence, dont_log_query,
                                  false);
   thd->pop_internal_handler();
+
+#ifdef WITH_WSREP
+  if (WSREP(thd))
+    wsrep_nbo_phase_two_begin(thd);
+#endif /* WITH_WSREP */
 
   if (unlikely(error))
     DBUG_RETURN(TRUE);

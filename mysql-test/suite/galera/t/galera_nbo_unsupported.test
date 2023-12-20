@@ -3,8 +3,6 @@
 #
 
 --source include/galera_cluster.inc
---source include/have_debug_sync.inc
---source include/have_debug.inc
 
 call mtr.add_suppression("WSREP: CREATE TABLE isolation failure");
 
@@ -25,9 +23,6 @@ ALTER TABLE t1 LOCK=DEFAULT, ADD COLUMN f2 INTEGER;
 ALTER TABLE t1 LOCK=NONE, ADD COLUMN f2 INTEGER;
 
 --error ER_NOT_SUPPORTED_YET
-DROP TABLE t1;
-
---error ER_NOT_SUPPORTED_YET
 REPAIR TABLE t1;
 
 --error ER_NOT_SUPPORTED_YET
@@ -35,6 +30,12 @@ CREATE USER u1 IDENTIFIED BY 'p1';
 
 --error ER_NOT_SUPPORTED_YET
 DROP USER u1;
+
+--error ER_NOT_SUPPORTED_YET
+CREATE DATABASE db1;
+
+--error ER_NOT_SUPPORTED_YET
+DROP DATABASE db1;
 
 SET SESSION wsrep_osu_method=TOI;
 

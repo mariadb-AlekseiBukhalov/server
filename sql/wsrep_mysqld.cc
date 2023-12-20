@@ -2819,6 +2819,8 @@ static bool wsrep_can_run_in_nbo(THD *thd, const char *db, const char *table,
        runs optimize one by one for tables, releasing NBO phase one in between,
        and this cannot be supported at the moment. */
     return (table_list->next_local ? false : true);
+  case SQLCOM_DROP_TABLE:
+    return true;
   default:
     break;
   }
@@ -3325,6 +3327,7 @@ void wsrep_nbo_phase_one_end(THD *thd)
                     {
                       const char act[]=
                         "now "
+                        "SIGNAL signal.wsrep_alter_locked_tables_reached "
                         "WAIT_FOR signal.wsrep_alter_locked_tables";
                       DBUG_ASSERT(!debug_sync_set_action(thd,
                                                          STRING_WITH_LEN(act)));
