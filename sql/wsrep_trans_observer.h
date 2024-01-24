@@ -309,8 +309,7 @@ static inline bool wsrep_run_commit_hook(THD* thd, bool all)
     /* Transaction is local but has no changes, the commit hooks will
        be skipped and the wsrep transaction is terminated in
        wsrep_commit_empty() */
-    if (thd->wsrep_trx().state() == wsrep::transaction::s_executing &&
-        !(WSREP(thd) && thd->lex->sql_command == SQLCOM_XA_PREPARE))
+    if (thd->wsrep_trx().state() == wsrep::transaction::s_executing)
     {
       ret= false;
     }

@@ -60,11 +60,11 @@ XA END 'test';
 XA PREPARE 'test';
 
 --connection node_1a
-SELECT COUNT(*) `expect 1` FROM mysql.wsrep_streaming_log;
+SELECT COUNT(*) `expect 0` FROM mysql.wsrep_streaming_log;
 XA RECOVER;
 
 --connection node_2
-SELECT COUNT(*) `expect 1` FROM mysql.wsrep_streaming_log;
+SELECT COUNT(*) `expect 0` FROM mysql.wsrep_streaming_log;
 XA RECOVER;
 
 --connection node_1
@@ -183,6 +183,7 @@ SET @@session.pseudo_slave_mode=1;
 XA START 'a';
 XA END 'a';
 XA PREPARE 'a';
+--error ER_XA_RBROLLBACK
 XA COMMIT 'a';
 SET @@session.pseudo_slave_mode=DEFAULT;
 
@@ -244,6 +245,7 @@ SET SESSION TRANSACTION READ ONLY;
 XA START 'a';
 XA END 'a';
 XA PREPARE 'a';
+--error ER_XA_RBROLLBACK
 XA COMMIT 'a';
 SET @@session.pseudo_slave_mode=DEFAULT;
 SET SESSION TRANSACTION READ WRITE;

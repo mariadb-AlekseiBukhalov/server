@@ -63,7 +63,7 @@ SET GLOBAL wsrep_provider_options = 'gmcast.isolate=1';
 # Client fails to XA COMMIT the transaction while 'non-Primary'
 #
 --connection t1
---error ER_ERROR_DURING_COMMIT
+--error ER_UNKNOWN_COM_ERROR
 XA COMMIT 't1';
 
 #

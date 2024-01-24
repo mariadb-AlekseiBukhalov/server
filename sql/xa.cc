@@ -1257,7 +1257,8 @@ static bool slave_applier_reset_xa_trans(THD *thd)
   thd->transaction->xid_state.xid_cache_element->acquired_to_recovered();
   thd->transaction->xid_state.xid_cache_element= 0;
 #ifdef WITH_WSREP
-  if (WSREP(thd) && wsrep_is_active(thd))
+  if (WSREP(thd) && wsrep_is_active(thd) &&
+      thd->wsrep_trx().state() == wsrep::transaction::s_prepared)
   {
     wsrep_xa_detach(thd);
   }

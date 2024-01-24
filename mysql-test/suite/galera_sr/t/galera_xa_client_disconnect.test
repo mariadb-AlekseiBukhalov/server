@@ -105,6 +105,7 @@ XA END 'test';
 XA PREPARE 'test';
 
 --disconnect node_1
+--source include/wait_until_disconnected.inc
 
 --connection node_1a
 SELECT * FROM t1;
@@ -247,7 +248,6 @@ DROP TABLE t1;
 XA START 'a';
 SET GLOBAL wsrep_provider_options='repl.max_ws_size=0';
 XA END 'a';
---error ER_ERROR_DURING_COMMIT
 XA PREPARE 'a';
 
 --disconnect trx1
@@ -255,6 +255,7 @@ XA PREPARE 'a';
 --connection node_1
 XA RECOVER;
 --eval SET GLOBAL wsrep_provider_options='repl.max_ws_size=$wsrep_max_ws_size_orig'
+XA ROLLBACK 'a';
 
 --connection node_2
 XA RECOVER;

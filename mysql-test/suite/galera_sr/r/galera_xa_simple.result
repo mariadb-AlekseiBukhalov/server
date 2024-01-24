@@ -62,19 +62,18 @@ f1
 XA END 'test';
 XA PREPARE 'test';
 connection node_1a;
-SELECT COUNT(*) `expect 1` FROM mysql.wsrep_streaming_log;
-expect 1
-1
+SELECT COUNT(*) `expect 0` FROM mysql.wsrep_streaming_log;
+expect 0
+0
 XA RECOVER;
 formatID	gtrid_length	bqual_length	data
 1	4	0	test
 connection node_2;
-SELECT COUNT(*) `expect 1` FROM mysql.wsrep_streaming_log;
-expect 1
-1
+SELECT COUNT(*) `expect 0` FROM mysql.wsrep_streaming_log;
+expect 0
+0
 XA RECOVER;
 formatID	gtrid_length	bqual_length	data
-1	4	0	test
 connection node_1;
 XA COMMIT 'test';
 DROP TABLE t1;
@@ -156,6 +155,7 @@ XA START 'a';
 XA END 'a';
 XA PREPARE 'a';
 XA COMMIT 'a';
+ERROR XA100: XA_RBROLLBACK: Transaction branch was rolled back
 SET @@session.pseudo_slave_mode=DEFAULT;
 Warnings:
 Warning	1231	Slave applier execution mode not active, statement ineffective.
@@ -190,6 +190,7 @@ XA START 'a';
 XA END 'a';
 XA PREPARE 'a';
 XA COMMIT 'a';
+ERROR XA100: XA_RBROLLBACK: Transaction branch was rolled back
 SET @@session.pseudo_slave_mode=DEFAULT;
 Warnings:
 Warning	1231	Slave applier execution mode not active, statement ineffective.

@@ -115,7 +115,6 @@ f1
 1
 SELECT xid FROM mysql.wsrep_streaming_log;
 xid
-X'74657374',X'',1
 XA RECOVER;
 formatID	gtrid_length	bqual_length	data
 1	4	0	test
@@ -125,10 +124,8 @@ f1
 1
 SELECT xid FROM mysql.wsrep_streaming_log;
 xid
-X'74657374',X'',1
 XA RECOVER;
 formatID	gtrid_length	bqual_length	data
-1	4	0	test
 connection node_1a;
 XA COMMIT 'test';
 SELECT * FROM t1;
@@ -252,12 +249,13 @@ XA START 'a';
 SET GLOBAL wsrep_provider_options='repl.max_ws_size=0';
 XA END 'a';
 XA PREPARE 'a';
-ERROR HY000: Got error 0 "Internal error/check (Not system error)" during COMMIT
 disconnect trx1;
 connection node_1;
 XA RECOVER;
 formatID	gtrid_length	bqual_length	data
+1	1	0	a
 SET GLOBAL wsrep_provider_options='repl.max_ws_size=2147483647';
+XA ROLLBACK 'a';
 connection node_2;
 XA RECOVER;
 formatID	gtrid_length	bqual_length	data
