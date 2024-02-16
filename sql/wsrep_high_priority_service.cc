@@ -711,7 +711,7 @@ static void* process_apply_nbo(void *args_ptr)
   thd->system_thread_info.rpl_sql_info=
     new rpl_sql_thread_info(thd->wsrep_rgi->rli->mi->rpl_filter);
   thd->prior_thr_create_utime= thd->start_utime= microsecond_interval_timer();
-  thd->set_command(COM_SLEEP);
+  thd->mark_connection_idle();
   thd->reset_for_next_command(true);
 
   thd->wsrep_nbo_ctx.set_notifier(args->notify);
