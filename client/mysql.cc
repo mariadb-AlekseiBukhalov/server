@@ -5465,8 +5465,7 @@ put_info(const char *str,INFO_TYPE info_type, uint error, const char *sqlstate)
     if (!inited)
     {
 #ifdef HAVE_SETUPTERM
-      int errret;
-      have_curses= setupterm((char *)0, 1, &errret) != ERR;
+      have_curses= setupterm((char *)0, 1, NULL) != ERR;
 #endif
       inited=1;
     }
