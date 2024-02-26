@@ -527,7 +527,6 @@ void lock_sys_t::close()
 static void wsrep_assert_valid_bf_bf_wait(const lock_t *lock, const trx_t *trx,
                                           const unsigned type_mode)
 {
-	ut_ad(!lock->is_table());
 	lock_sys.assert_locked(*lock);
 	trx_t* lock_trx= lock->trx;
 
@@ -564,12 +563,18 @@ static void wsrep_assert_valid_bf_bf_wait(const lock_t *lock, const trx_t *trx,
 
 	mtr_t mtr{nullptr};
 
-	ib::error() << "Conflicting lock on table: "
-		    << lock->index->table->name
-		    << " index: "
-		    << lock->index->name()
-		    << " that has lock ";
-	lock_rec_print(stderr, lock, mtr);
+	if (lock->index) {
+		ib::error() << "Conflicting lock on table: "
+			    << lock->index->table->name
+			    << " index: "
+			    << lock->index->name()
+			    << " that has lock ";
+	}
+
+	if (lock->is_table())
+		lock_table_print(stderr, lock);
+	else
+		lock_rec_print(stderr, lock, mtr);
 
 	ib::error() << "WSREP state: ";
 
@@ -577,8 +582,7 @@ static void wsrep_assert_valid_bf_bf_wait(const lock_t *lock, const trx_t *trx,
 				  trx->id);
 	wsrep_report_bf_lock_wait(lock_trx->mysql_thd,
 				  lock_trx->id);
-	/* BF-BF wait is a bug */
-	ut_error;
+	/* BF-BF wait : lock wait or deadlock */
 }
 
 void wsrep_report_error(const lock_t* victim_lock, const trx_t *bf_trx);
@@ -1071,9 +1075,16 @@ void wsrep_report_error(const lock_t* victim_lock, const trx_t *bf_trx)
   mtr_t mtr{nullptr};
   WSREP_ERROR("BF request is not compatible with victim");
   WSREP_ERROR("BF requesting lock: ");
-  lock_rec_print(stderr, bf_trx->lock.wait_lock, mtr);
+  const lock_t* lock= bf_trx->lock.wait_lock;
+  if (lock->is_table())
+    lock_table_print(stderr, lock);
+  else
+    lock_rec_print(stderr, lock, mtr);
   WSREP_ERROR("victim holding lock: ");
-  lock_rec_print(stderr, victim_lock, mtr);
+  if (victim_lock->is_table())
+    lock_table_print(stderr, victim_lock);
+  else
+    lock_rec_print(stderr, victim_lock, mtr);
 }
 #endif /* WITH_DEBUG */
 

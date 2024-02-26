@@ -7,11 +7,27 @@
 --source include/have_debug.inc
 
 --connection node_1
+# Ignore warnings about BF locks because we intentionally try
+# to send concurrent DDL
+call mtr.add_suppression("BF request is not compatible with victim.*");
+call mtr.add_suppression("BF requesting lock:.*");
+call mtr.add_suppression("victim holding lock:.*");
+call mtr.add_suppression("InnoDB: WSREP state:.*");
+call mtr.add_suppression("WSREP: Thread BF trx_id:.*");
+
 CREATE TABLE t1 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
 CREATE TABLE t2 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
 CREATE TABLE t3 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
 
 --connection node_2
+# Ignore warnings about BF locks because we intentionally try
+# to send concurrent DDL
+call mtr.add_suppression("BF request is not compatible with victim.*");
+call mtr.add_suppression("BF requesting lock:.*");
+call mtr.add_suppression("victim holding lock:.*");
+call mtr.add_suppression("InnoDB: WSREP state:.*");
+call mtr.add_suppression("WSREP: Thread BF trx_id:.*");
+
 SET GLOBAL debug_dbug = 'd,sync.wsrep_alter_locked_tables';
 
 --connection node_1
