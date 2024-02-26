@@ -2119,38 +2119,51 @@ int spider_db_odbc::set_trx_isolation(
   int *need_mon
 ) {
   RETCODE ret;
+  SQLINTEGER isolations_supported= 0;
+  intptr_t odbc_isolation;
+  SQLSMALLINT data_length;
+
   DBUG_ENTER("spider_db_odbc::set_trx_isolation");
   DBUG_PRINT("info",("spider this=%p", this));
+
+  (void) SQLGetInfo(hdbc, SQL_TXN_ISOLATION_OPTION,
+           (SQLPOINTER) &isolations_supported, sizeof(isolations_supported),
+           &data_length);
+
+  DBUG_EXECUTE_IF("spd_odbc_isolation_level_serializable",
+      isolations_supported= SQL_TXN_SERIALIZABLE;);
+
   /*
-    If it fails to set the given isolation level, try stricter ones.
+    If the given isolation level is not supported, try stricter ones.
   */
   switch (trx_isolation)
   {
     case ISO_READ_UNCOMMITTED:
-      ret = SQLSetConnectAttr(hdbc, SQL_ATTR_TXN_ISOLATION,
-        (SQLPOINTER) SQL_TXN_READ_UNCOMMITTED, SQL_IS_UINTEGER);
-      if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO)
+      if ((odbc_isolation= isolations_supported & SQL_TXN_READ_UNCOMMITTED))
         break;
       /* fall through */
     case ISO_READ_COMMITTED:
-      ret = SQLSetConnectAttr(hdbc, SQL_ATTR_TXN_ISOLATION,
-        (SQLPOINTER) SQL_TXN_READ_COMMITTED, SQL_IS_UINTEGER);
-      if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO)
+      if ((odbc_isolation= isolations_supported & SQL_TXN_READ_COMMITTED))
         break;
       /* fall through */
     case ISO_REPEATABLE_READ:
-      ret = SQLSetConnectAttr(hdbc, SQL_ATTR_TXN_ISOLATION,
-        (SQLPOINTER) SQL_TXN_REPEATABLE_READ, SQL_IS_UINTEGER);
-      if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO)
+      if ((odbc_isolation= isolations_supported & SQL_TXN_REPEATABLE_READ))
         break;
       /* fall through */
     case ISO_SERIALIZABLE:
-      ret = SQLSetConnectAttr(hdbc, SQL_ATTR_TXN_ISOLATION,
-        (SQLPOINTER) SQL_TXN_SERIALIZABLE, SQL_IS_UINTEGER);
-      break;
+      if ((odbc_isolation= isolations_supported & SQL_TXN_SERIALIZABLE))
+        break;
+      /* fall through */
     default:
       DBUG_RETURN(HA_ERR_UNSUPPORTED);
   }
+
+  DBUG_EXECUTE_IF("spd_odbc_isolation_level_serializable",
+      DBUG_ASSERT(odbc_isolation == SQL_TXN_SERIALIZABLE););
+
+  ret = SQLSetConnectAttr(hdbc, SQL_ATTR_TXN_ISOLATION,
+      (SQLPOINTER) odbc_isolation, SQL_IS_UINTEGER);
+
   if (ret != SQL_SUCCESS)
   {
     DBUG_RETURN(spider_db_odbc_get_error(ret, SQL_HANDLE_DBC,
