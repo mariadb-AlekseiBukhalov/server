@@ -59,7 +59,9 @@ extern HASH spider_open_connections;
 extern SPIDER_DBTON spider_dbton[SPIDER_DBTON_SIZE];
 extern const char spider_dig_upper[];
 
-spider_db_odbc_util spider_db_odbc_utility("\"", "'", 1, 1);
+/* Default the identifier quote to double quote, which will be
+updated after calling SQLGetInfo */
+spider_db_odbc_util spider_db_odbc_utility('"', "'", 1);
 
 #define SPIDER_SQL_ODBC_TYPE_BINARY_STR "sql_binary"
 #define SPIDER_SQL_ODBC_TYPE_BINARY_LEN (sizeof(SPIDER_SQL_ODBC_TYPE_BINARY_STR) - 1)
@@ -1114,7 +1116,8 @@ spider_db_odbc::spider_db_odbc(
   spider_db_odbc_util *db_util
 ) : spider_db_conn(conn), utility(db_util),
   henv(SQL_NULL_HENV), hdbc(SQL_NULL_HDBC), hstm(SQL_NULL_HSTMT),
-  lock_table_hash_inited(FALSE), handler_open_array_inited(FALSE)
+  name_quote('\0'), lock_table_hash_inited(FALSE),
+  handler_open_array_inited(FALSE)
 {
   DBUG_ENTER("spider_db_odbc::spider_db_odbc");
   DBUG_PRINT("info",("spider this=%p", this));
@@ -1256,6 +1259,7 @@ int spider_db_odbc::connect(
   bool use_port;
   SQLSMALLINT dummy_len;
   Binary_string conn_str;
+  char nm_quote[2];
   DBUG_ENTER("spider_db_odbc::connect");
   DBUG_PRINT("info",("spider this=%p", this));
 #ifndef DBUG_OFF
@@ -1519,6 +1523,12 @@ int spider_db_odbc::connect(
       DBUG_RETURN(stored_error);
     }
   }
+
+  /* Get the identifier quote for query construction. */
+  ret= SQLGetInfo(hdbc, SQL_IDENTIFIER_QUOTE_CHAR, nm_quote,
+                  sizeof(nm_quote), &dummy_len);
+  DBUG_ASSERT(dummy_len == 1);
+  name_quote= nm_quote[0];
   DBUG_RETURN(0);
 }
 
@@ -2553,18 +2563,43 @@ bool spider_db_odbc::cmp_request_key_to_snd(
   DBUG_RETURN(TRUE);
 }
 
+/* Update the identifier quote of the shared utility for query
+construction. */
+int spider_db_odbc::update_name_quote(spider_db_share *share)
+{
+  int error_num;
+  DBUG_ENTER("spider_db_odbc::update_name_quote");
+  DBUG_PRINT("info",("spider this=%p", this));
+  if (name_quote != '\0')
+    utility->name_quote[0]= name_quote;
+  else
+  {
+    /* The quote being the default '\0' implies a connection has not
+    been established which is used to assign the quote by calling
+    SQLGetInfo. */
+    DBUG_ASSERT(!is_connected());
+    if ((error_num= spider_db_connect(share->spider_share, conn, conn->link_idx)))
+      DBUG_RETURN(error_num);
+    utility->name_quote[0]= name_quote;
+  }
+
+  /* Update the key_select and table_select strings using the correct
+  identifier quote. */
+  DBUG_RETURN(((spider_odbc_share *)share)->update_table_key_select_strings());
+}
+
 spider_db_odbc_util::spider_db_odbc_util(
-  const char *nm_quote,
+  char nm_quote,
   const char *val_quote,
-  uint nm_quote_length,
   uint val_quote_length
 ) : spider_db_util(),
-  name_quote(nm_quote), value_quote(val_quote),
-  name_quote_length(nm_quote_length),
+  value_quote(val_quote),
   value_quote_length(val_quote_length)
 {
   DBUG_ENTER("spider_db_odbc_util::spider_db_odbc_util");
   DBUG_PRINT("info",("spider this=%p", this));
+  name_quote[0]= nm_quote;
+  name_quote[1]= '\0';
   DBUG_VOID_RETURN;
 }
 
@@ -2703,70 +2738,15 @@ int spider_db_odbc_util::append_column_value(ha_spider *spider,
       ptr = tmp_str.get_str();
     } else if (field->type() == MYSQL_TYPE_GEOMETRY)
     {
-/*
-      uint mlength = SIZEOF_STORED_DOUBLE, lcnt;
-      uchar *dest = (uchar *) buf;
-      const uchar *source;
-      for (lcnt = 0; lcnt < 4; lcnt++)
-      {
-        mlength = SIZEOF_STORED_DOUBLE;
-        source = new_ptr + mlength + SIZEOF_STORED_DOUBLE * lcnt;
-        while (mlength--)
-          *dest++ = *--source;
-      }
-      tmp_str.length(SIZEOF_STORED_DOUBLE * lcnt);
-*/
 #ifndef DBUG_OFF
       double xmin, xmax, ymin, ymax;
-/*
-      float8store(buf,xmin);
-      float8store(buf+8,xmax);
-      float8store(buf+16,ymin);
-      float8store(buf+24,ymax);
-      memcpy(&xmin,new_ptr,sizeof(xmin));
-      memcpy(&xmax,new_ptr + 8,sizeof(xmax));
-      memcpy(&ymin,new_ptr + 16,sizeof(ymin));
-      memcpy(&ymax,new_ptr + 24,sizeof(ymax));
-      float8get(xmin, buf);
-      float8get(xmax, buf + 8);
-      float8get(ymin, buf + 16);
-      float8get(ymax, buf + 24);
-      DBUG_PRINT("info", ("spider geo is %f %f %f %f",
-        xmin, xmax, ymin, ymax));
-      DBUG_PRINT("info", ("spider geo is %.14g %.14g %.14g %.14g",
-        xmin, xmax, ymin, ymax));
-*/
       float8get(xmin, new_ptr);
       float8get(xmax, new_ptr + 8);
       float8get(ymin, new_ptr + 16);
       float8get(ymax, new_ptr + 24);
       DBUG_PRINT("info", ("spider geo is %f %f %f %f",
         xmin, xmax, ymin, ymax));
-/*
-      float8get(xmin, new_ptr + SIZEOF_STORED_DOUBLE * 4);
-      float8get(xmax, new_ptr + SIZEOF_STORED_DOUBLE * 5);
-      float8get(ymin, new_ptr + SIZEOF_STORED_DOUBLE * 6);
-      float8get(ymax, new_ptr + SIZEOF_STORED_DOUBLE * 7);
-      DBUG_PRINT("info", ("spider geo is %f %f %f %f",
-        xmin, xmax, ymin, ymax));
-      float8get(xmin, new_ptr + SIZEOF_STORED_DOUBLE * 8);
-      float8get(xmax, new_ptr + SIZEOF_STORED_DOUBLE * 9);
-      float8get(ymin, new_ptr + SIZEOF_STORED_DOUBLE * 10);
-      float8get(ymax, new_ptr + SIZEOF_STORED_DOUBLE * 11);
-      DBUG_PRINT("info", ("spider geo is %f %f %f %f",
-        xmin, xmax, ymin, ymax));
-      float8get(xmin, new_ptr + SIZEOF_STORED_DOUBLE * 12);
-      float8get(xmax, new_ptr + SIZEOF_STORED_DOUBLE * 13);
-      float8get(ymin, new_ptr + SIZEOF_STORED_DOUBLE * 14);
-      float8get(ymax, new_ptr + SIZEOF_STORED_DOUBLE * 15);
-      DBUG_PRINT("info", ("spider geo is %f %f %f %f",
-        xmin, xmax, ymin, ymax));
-*/
 #endif
-/*
-      tmp_str.set_quick((char *) new_ptr, SIZEOF_STORED_DOUBLE * 4,
-        &my_charset_bin);
-*/
       tmp_str.length(0);
       tmp_str.q_append((char *) SPIDER_SQL_LINESTRING_HEAD_STR,
         SPIDER_SQL_LINESTRING_HEAD_LEN);
@@ -2796,41 +2776,9 @@ int spider_db_odbc_util::append_column_value(ha_spider *spider,
 
   DBUG_PRINT("info", ("spider field->type() is %d", field->type()));
   DBUG_PRINT("info", ("spider ptr->length() is %d", ptr->length()));
-/*
-  if (
-    field->type() == MYSQL_TYPE_BIT ||
-    (field->type() >= MYSQL_TYPE_TINY_BLOB &&
-      field->type() <= MYSQL_TYPE_BLOB)
-  ) {
-    uchar *hex_ptr = (uchar *) ptr->ptr(), *end_ptr;
-    char *str_ptr;
-    DBUG_PRINT("info", ("spider HEX"));
-    if (str->reserve(SPIDER_SQL_HEX_LEN + ptr->length() * 2))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    str->q_append(SPIDER_SQL_HEX_STR, SPIDER_SQL_HEX_LEN);
-    str_ptr = (char *) str->ptr() + str->length();
-    for (end_ptr = hex_ptr + ptr->length(); hex_ptr < end_ptr; hex_ptr++)
-    {
-      *str_ptr++ = spider_dig_upper[(*hex_ptr) >> 4];
-      *str_ptr++ = spider_dig_upper[(*hex_ptr) & 0x0F];
-    }
-    str->length(str->length() + ptr->length() * 2);
-  } else 
-*/
   if (field->result_type() == STRING_RESULT)
   {
     DBUG_PRINT("info", ("spider STRING_RESULT"));
-    /*
-      ODBC does not support this
-    if (str->charset() != field->charset())
-    {
-      if ((err = spider_db_append_charset_name_before_string(str,
-        field->charset())))
-      {
-        DBUG_RETURN(err);
-      }
-    }
-    */
     if (str->reserve(SPIDER_SQL_VALUE_QUOTE_LEN))
       DBUG_RETURN(HA_ERR_OUT_OF_MEM);
     str->q_append(SPIDER_SQL_VALUE_QUOTE_STR, SPIDER_SQL_VALUE_QUOTE_LEN);
@@ -2863,17 +2811,6 @@ int spider_db_odbc_util::append_column_value(ha_spider *spider,
     str->q_append(SPIDER_SQL_VALUE_QUOTE_STR, SPIDER_SQL_VALUE_QUOTE_LEN);
   } else if (field->str_needs_quotes())
   {
-    /*
-      ODBC does not support this
-    if (str->charset() != field->charset())
-    {
-      if ((err = spider_db_append_charset_name_before_string(str,
-        field->charset())))
-      {
-        DBUG_RETURN(err);
-      }
-    }
-    */
     if (str->reserve(SPIDER_SQL_VALUE_QUOTE_LEN * 2 + ptr->length() * 2 + 2))
       DBUG_RETURN(HA_ERR_OUT_OF_MEM);
     str->q_append(SPIDER_SQL_VALUE_QUOTE_STR, SPIDER_SQL_VALUE_QUOTE_LEN);
@@ -5386,12 +5323,33 @@ spider_odbc_share::~spider_odbc_share()
   DBUG_VOID_RETURN;
 }
 
+/* Update the key_select and table_select strings. */
+int spider_odbc_share::update_table_key_select_strings()
+{
+  TABLE_SHARE *table_share = spider_share->table_share;
+  uint keys = table_share ? table_share->keys : 0;
+  int err;
+  DBUG_ENTER("spider_odbc_share::init_strings");
+
+  table_select->length(0);
+  if (table_share && (err = append_table_select()))
+    DBUG_RETURN(err);
+  for (uint i = 0; i < keys; i++)
+  {
+    key_select[i].length(0);
+    if ((err = append_key_select(i)))
+      DBUG_RETURN(err);
+  }
+
+  DBUG_RETURN(0);
+}
+
 int spider_odbc_share::init()
 {
-  int err;
   uint roop_count;
   TABLE_SHARE *table_share = spider_share->table_share;
   uint keys = table_share ? table_share->keys : 0;
+  int err;
   DBUG_ENTER("spider_odbc_share::init");
   DBUG_PRINT("info",("spider this=%p", this));
   if (!(key_select_pos = (int *)
@@ -5420,37 +5378,20 @@ int spider_odbc_share::init()
   }
   DBUG_PRINT("info",("spider key_hint=%p", key_hint));
 
-  if (
-    !(table_select = new spider_string[1]) ||
-    (keys > 0 &&
-      !(key_select = new spider_string[keys])
-    ) ||
-    (err = create_table_names_str()) ||
-    (table_share &&
-      (
-        (err = create_column_name_str()) ||
-        (err = convert_key_hint_str()) ||
-        (err = append_show_table_status()) ||
-        (err = append_show_records()) ||
-        (err = append_show_index())
-      )
-    )
-  ) {
+  if (!(table_select = new spider_string[1]) ||
+      (keys > 0 && !(key_select = new spider_string[keys])))
     DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-  }
 
-  table_select->init_calc_mem(SPD_MID_ODBC_SHARE_INIT_3);
-  if (table_share && (err = append_table_select()))
+  if ((err = create_table_names_str()) ||
+      (table_share &&
+       ((err = create_column_name_str()) || (err = convert_key_hint_str()))))
     DBUG_RETURN(err);
 
-  for (roop_count = 0; roop_count < keys; roop_count++)
-  {
-    key_select[roop_count].init_calc_mem(SPD_MID_ODBC_SHARE_INIT_4);
-    if ((err = append_key_select(roop_count)))
-      DBUG_RETURN(err);
-  }
+  table_select->init_calc_mem(SPD_MID_ODBC_SHARE_INIT_3);
+  for (uint i = 0; i < keys; i++)
+    key_select[i].init_calc_mem(SPD_MID_ODBC_SHARE_INIT_4);
 
-  DBUG_RETURN(err);
+  DBUG_RETURN(update_table_key_select_strings());
 }
 
 uint spider_odbc_share::get_column_name_length(
@@ -11573,17 +11514,6 @@ int spider_odbc_handler::show_table_status(
       DBUG_RETURN(err);
     }
   }
-/*
-  if (flag & HA_STATUS_AUTO)
-  {
-    TABLE *table = spider->get_table();
-    if (table->next_number_field &&
-      (err = get_last_auto_increment(link_idx)))
-    {
-      DBUG_RETURN(err);
-    }
-  }
-*/
   DBUG_RETURN(0);
 }
 

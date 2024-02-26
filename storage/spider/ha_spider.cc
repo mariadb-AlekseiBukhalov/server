@@ -8478,6 +8478,7 @@ int ha_spider::append_tmp_table_and_sql_for_bka(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_tmp_table_and_sql_for_bka(start_key))
@@ -8519,6 +8520,7 @@ int ha_spider::append_union_table_and_sql_for_bka(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_union_table_and_sql_for_bka(start_key))
@@ -8559,6 +8561,7 @@ int ha_spider::append_insert_sql_part()
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_insert_part())
@@ -8579,6 +8582,7 @@ int ha_spider::append_update_sql_part()
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_update_part())
@@ -8599,6 +8603,7 @@ int ha_spider::append_update_set_sql_part()
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_update_set_part())
@@ -8619,6 +8624,7 @@ int ha_spider::append_direct_update_set_sql_part()
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_direct_update_set_part())
@@ -8641,6 +8647,7 @@ int ha_spider::append_dup_update_pushdown_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_dup_update_pushdown_part(
@@ -8664,6 +8671,7 @@ int ha_spider::append_update_columns_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_update_columns_part(
@@ -8705,6 +8713,7 @@ int ha_spider::append_delete_sql_part()
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_delete_part())
@@ -8726,6 +8735,7 @@ int ha_spider::append_select_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_select_part(sql_type))
@@ -8747,6 +8757,7 @@ int ha_spider::append_table_select_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_table_select_part(sql_type))
@@ -8769,6 +8780,7 @@ int ha_spider::append_key_select_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_key_select_part(sql_type, idx))
@@ -8790,6 +8802,7 @@ int ha_spider::append_minimum_select_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_minimum_select_part(sql_type))
@@ -8811,6 +8824,7 @@ int ha_spider::append_from_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_from_part(sql_type,
@@ -8833,6 +8847,7 @@ int ha_spider::append_hint_after_table_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_hint_after_table_part(sql_type))
@@ -8907,6 +8922,7 @@ int ha_spider::append_values_connector_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num =
@@ -8929,6 +8945,7 @@ int ha_spider::append_values_terminator_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num =
@@ -8951,6 +8968,7 @@ int ha_spider::append_union_table_connector_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num =
@@ -8973,6 +8991,7 @@ int ha_spider::append_union_table_terminator_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num =
@@ -8996,6 +9015,7 @@ int ha_spider::append_key_column_values_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num =
@@ -9019,6 +9039,7 @@ int ha_spider::append_key_column_values_with_name_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num =
@@ -9044,6 +9065,7 @@ int ha_spider::append_key_where_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_key_where_part(start_key, end_key,
@@ -9066,6 +9088,7 @@ int ha_spider::append_match_where_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_match_where_part(sql_type))
@@ -9090,6 +9113,7 @@ int ha_spider::append_condition_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_condition_part(alias, alias_length,
@@ -9114,6 +9138,7 @@ int ha_spider::append_sum_select_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_sum_select_part(sql_type,
@@ -9138,6 +9163,7 @@ int ha_spider::append_match_select_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_match_select_part(sql_type,
@@ -9194,6 +9220,7 @@ int ha_spider::append_group_by_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_group_by_part(
@@ -9228,6 +9255,7 @@ int ha_spider::append_key_order_for_merge_with_alias_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_key_order_for_merge_with_alias_part(
@@ -9252,6 +9280,7 @@ int ha_spider::append_key_order_for_direct_order_limit_with_alias_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num =
@@ -9287,6 +9316,7 @@ int ha_spider::append_key_order_with_alias_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_key_order_with_alias_part(
@@ -9311,6 +9341,7 @@ int ha_spider::append_limit_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_limit_part(offset, limit, sql_type))
@@ -9355,6 +9386,7 @@ int ha_spider::append_insert_terminator_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_insert_terminator_part(sql_type))
@@ -9376,6 +9408,7 @@ int ha_spider::append_insert_values_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_insert_values_part(sql_type))
@@ -9397,6 +9430,8 @@ int ha_spider::append_into_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_into_part(sql_type))
@@ -9454,6 +9489,7 @@ int ha_spider::append_select_lock_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_select_lock_part(sql_type))
@@ -9475,6 +9511,7 @@ int ha_spider::append_union_all_start_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_union_all_start_part(sql_type))
@@ -9496,6 +9533,7 @@ int ha_spider::append_union_all_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_union_all_part(sql_type))
@@ -9517,6 +9555,7 @@ int ha_spider::append_union_all_end_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_union_all_end_part(sql_type))
@@ -9540,6 +9579,7 @@ int ha_spider::append_multi_range_cnt_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_multi_range_cnt_part(
@@ -9563,6 +9603,7 @@ int ha_spider::append_multi_range_cnt_with_name_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_multi_range_cnt_with_name_part(
@@ -9585,6 +9626,7 @@ int ha_spider::append_delete_all_rows_sql_part(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_delete_all_rows_part(sql_type))
@@ -9608,6 +9650,7 @@ int ha_spider::append_update_sql(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_update(table, ptr_diff))
@@ -9631,6 +9674,7 @@ int ha_spider::append_update_sql(
   ) {
     dbton_id = share->sql_dbton_ids[conn_link_idx[roop_count]];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       dbton_hdl->need_copy_for_update(roop_count)
@@ -9657,6 +9701,7 @@ int ha_spider::append_delete_sql(
   {
     dbton_id = share->use_sql_dbton_ids[roop_count];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       (error_num = dbton_hdl->append_delete(table, ptr_diff))
@@ -9679,6 +9724,7 @@ int ha_spider::append_delete_sql(
   ) {
     dbton_id = share->sql_dbton_ids[conn_link_idx[roop_count]];
     dbton_hdl = dbton_handler[dbton_id];
+    conns[roop_count]->db_conn->update_name_quote(share->dbton_share[dbton_id]);
     if (
       dbton_hdl->first_link_idx >= 0 &&
       dbton_hdl->need_copy_for_update(roop_count)

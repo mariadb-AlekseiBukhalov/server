@@ -21,9 +21,8 @@ class spider_db_odbc_mariadb_util: public spider_db_odbc_util
 {
 public:
   spider_db_odbc_mariadb_util(
-    const char *nm_quote,
+    char nm_quote,
     const char *val_quote,
-    uint nm_quote_length,
     uint val_quote_length
   );
   virtual ~spider_db_odbc_mariadb_util();

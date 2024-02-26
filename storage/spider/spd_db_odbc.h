@@ -58,14 +58,16 @@ int spider_db_odbc_get_error(
 class spider_db_odbc_util: public spider_db_util
 {
 public:
-  const char *name_quote;
+  /* The identifier quote char. Backtick for mariadb, double quote for
+  pg, etc. obtained from SQLGetInfo call with
+  SQL_IDENTIFIER_QUOTE_CHAR */
+  char name_quote[2];
   const char *value_quote;
-  uint name_quote_length;
+  const uint name_quote_length= 1;
   uint value_quote_length;
   spider_db_odbc_util(
-    const char *nm_quote,
+    const char nm_quote,
     const char *val_quote,
-    uint nm_quote_length,
     uint val_quote_length
   );
   virtual ~spider_db_odbc_util();
@@ -375,6 +377,7 @@ public:
   SQLHANDLE      henv;
   SQLHANDLE      hdbc;
   SQLHSTMT       hstm;
+  char           name_quote;
   HASH           lock_table_hash;
   bool           lock_table_hash_inited;
   uint           lock_table_hash_id;
@@ -600,6 +603,7 @@ public:
   bool cmp_request_key_to_snd(
     st_spider_db_request_key *request_key
   );
+  int update_name_quote(spider_db_share *share);
 };
 
 class spider_odbc_share: public spider_db_share
@@ -656,6 +660,7 @@ public:
     int *table_name_pos
   );
   bool need_change_db_table_name();
+  int update_table_key_select_strings();
 #ifdef SPIDER_HAS_DISCOVER_TABLE_STRUCTURE
   int discover_table_structure(
     SPIDER_TRX *trx,

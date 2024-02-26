@@ -73,7 +73,7 @@ static const int spider_db_table_lock_len[] =
   sizeof(" write,") - 1
 };
 
-spider_db_odbc_mariadb_util spider_db_odbc_mariadb_utility("`", "'", 1, 1);
+spider_db_odbc_mariadb_util spider_db_odbc_mariadb_utility('`', "'", 1);
 
 spider_db_share *spider_odbc_mariadb_create_share(
   SPIDER_SHARE *share
@@ -424,14 +424,12 @@ int spider_db_odbc_mariadb::append_lock_tables(
 }
 
 spider_db_odbc_mariadb_util::spider_db_odbc_mariadb_util(
-  const char *nm_quote,
+  char nm_quote,
   const char *val_quote,
-  uint nm_quote_length,
   uint val_quote_length
 ) : spider_db_odbc_util(
   nm_quote,
   val_quote,
-  nm_quote_length,
   val_quote_length
 )
 {

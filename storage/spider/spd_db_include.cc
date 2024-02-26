@@ -82,6 +82,13 @@ uint spider_db_conn::limit_mode()
   DBUG_RETURN(spider_dbton[dbton_id].db_util->limit_mode());
 }
 
+int spider_db_conn::update_name_quote(spider_db_share *share)
+{
+  DBUG_ENTER("spider_db_conn::update_name_quote");
+  DBUG_PRINT("info",("spider this=%p", this));
+  DBUG_RETURN(0);
+}
+
 int spider_db_util::append_loop_check(
   spider_string *str,
   SPIDER_CONN *conn

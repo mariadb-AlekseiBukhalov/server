@@ -202,6 +202,7 @@ typedef struct st_spider_share SPIDER_SHARE;
 class ha_spider;
 class spider_db_copy_table;
 class spider_db_handler;
+class spider_db_share;
 
 class spider_string
 {
@@ -1060,6 +1061,7 @@ public:
     st_spider_db_request_key *request_key
   ) = 0;
   virtual uint limit_mode();
+  virtual int update_name_quote(spider_db_share *share);
 };
 
 class spider_db_share

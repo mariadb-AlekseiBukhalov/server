@@ -929,10 +929,6 @@ void spider_conn_queue_connect(
   DBUG_ENTER("spider_conn_queue_connect");
   DBUG_PRINT("info", ("spider conn=%p", conn));
   conn->queued_connect = TRUE;
-/*
-  conn->queued_connect_share = share;
-  conn->queued_connect_link_idx = link_idx;
-*/
   DBUG_VOID_RETURN;
 }
 

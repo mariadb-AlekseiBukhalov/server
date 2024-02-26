@@ -235,7 +235,7 @@ int spider_db_conn_queue_action(
   DBUG_PRINT("info", ("spider conn=%p", conn));
   sql_str.init_calc_mem(SPD_MID_DB_CONN_QUEUE_ACTION_1);
   sql_str.length(0);
-  if (conn->queued_connect)
+  if (conn->queued_connect && !conn->db_conn->is_connected())
   {
     if ((error_num = spider_db_connect(conn->queued_connect_share, conn,
       conn->queued_connect_link_idx)))
