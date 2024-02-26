@@ -216,7 +216,7 @@ int spider_db_odbc_mariadb::exec_query(
     const char *tgt_str = conn->tgt_host;
     uint32 tgt_len = conn->tgt_host_length;
     spider_string tmp_query_str;
-    tmp_query_str.init_calc_mem(308);
+    tmp_query_str.init_calc_mem(SPD_MID_DB_ODBC_MARIADB_EXEC_QUERY_1);
     if (tmp_query_str.reserve(
       length + conn->tgt_wrapper_length +
       tgt_len + (SPIDER_SQL_SPACE_LEN * 2)))
