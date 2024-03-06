@@ -10,8 +10,7 @@ ERROR 25000: You are not allowed to execute this command in a transaction
 INSERT IGNORE t1 VALUES ('test');
 LOAD INDEX INTO CACHE t1 KEY(PRIMARY,inx_b);
 Table	Op	Msg_type	Msg_text
-test.t1	preload_keys	Error	Streaming replication not supported with binlog_format=STATEMENT
-test.t1	preload_keys	error	Corrupt
+test.t1	preload_keys	note	The storage engine for the table doesn't support preload_keys
 SET SESSION wsrep_trx_fragment_unit='bytes';
 ERROR 25000: You are not allowed to execute this command in a transaction
 INSERT INTO ti VALUES (1111,111);

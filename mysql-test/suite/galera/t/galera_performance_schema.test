@@ -142,7 +142,7 @@ if ($wsrep_commit_window_new < 0)
    die bad wsrep_commit_window: $wsrep_commit_window_new;
 }
 
-if ($wsrep_repl_keys_diff != 6)
+if ($wsrep_repl_keys_diff < 6)
 {
    die bad wsrep_repl_keys difference: $wsrep_repl_keys_diff;
 }

@@ -15,7 +15,7 @@ SET SESSION wsrep_trx_fragment_unit='statements';
 DELETE FROM t1;
 --error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
 SET SESSION wsrep_trx_fragment_size=1;
---error ER_XAER_RMFAIL
+--error ER_NOT_SUPPORTED_YET
 CREATE TEMPORARY SEQUENCE s1;
 XA END 'b';
 XA PREPARE 'b';
