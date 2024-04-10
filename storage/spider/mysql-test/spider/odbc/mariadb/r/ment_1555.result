@@ -1,7 +1,7 @@
 for master_1
 for child2
 for child3
-SELECT * INTO OUTFILE '$MYSQLTEST_VARDIR/tmp/spider_filedsn.dsn' FROM (
+SELECT * INTO OUTFILE '$dsn_file' FROM (
 SELECT '[ODBC]' UNION ALL
 SELECT 'Driver=MariaDB ODBC 3.0 Driver' UNION ALL
 SELECT 'Servername=127.0.0.1' UNION ALL
@@ -12,7 +12,7 @@ SELECT 'Port=$MASTER_1_MYPORT'
 ) a;
 create table t2 (c int, t varchar(100) Default  @@session.tx_isolation);
 create table t1 (c int) ENGINE=Spider
-COMMENT='WRAPPER "odbc_mariadb", TABLE "t2", filedsn "$MYSQLTEST_VARDIR/tmp/spider_filedsn.dsn"';
+COMMENT='WRAPPER "odbc_mariadb", TABLE "t2", filedsn "$dsn_file"';
 SET SESSION spider_sync_trx_isolation=on;
 INSERT INTO t1 VALUES (1);
 set @@session.tx_isolation= 'SERIALIZABLE';

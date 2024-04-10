@@ -1,0 +1,49 @@
+--disable_query_log
+--disable_result_log
+--source ../../../t/test_init.inc
+--enable_result_log
+--enable_query_log
+
+# To set up for the test, ensure the sqlite odbc driver is installed:
+
+# apt install libsqliteodbc
+
+# Then add the following block to /etc/odbcinst.ini if it is not there
+# already.
+
+# [SQLite3]
+# Description=SQLite3 ODBC Driver
+# Driver=libsqlite3odbc.so
+# Setup=libsqlite3odbc.so
+# UsageCount=1
+
+let $dsn_file=$MYSQLTEST_VARDIR/tmp/filedsn.dsn;
+let $db_file=$MYSQLTEST_VARDIR/tmp/mytest.db;
+evalp SELECT * INTO OUTFILE '$dsn_file' FROM (
+  SELECT '[ODBC]' UNION ALL
+  SELECT 'Driver=SQLite3' UNION ALL
+  SELECT 'Servername=127.0.0.1' UNION ALL
+  SELECT 'Database=$db_file'
+) a;
+
+replace_result $dsn_file dsn_file;
+evalp SELECT spider_direct_sql('DROP TABLE IF EXISTS "t2"', '',
+'filedsn "$dsn_file", wrapper "odbc"');
+replace_result $dsn_file dsn_file;
+evalp SELECT spider_direct_sql('CREATE TABLE "t2" ("c" INT)', '',
+'filedsn "$dsn_file", wrapper "odbc"');
+evalp create table t1 (c int) ENGINE=Spider
+COMMENT='WRAPPER "odbc", TABLE "t2", filedsn "$dsn_file"';
+
+INSERT INTO t1 VALUES (1), (2), (3);
+select * from t1;
+
+drop table t1;
+remove_file $dsn_file;
+remove_file $db_file;
+
+--disable_query_log
+--disable_result_log
+--source ../../../t/test_deinit.inc
+--enable_result_log
+--enable_query_log

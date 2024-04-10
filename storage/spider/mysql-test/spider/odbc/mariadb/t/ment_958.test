@@ -4,7 +4,8 @@
 --enable_result_log
 --enable_query_log
 
-evalp SELECT * INTO OUTFILE '$MYSQLTEST_VARDIR/tmp/spider_filedsn.dsn' FROM (
+let $dsn_file=$MYSQLTEST_VARDIR/tmp/filedsn.dsn;
+evalp SELECT * INTO OUTFILE '$dsn_file' FROM (
   SELECT '[ODBC]' UNION ALL
   SELECT 'Driver=MariaDB ODBC 3.0 Driver' UNION ALL
   SELECT 'Servername=127.0.0.1' UNION ALL
@@ -16,7 +17,7 @@ evalp SELECT * INTO OUTFILE '$MYSQLTEST_VARDIR/tmp/spider_filedsn.dsn' FROM (
 
 create table t2 (c int, key(c));
 evalp create table t1 (c int, key(c)) ENGINE=Spider
-COMMENT='WRAPPER "odbc", TABLE "t2", filedsn "$MYSQLTEST_VARDIR/tmp/spider_filedsn.dsn"';
+COMMENT='WRAPPER "odbc", TABLE "t2", filedsn "$dsn_file"';
 
 # trigger append_key_select_sql_part() or
 # append_table_select_sql_part()
@@ -35,6 +36,7 @@ select * from t2;
 select * from t1;
 
 drop table t1, t2;
+remove_file $dsn_file;
 
 --disable_query_log
 --disable_result_log

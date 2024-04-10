@@ -1654,15 +1654,6 @@ int spider_db_odbc::exec_query(
       case SQLCOM_INSERT_SELECT:
       case SQLCOM_DELETE:
       case SQLCOM_DELETE_MULTI:
-        ret = SQLSetCursorName(hstm, (SQLCHAR *) "cur", SQL_NTS);
-        if (ret != SQL_SUCCESS)
-        {
-          stored_error = spider_db_odbc_get_error(ret, SQL_HANDLE_STMT, hstm,
-            conn, stored_error_msg);
-          SQLFreeHandle(SQL_HANDLE_STMT, hstm);
-          hstm = NULL;
-          DBUG_RETURN(stored_error);
-        }
         break;
       default:
         break;
@@ -2119,7 +2110,7 @@ int spider_db_odbc::set_trx_isolation(
   int *need_mon
 ) {
   RETCODE ret;
-  SQLINTEGER isolations_supported= 0;
+  SQLINTEGER isolations_supported= 0, dummy_len, got_isolation= 0;
   intptr_t odbc_isolation;
   SQLSMALLINT data_length;
 
@@ -2166,6 +2157,20 @@ int spider_db_odbc::set_trx_isolation(
 
   if (ret != SQL_SUCCESS)
   {
+    /* If we got SQL_SUCCESS_WITH_INFO, check that the actual
+    isolation level is the same as the one we just set. */
+    if (ret == SQL_SUCCESS_WITH_INFO &&
+        (ret=
+         SQLGetConnectAttr(hdbc, SQL_ATTR_TXN_ISOLATION,
+                           (SQLPOINTER) &got_isolation,
+                           sizeof(got_isolation), &dummy_len)) ==
+        SQL_SUCCESS)
+    {
+      if (got_isolation == odbc_isolation)
+        DBUG_RETURN(0);
+      else
+        DBUG_RETURN(ER_ISOLATION_MODE_NOT_SUPPORTED);
+    }
     DBUG_RETURN(spider_db_odbc_get_error(ret, SQL_HANDLE_DBC,
       hdbc, conn, stored_error_msg));
   }
