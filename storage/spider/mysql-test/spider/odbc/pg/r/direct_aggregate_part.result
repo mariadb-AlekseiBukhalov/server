@@ -37,6 +37,13 @@ b CHAR(1),
 c DATETIME,
 PRIMARY KEY(a)
 ) MASTER_1_ENGINE MASTER_1_COMMENT2_P_2_1
+Warnings:
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'pk_name' is deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'pk_name' is deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
 SHOW GLOBAL STATUS LIKE 'Spider_direct_aggregate%';
 Variable_name	Value
 Spider_direct_aggregate	0

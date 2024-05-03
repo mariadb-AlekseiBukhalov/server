@@ -19,6 +19,8 @@ spider_direct_sql('CREATE TABLE "t2" ("c" INT)', '',
 1
 create table t1 (c int) ENGINE=Spider
 COMMENT='WRAPPER "odbc", TABLE "t2", filedsn "$dsn_file"';
+Warnings:
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
 INSERT INTO t1 VALUES (1), (2), (3);
 select * from t1;
 c

@@ -68,6 +68,19 @@ b CHAR(1),
 c DATETIME,
 PRIMARY KEY(a)
 ) MASTER_1_ENGINE MASTER_1_CHARSET MASTER_1_COMMENT_HA_P_2_1
+Warnings:
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'msi' is deprecated and will be removed in a future release
+Warning	1287	'mkd' is deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'msi' is deprecated and will be removed in a future release
+Warning	1287	'mkd' is deprecated and will be removed in a future release
 INSERT INTO ta_l2 (a, b, c) VALUES
 (1, 'a', '2008-08-01 10:21:39'),
 (2, 'b', '2000-01-01 00:00:00'),
@@ -122,6 +135,20 @@ a	b	date_format(c, '%Y-%m-%d %H:%i:%s')
 recovery test
 connection master_1;
 MASTER_1_SET_RECOVERY_STATUS_P_2_1
+Warnings:
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'msi' is deprecated and will be removed in a future release
+Warning	1287	'mkd' is deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	1287	'lst' is deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'msi' is deprecated and will be removed in a future release
+Warning	1287	'mkd' is deprecated and will be removed in a future release
 SELECT db_name, table_name, link_id, link_status FROM mysql.spider_tables
 ORDER BY db_name, table_name, link_id;
 db_name	table_name	link_id	link_status
@@ -134,6 +161,20 @@ spider_copy_tables('ta_l2#P#pt2', '0', '1')
 1
 connection master_1;
 MASTER_1_SET_OK_STATUS_P_2_1
+Warnings:
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'msi' is deprecated and will be removed in a future release
+Warning	1287	'mkd' is deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	1287	'lst' is deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'msi' is deprecated and will be removed in a future release
+Warning	1287	'mkd' is deprecated and will be removed in a future release
 SELECT db_name, table_name, link_id, link_status FROM mysql.spider_tables
 ORDER BY db_name, table_name, link_id;
 db_name	table_name	link_id	link_status
@@ -165,6 +206,21 @@ b CHAR(1),
 c DATETIME,
 PRIMARY KEY(a)
 ) MASTER_1_ENGINE MASTER_1_CHARSET MASTER_1_COMMENT_HA_AS_P_2_1
+Warnings:
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'msi' is deprecated and will be removed in a future release
+Warning	1287	'mkd' is deprecated and will be removed in a future release
+Warning	1287	'alc' is deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'msi' is deprecated and will be removed in a future release
+Warning	1287	'mkd' is deprecated and will be removed in a future release
+Warning	1287	'alc' is deprecated and will be removed in a future release
 INSERT INTO ta_l2 (a, b, c) VALUES
 (1, 'a', '2008-08-01 10:21:39'),
 (2, 'b', '2000-01-01 00:00:00'),
@@ -218,6 +274,22 @@ a	b	date_format(c, '%Y-%m-%d %H:%i:%s')
 recovery test
 connection master_1;
 MASTER_1_SET_OK_STATUS_AS_P_2_1
+Warnings:
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'msi' is deprecated and will be removed in a future release
+Warning	1287	'mkd' is deprecated and will be removed in a future release
+Warning	1287	'alc' is deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	138	The high availability feature of Spider has been deprecated and will be removed in a future release
+Warning	1287	'lst' is deprecated and will be removed in a future release
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+Warning	1287	'msi' is deprecated and will be removed in a future release
+Warning	1287	'mkd' is deprecated and will be removed in a future release
+Warning	1287	'alc' is deprecated and will be removed in a future release
 SELECT db_name, table_name, link_id, link_status FROM mysql.spider_tables
 ORDER BY db_name, table_name, link_id;
 db_name	table_name	link_id	link_status

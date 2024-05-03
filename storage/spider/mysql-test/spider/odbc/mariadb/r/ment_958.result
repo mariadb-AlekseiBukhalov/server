@@ -13,6 +13,8 @@ SELECT 'Port=$MASTER_1_MYPORT'
 create table t2 (c int, key(c));
 create table t1 (c int, key(c)) ENGINE=Spider
 COMMENT='WRAPPER "odbc", TABLE "t2", filedsn "$dsn_file"';
+Warnings:
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
 set spider_select_column_mode= 0;
 select * from t1;
 c
