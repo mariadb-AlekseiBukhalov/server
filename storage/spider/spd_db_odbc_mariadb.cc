@@ -29,9 +29,7 @@
 #include "sql_analyse.h"
 #include "sql_base.h"
 #include "tztime.h"
-#ifdef HANDLER_HAS_DIRECT_AGGREGATE
 #include "sql_select.h"
-#endif
 #endif
 #include "sql_common.h"
 #include <mysql.h>
