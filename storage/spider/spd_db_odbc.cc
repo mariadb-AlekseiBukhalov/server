@@ -434,7 +434,7 @@ SPIDER_DBTON spider_dbton_odbc = {
 #endif
   spider_odbc_support_direct_join,
   &spider_db_odbc_utility,
-  "For communicating using ODBC protocol",
+  "For communication using the ODBC protocol",
   "1.0.0",
   SPIDER_MATURITY_GAMMA
 };
