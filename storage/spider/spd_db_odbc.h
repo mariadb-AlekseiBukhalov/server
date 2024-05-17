@@ -62,6 +62,7 @@ public:
   pg, etc. obtained from SQLGetInfo call with
   SQL_IDENTIFIER_QUOTE_CHAR */
   char name_quote[2];
+  char dbms_name[80];
   const char *value_quote;
   const uint name_quote_length= 1;
   uint value_quote_length;
@@ -304,6 +305,8 @@ class spider_db_odbc_result: public spider_db_result
 protected:
   SQLHSTMT            hstm;
 public:
+  char cur_nm[25];
+  uint cur_nm_len;
   spider_db_odbc_row  row;
   SQLSMALLINT         field_count;
   ha_spider           *spider;
@@ -378,6 +381,7 @@ public:
   SQLHANDLE      hdbc;
   SQLHSTMT       hstm;
   char           name_quote;
+  char           dbms_name[80];
   HASH           lock_table_hash;
   bool           lock_table_hash_inited;
   uint           lock_table_hash_id;
@@ -391,6 +395,8 @@ public:
   const char     *handler_open_array_file_name;
   ulong          handler_open_array_line_no;
   longlong       limit;
+  char cur_nm[25];
+  uint cur_nm_len;
   spider_db_odbc(
     SPIDER_CONN *conn,
     spider_db_odbc_util *db_util
@@ -603,7 +609,7 @@ public:
   bool cmp_request_key_to_snd(
     st_spider_db_request_key *request_key
   );
-  int update_name_quote(spider_db_share *share);
+  int update_query_utility(spider_db_share *share);
 };
 
 class spider_odbc_share: public spider_db_share

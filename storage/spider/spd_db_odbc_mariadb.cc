@@ -121,7 +121,7 @@ SPIDER_DBTON spider_dbton_odbc_mariadb = {
 #endif
   spider_odbc_support_direct_join,
   &spider_db_odbc_mariadb_utility,
-  "For communicating MariaDB using ODBC protocol, mostly test purpose",
+  "Deprecated. For communication with MariaDB using the ODBC protocol, for testing purposes",
   "1.0.0",
   SPIDER_MATURITY_BETA
 };

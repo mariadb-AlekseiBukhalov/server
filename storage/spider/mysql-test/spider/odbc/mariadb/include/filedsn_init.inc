@@ -14,6 +14,6 @@ eval SELECT * INTO OUTFILE '$MYSQLTEST_VARDIR/tmp/spider_filedsn.dsn' FROM (
 --enable_query_log
 --let $MASTER_1_COMMENT_2_1_BACKUP= $MASTER_1_COMMENT_2_1
 let $MASTER_1_COMMENT_2_1=
-  COMMENT='filedsn "$MYSQLTEST_VARDIR/tmp/spider_filedsn.dsn", table "ta_r", wrapper "odbc_mariadb"';
+  COMMENT='filedsn "$MYSQLTEST_VARDIR/tmp/spider_filedsn.dsn", table "ta_r", wrapper "odbc"';
 let $SPIDER_DIRECT_SQL_1=
-  SELECT spider_direct_sql('SELECT 1', '', 'filedsn "$MYSQLTEST_VARDIR/tmp/spider_filedsn.dsn", wrapper "odbc_mariadb"');
+  SELECT spider_direct_sql('SELECT 1', '', 'filedsn "$MYSQLTEST_VARDIR/tmp/spider_filedsn.dsn", wrapper "odbc"');

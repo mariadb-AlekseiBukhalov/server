@@ -17,7 +17,7 @@ evalp SELECT * INTO OUTFILE '$dsn_file' FROM (
 
 create table t2 (c int, t varchar(100) Default  @@session.tx_isolation);
 evalp create table t1 (c int) ENGINE=Spider
-COMMENT='WRAPPER "odbc_mariadb", TABLE "t2", filedsn "$dsn_file"';
+COMMENT='WRAPPER "odbc", TABLE "t2", filedsn "$dsn_file"';
 
 SET SESSION spider_sync_trx_isolation=on;
 INSERT INTO t1 VALUES (1);

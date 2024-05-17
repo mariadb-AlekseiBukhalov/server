@@ -4,7 +4,7 @@ let $VERSION_COMPILE_OS_WIN=
 if ($VERSION_COMPILE_OS_WIN)
 {
   eval DROP SERVER IF EXISTS s_2_1_test;
-  eval CREATE SERVER s_2_1_test FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_1_test FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'test',
     USER 'root',
@@ -12,7 +12,7 @@ if ($VERSION_COMPILE_OS_WIN)
     PORT $CHILD2_1_MYPORT
   );
   eval DROP SERVER IF EXISTS s_2_2_test;
-  eval CREATE SERVER s_2_2_test FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_2_test FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'test',
     USER 'root',
@@ -20,7 +20,7 @@ if ($VERSION_COMPILE_OS_WIN)
     PORT $CHILD2_2_MYPORT
   );
   eval DROP SERVER IF EXISTS s_2_3_test;
-  eval CREATE SERVER s_2_3_test FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_3_test FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'test',
     USER 'root',
@@ -28,7 +28,7 @@ if ($VERSION_COMPILE_OS_WIN)
     PORT $CHILD2_3_MYPORT
   );
   eval DROP SERVER IF EXISTS s_2_1;
-  eval CREATE SERVER s_2_1 FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_1 FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'auto_test_remote',
     USER 'root',
@@ -36,7 +36,7 @@ if ($VERSION_COMPILE_OS_WIN)
     PORT $CHILD2_1_MYPORT
   );
   eval DROP SERVER IF EXISTS s_2_2;
-  eval CREATE SERVER s_2_2 FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_2 FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'auto_test_remote2',
     USER 'root',
@@ -44,7 +44,7 @@ if ($VERSION_COMPILE_OS_WIN)
     PORT $CHILD2_2_MYPORT
   );
   eval DROP SERVER IF EXISTS s_2_3;
-  eval CREATE SERVER s_2_3 FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_3 FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'auto_test_remote3',
     USER 'root',
@@ -79,7 +79,7 @@ if ($VERSION_COMPILE_OS_WIN)
 if (!$VERSION_COMPILE_OS_WIN)
 {
   eval DROP SERVER IF EXISTS s_2_1_test;
-  eval CREATE SERVER s_2_1_test FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_1_test FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'test',
     USER 'root',
@@ -87,7 +87,7 @@ if (!$VERSION_COMPILE_OS_WIN)
     PORT $CHILD2_1_MYPORT
   );
   eval DROP SERVER IF EXISTS s_2_2_test;
-  eval CREATE SERVER s_2_2_test FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_2_test FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'test',
     USER 'root',
@@ -95,7 +95,7 @@ if (!$VERSION_COMPILE_OS_WIN)
     PORT $CHILD2_2_MYPORT
   );
   eval DROP SERVER IF EXISTS s_2_3_test;
-  eval CREATE SERVER s_2_3_test FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_3_test FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'test',
     USER 'root',
@@ -103,7 +103,7 @@ if (!$VERSION_COMPILE_OS_WIN)
     PORT $CHILD2_3_MYPORT
   );
   eval DROP SERVER IF EXISTS s_2_1;
-  eval CREATE SERVER s_2_1 FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_1 FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'auto_test_remote',
     USER 'root',
@@ -111,7 +111,7 @@ if (!$VERSION_COMPILE_OS_WIN)
     PORT $CHILD2_1_MYPORT
   );
   eval DROP SERVER IF EXISTS s_2_2;
-  eval CREATE SERVER s_2_2 FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_2 FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'auto_test_remote2',
     USER 'root',
@@ -119,7 +119,7 @@ if (!$VERSION_COMPILE_OS_WIN)
     PORT $CHILD2_2_MYPORT
   );
   eval DROP SERVER IF EXISTS s_2_3;
-  eval CREATE SERVER s_2_3 FOREIGN DATA WRAPPER odbc_mariadb OPTIONS (
+  eval CREATE SERVER s_2_3 FOREIGN DATA WRAPPER odbc OPTIONS (
     HOST '127.0.0.1',
     DATABASE 'auto_test_remote3',
     USER 'root',

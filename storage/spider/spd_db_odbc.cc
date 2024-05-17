@@ -321,8 +321,10 @@ spider_db_odbc_util spider_db_odbc_utility('"', "'", 1);
 #define SPIDER_SQL_LOCK_TABLE_START_LEN (sizeof(SPIDER_SQL_LOCK_TABLE_START_STR) - 1)
 #define SPIDER_SQL_LOCK_TABLE_STR "lock table "
 #define SPIDER_SQL_LOCK_TABLE_LEN (sizeof(SPIDER_SQL_LOCK_TABLE_STR) - 1)
-#define SPIDER_SQL_UNLOCK_TABLE_STR "commit"
+#define SPIDER_SQL_UNLOCK_TABLE_STR "unlock tables"
 #define SPIDER_SQL_UNLOCK_TABLE_LEN (sizeof(SPIDER_SQL_UNLOCK_TABLE_STR) - 1)
+#define SPIDER_SQL_COMMIT_STR "commit"
+#define SPIDER_SQL_COMMIT_LEN (sizeof(SPIDER_SQL_COMMIT_STR) - 1)
 
 #define SPIDER_SQL_CUR_CUR_STR "CURRENT OF cur"
 #define SPIDER_SQL_CUR_CUR_LEN (sizeof(SPIDER_SQL_CUR_CUR_STR) - 1)
@@ -348,6 +350,22 @@ static const int spider_db_table_lock_len[] =
   sizeof(" in exclusive mode") - 1,
   sizeof(" in exclusive mode") - 1
 };
+
+static const char *spider_db_maria_table_lock_str[] =
+{
+  " read local,",
+  " read,",
+  " low_priority write,",
+  " write,"
+};
+static const int spider_db_maria_table_lock_len[] =
+{
+  sizeof(" read local,") - 1,
+  sizeof(" read,") - 1,
+  sizeof(" low_priority write,") - 1,
+  sizeof(" write,") - 1
+};
+
 
 /* UTC time zone for timestamp columns */
 extern Time_zone *UTC;
@@ -1121,6 +1139,7 @@ spider_db_odbc::spider_db_odbc(
 {
   DBUG_ENTER("spider_db_odbc::spider_db_odbc");
   DBUG_PRINT("info",("spider this=%p", this));
+  *dbms_name= '\0';
   DBUG_VOID_RETURN;
 }
 
@@ -1529,6 +1548,9 @@ int spider_db_odbc::connect(
                   sizeof(nm_quote), &dummy_len);
   DBUG_ASSERT(dummy_len == 1);
   name_quote= nm_quote[0];
+  ret= SQLGetInfo(hdbc, SQL_DBMS_NAME, dbms_name, sizeof(dbms_name),
+                  &dummy_len);
+  dbms_name[dummy_len]= '\0';
   DBUG_RETURN(0);
 }
 
@@ -1642,21 +1664,20 @@ int spider_db_odbc::exec_query(
           conn, stored_error_msg);
         DBUG_RETURN(stored_error);
       }
-      switch (thd_sql_command(current_thd))
+      if (!strcmp(dbms_name, "MariaDB"))
       {
-#ifdef HS_HAS_SQLCOM
-      case SQLCOM_HS_UPDATE:
-#endif
-      case SQLCOM_UPDATE:
-      case SQLCOM_UPDATE_MULTI:
-      /* for triggers */
-      case SQLCOM_INSERT:
-      case SQLCOM_INSERT_SELECT:
-      case SQLCOM_DELETE:
-      case SQLCOM_DELETE_MULTI:
-        break;
-      default:
-        break;
+        my_sprintf(cur_nm, (cur_nm, "cur%p", hstm));
+        cur_nm_len= strlen(cur_nm);
+        DBUG_PRINT("info", ("spider cur_nm:%s", cur_nm));
+        ret= SQLSetCursorName(hstm, (SQLCHAR *) cur_nm, SQL_NTS);
+        if (ret != SQL_SUCCESS)
+        {
+          stored_error = spider_db_odbc_get_error(ret, SQL_HANDLE_STMT, hstm,
+                                                  conn, stored_error_msg);
+          SQLFreeHandle(SQL_HANDLE_STMT, hstm);
+          hstm = NULL;
+          DBUG_RETURN(stored_error);
+        }
       }
     }
     ret = SQLExecDirect(hstm, (SQLCHAR *) query, (SQLINTEGER) length);
@@ -1755,6 +1776,11 @@ spider_db_result *spider_db_odbc::store_result(
   if ((result = new spider_db_odbc_result(this)))
   {
     hstm = SQL_NULL_HSTMT;
+    if (!strcmp(dbms_name, "MariaDB"))
+    {
+      memcpy(result->cur_nm, cur_nm, cur_nm_len + 1);
+      result->cur_nm_len = cur_nm_len;
+    }
     *err = 0;
     if (spider_param_dry_access() ||
       (*err = result->init()))
@@ -1782,6 +1808,11 @@ spider_db_result *spider_db_odbc::use_result(
   if ((result = new spider_db_odbc_result(this)))
   {
     hstm = SQL_NULL_HSTMT;
+    if (!strcmp(dbms_name, "MariaDB"))
+    {
+      memcpy(result->cur_nm, cur_nm, cur_nm_len + 1);
+      result->cur_nm_len= cur_nm_len;
+    }
     *err = 0;
     if (spider_param_dry_access() ||
       (*err = result->init()))
@@ -2423,13 +2454,16 @@ int spider_db_odbc::append_lock_tables(
   CHARSET_INFO *table_name_charset;
   DBUG_ENTER("spider_db_odbc::lock_tables");
   DBUG_PRINT("info",("spider this=%p", this));
+  if (!strcmp(dbms_name, "MariaDB") &&
+      (err = utility->append_lock_table_head(str)))
+    DBUG_RETURN(err);
+redo:
   if ((tmp_link_for_hash =
     (SPIDER_LINK_FOR_HASH *) my_hash_element(&lock_table_hash, 0)))
   {
-    if ((err = utility->append_lock_table_head(str)))
-    {
+    if (strcmp(dbms_name, "MariaDB") &&
+        (err = utility->append_lock_table_head(str)))
       DBUG_RETURN(err);
-    }
     tmp_spider = tmp_link_for_hash->spider;
     tmp_link_idx = tmp_link_for_hash->link_idx;
     switch (tmp_spider->wide_handler->lock_type)
@@ -2456,13 +2490,31 @@ int spider_db_odbc::append_lock_tables(
     spider_odbc_share *db_share = (spider_odbc_share *)
       tmp_spider->share->dbton_share[conn->dbton_id];
 
-    db_name = db_share->db_names_str[conn_link_idx].ptr();
-    db_name_length = db_share->db_names_str[conn_link_idx].length();
-    db_name_charset = tmp_spider->share->access_charset;
-
-    table_name = db_share->table_names_str[conn_link_idx].ptr();
-    table_name_length = db_share->table_names_str[conn_link_idx].length();
-    table_name_charset = tmp_spider->share->access_charset;
+    if (strcmp(dbms_name, "MariaDB") || db_share->db_names_str)
+    {
+      db_name= db_share->db_names_str[conn_link_idx].ptr();
+      db_name_length= db_share->db_names_str[conn_link_idx].length();
+      db_name_charset= tmp_spider->share->access_charset;
+    }
+    else
+    {
+      db_name = tmp_spider->share->tgt_dbs[conn_link_idx];
+      db_name_length = tmp_spider->share->tgt_dbs_lengths[conn_link_idx];
+      db_name_charset = system_charset_info;
+    }
+    if (strcmp(dbms_name, "MariaDB") || db_share->table_names_str)
+    {
+      table_name= db_share->table_names_str[conn_link_idx].ptr();
+      table_name_length= db_share->table_names_str[conn_link_idx].length();
+      table_name_charset= tmp_spider->share->access_charset;
+    }
+    else
+    {
+      table_name = tmp_spider->share->tgt_table_names[conn_link_idx];
+      table_name_length =
+        tmp_spider->share->tgt_table_names_lengths[conn_link_idx];
+      table_name_charset = system_charset_info;
+    }
 
     if ((err = utility->
       append_lock_table_body(
@@ -2485,11 +2537,15 @@ int spider_db_odbc::append_lock_tables(
 #else
     my_hash_delete(&lock_table_hash, (uchar*) tmp_link_for_hash);
 #endif
-    if ((err = utility->append_lock_table_tail(str)))
-    {
+    if (strcmp(dbms_name, "MariaDB") &&
+        (err = utility->append_lock_table_tail(str)))
       DBUG_RETURN(err);
-    }
   }
+  if (!strcmp(dbms_name, "MariaDB") && lock_table_hash.records > 0)
+    goto redo;
+  if (!strcmp(dbms_name, "MariaDB") &&
+      (err = utility->append_lock_table_tail(str)))
+    DBUG_RETURN(err);
   DBUG_RETURN(0);
 }
 
@@ -2581,15 +2637,18 @@ bool spider_db_odbc::cmp_request_key_to_snd(
   DBUG_RETURN(TRUE);
 }
 
-/* Update the identifier quote of the shared utility for query
+/* Update driver-specific properties of the shared utility for query
 construction. */
-int spider_db_odbc::update_name_quote(spider_db_share *share)
+int spider_db_odbc::update_query_utility(spider_db_share *share)
 {
   int error_num;
-  DBUG_ENTER("spider_db_odbc::update_name_quote");
+  DBUG_ENTER("spider_db_odbc::update_query_utility");
   DBUG_PRINT("info",("spider this=%p", this));
-  if (name_quote != '\0')
+  if (name_quote != '\0' && *dbms_name != '\0')
+  {
     utility->name_quote[0]= name_quote;
+    memcpy(utility->dbms_name, dbms_name, strlen(dbms_name));
+  }
   else
   {
     /* The quote being the default '\0' implies a connection has not
@@ -2618,6 +2677,7 @@ spider_db_odbc_util::spider_db_odbc_util(
   DBUG_PRINT("info",("spider this=%p", this));
   name_quote[0]= nm_quote;
   name_quote[1]= '\0';
+  *dbms_name= '\0';
   DBUG_VOID_RETURN;
 }
 
@@ -3056,16 +3116,32 @@ int spider_db_odbc_util::append_lock_table_body(
     str->q_append(SPIDER_SQL_DOT_STR, SPIDER_SQL_DOT_LEN);
     str->q_append(name_quote, name_quote_length);
   }
-  if (
-    str->append(table_name, table_name_length, table_name_charset) ||
-    str->reserve(name_quote_length +
-      spider_db_table_lock_len[lock_type])
-  ) {
-    DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+  if (!strcmp(dbms_name, "MariaDB"))
+  {
+    if (
+      str->append(table_name, table_name_length, table_name_charset) ||
+      str->reserve(name_quote_length +
+                   spider_db_maria_table_lock_len[lock_type])
+    ) {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+    str->q_append(name_quote, name_quote_length);
+    str->q_append(spider_db_maria_table_lock_str[lock_type],
+                  spider_db_maria_table_lock_len[lock_type]);
   }
-  str->q_append(name_quote, name_quote_length);
-  str->q_append(spider_db_table_lock_str[lock_type],
-    spider_db_table_lock_len[lock_type]);
+  else
+  {
+    if (
+      str->append(table_name, table_name_length, table_name_charset) ||
+      str->reserve(name_quote_length +
+                   spider_db_table_lock_len[lock_type])
+    ) {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+    str->q_append(name_quote, name_quote_length);
+    str->q_append(spider_db_table_lock_str[lock_type],
+                  spider_db_table_lock_len[lock_type]);
+  }
   DBUG_RETURN(0);
 }
 
@@ -3074,6 +3150,8 @@ int spider_db_odbc_util::append_lock_table_tail(
 ) {
   DBUG_ENTER("spider_db_odbc_util::append_lock_table_tail");
   DBUG_PRINT("info",("spider this=%p", this));
+  if (!strcmp(dbms_name, "MariaDB"))
+    str->length(str->length() - SPIDER_SQL_COMMA_LEN);
   DBUG_RETURN(0);
 }
 
@@ -3082,11 +3160,22 @@ int spider_db_odbc_util::append_unlock_table(
 ) {
   DBUG_ENTER("spider_db_odbc_util::append_unlock_table");
   DBUG_PRINT("info",("spider this=%p", this));
-  if (str->reserve(SPIDER_SQL_UNLOCK_TABLE_LEN))
+  if (!strcmp(dbms_name, "MariaDB"))
   {
-    DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    if (str->reserve(SPIDER_SQL_UNLOCK_TABLE_LEN))
+    {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+    str->q_append(SPIDER_SQL_UNLOCK_TABLE_STR,
+                  SPIDER_SQL_UNLOCK_TABLE_LEN);
   }
-  str->q_append(SPIDER_SQL_UNLOCK_TABLE_STR, SPIDER_SQL_UNLOCK_TABLE_LEN);
+  else
+  {  if (str->reserve(SPIDER_SQL_COMMIT_LEN))
+    {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+    str->q_append(SPIDER_SQL_COMMIT_STR, SPIDER_SQL_COMMIT_LEN);
+  }
   DBUG_RETURN(0);
 }
 
@@ -5989,7 +6078,7 @@ int spider_odbc_handler::init()
       &query,
         sizeof(spider_string *) * share->link_count,
       &minimum_select_bitmap,
-        table ? sizeof(uchar) * no_bytes_in_map(table->read_set) : 0,
+        table ? sizeof(uchar) * no_bytes_in_export_map(table->read_set) : 0,
       NullS))
   ) {
     DBUG_RETURN(HA_ERR_OUT_OF_MEM);
@@ -8303,9 +8392,21 @@ int spider_odbc_handler::append_update_where(
   }
   if (!uk)
   {
-    if (str->reserve(SPIDER_SQL_CUR_CUR_LEN))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    str->q_append(SPIDER_SQL_CUR_CUR_STR, SPIDER_SQL_CUR_CUR_LEN);
+    if (!strcmp(utility->dbms_name, "MariaDB"))
+    {
+      spider_db_odbc_result *result=
+          (spider_db_odbc_result *) spider->result_list.current;
+      if (str->reserve(SPIDER_SQL_CUR_CUR_LEN + result->cur_nm_len))
+        DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+      str->q_append(SPIDER_SQL_CUR_CUR_STR, SPIDER_SQL_CUR_CUR_LEN);
+      str->q_append(result->cur_nm, result->cur_nm_len);
+    }
+    else
+    {
+      if (str->reserve(SPIDER_SQL_CUR_CUR_LEN))
+        DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+      str->q_append(SPIDER_SQL_CUR_CUR_STR, SPIDER_SQL_CUR_CUR_LEN);
+    }
   } else {
     if (
       no_pk ||
@@ -9294,9 +9395,18 @@ int spider_odbc_handler::append_select_lock(
     str->q_append(SPIDER_SQL_FOR_UPDATE_STR, SPIDER_SQL_FOR_UPDATE_LEN);
   } else if (lock_mode == SPIDER_LOCK_MODE_SHARED)
   {
-    if (str->reserve(SPIDER_SQL_FOR_SHARE_LEN))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    str->q_append(SPIDER_SQL_FOR_SHARE_STR, SPIDER_SQL_FOR_SHARE_LEN);
+    if (!strcmp(utility->dbms_name, "MariaDB"))
+    {
+      if (str->reserve(SPIDER_SQL_SHARED_LOCK_LEN))
+        DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+      str->q_append(SPIDER_SQL_SHARED_LOCK_STR, SPIDER_SQL_SHARED_LOCK_LEN);
+    }
+    else
+    {
+      if (str->reserve(SPIDER_SQL_FOR_SHARE_LEN))
+        DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+      str->q_append(SPIDER_SQL_FOR_SHARE_STR, SPIDER_SQL_FOR_SHARE_LEN);
+    }
   }
   DBUG_RETURN(0);
 }
@@ -11596,8 +11706,7 @@ int spider_odbc_handler::lock_tables(
   SPIDER_CONN *conn = spider->conns[link_idx];
   spider_string *str = &sql;
   DBUG_ENTER("spider_odbc_handler::lock_tables");
-  do
-  {
+redo:
     str->length(0);
     if ((err = conn->db_conn->append_lock_tables(str)))
     {
@@ -11613,7 +11722,7 @@ int spider_odbc_handler::lock_tables(
       DBUG_ASSERT(!conn->mta_conn_mutex_unlock_later);
       conn->mta_conn_mutex_lock_already = TRUE;
       conn->mta_conn_mutex_unlock_later = TRUE;
-      if (first)
+      if (strcmp(utility->dbms_name, "MariaDB") && first)
       {
         first = FALSE;
         if ((err = spider_db_set_names(spider, conn, link_idx)))
@@ -11663,7 +11772,8 @@ int spider_odbc_handler::lock_tables(
       SPIDER_CLEAR_FILE_POS(&conn->mta_conn_mutex_file_pos);
       pthread_mutex_unlock(&conn->mta_conn_mutex);
     }
-  } while (str->length());
+  if (strcmp(utility->dbms_name, "MariaDB") && str->length())
+    goto redo;
   if (!conn->table_locked)
   {
     conn->table_locked = TRUE;
@@ -11880,7 +11990,7 @@ void spider_odbc_handler::minimum_select_bitmap_create()
   Field **field_p;
   DBUG_ENTER("spider_odbc_handler::minimum_select_bitmap_create");
   DBUG_PRINT("info",("spider this=%p", this));
-  memset(minimum_select_bitmap, 0, no_bytes_in_map(table->read_set));
+  memset(minimum_select_bitmap, 0, no_bytes_in_export_map(table->read_set));
   if (
     spider->use_index_merge ||
 #ifdef HA_CAN_BULK_ACCESS
@@ -11895,7 +12005,8 @@ void spider_odbc_handler::minimum_select_bitmap_create()
       table_share->primary_key == MAX_KEY
     ) {
       /* need all columns */
-      memset(minimum_select_bitmap, 0xFF, no_bytes_in_map(table->read_set));
+      memset(minimum_select_bitmap, 0xFF,
+             no_bytes_in_export_map(table->read_set));
       DBUG_VOID_RETURN;
     } else {
       /* need primary key columns */
@@ -12677,9 +12788,18 @@ int spider_odbc_copy_table::append_select_lock_str(
     sql.q_append(SPIDER_SQL_FOR_UPDATE_STR, SPIDER_SQL_FOR_UPDATE_LEN);
   } else if (lock_mode == SPIDER_LOCK_MODE_SHARED)
   {
-    if (sql.reserve(SPIDER_SQL_FOR_SHARE_LEN))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    sql.q_append(SPIDER_SQL_FOR_SHARE_STR, SPIDER_SQL_FOR_SHARE_LEN);
+    if (!strcmp(utility->dbms_name, "MariaDB"))
+    {
+      if (sql.reserve(SPIDER_SQL_SHARED_LOCK_LEN))
+        DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+      sql.q_append(SPIDER_SQL_SHARED_LOCK_STR, SPIDER_SQL_SHARED_LOCK_LEN);
+    }
+    else
+    {
+      if (sql.reserve(SPIDER_SQL_FOR_SHARE_LEN))
+        DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+      sql.q_append(SPIDER_SQL_FOR_SHARE_STR, SPIDER_SQL_FOR_SHARE_LEN);
+    }
   }
   DBUG_RETURN(0);
 }

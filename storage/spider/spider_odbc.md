@@ -15,6 +15,8 @@
 For using MariaDB/MySQL as a data node through ODBC, set the following parameter to Spider table system variable or CREATE/ALTER SERVER command.
 -   wrapper "odbc_mariadb"
 
+*NOTE: odbc_mariadb has been deprecated (MENT-1521).*
+
 For using other databases as a data node through ODBC, set the following parameter to Spider table system variable or CREATE/ALTER SERVER command.
 -   wrapper "odbc"
 
@@ -121,23 +123,60 @@ Additionally, ssl_ca, ssl_capath, ssl_cert, ssl_cipher, ssl_key can be used for 
 -   ssl_cipher is added between ODBC DATABASE and UID.
 -   ssl_key is added on bottom of ODBC connection parameters.
 
-### Difference between odbc_mariadb and odbc
+### Special treatment when the driver is MariaDB
 ---
 There are some internal differences.
--   odbc_mariadb:
-    -   The name quote is back quote.
-    -   The modes of lock table are "read local", "read", "low_priority write", and "write".
-    -   Lock table command causes a commit of transaction.
-    -   Lock table command has to do at once.
-    -   "UNLOCK TABLES" command can be used for releasing table locks.
+
+As an example, let t1 be a spider table with two remote tables (HA) on
+two servers t11 (on SERVER s1) and t21 (on SERVER s2), and t2 one with
+remotes t12 (on SERVER s1) and t22 (on SERVER s2). Assume also that s1
+is defined to use database d1 and s2 is defined to use database d2.
+
+First, consider the statement `LOCK TABLES t1 READ, t2 READ;`.
+
+It is translated to two statements with the mariadb driver:
+
+```
+lock table `d1`.`t11` read,`d1`.`t12` read
+lock table `d2`.`t21` read,`d2`.`t22` read
+```
+
+It is translated to six statements for non-mariadb drivers (not
+necessarily double quotes as the quotes is obtained from the driver
+through SQLGetInfo):
+
+```
+start transaction
+lock table "t11" in share mode
+lock table "t12" in share mode
+start transaction
+lock table "t21" in share mode
+lock table "t22" in share mode
+```
+
+From this example we see that
+
+- with the mariadb driver the modes of lock table are "read local",
+  "read", "low_priority write", and "write", and with a non-mariadb
+  driver the modes of lock table are "in share mode", and "in
+  exclusive mode".
+- with the mariadb driver the locking is done at once on all tables on
+  the same server, and with a non-mariadb driver the lock is done one
+  by one
+- with a non-mariadb driver, the locking on each server is prefaced
+  with a start transaction
+
+Now, consider the statement `UNLOCK TABLES;`. With the mariadb driver,
+it translates to one `unlock tables` statement for each server, and
+with a non-mariadb driver, it translates to one `commit` statement for
+each server.
+
+Other differences:
+
+-   mariadb driver:
     -   The shared lock word with SELECT is "lock in shared mode".
     -   The name of cursors have to change for each thread.
--   odbc:
-    -   The name quote is double quote.
-    -   The modes of lock table are "in share mode", and "in exclusive mode".
-    -   Lock table command has to inside of transaction.
-    -   Lock table command has to do one by one.
-    -   The transaction has to be finished for releasing table locks.
+-   other drivers:
     -   The shared lock word with SELECT is "for share".
     -   The name of cursors can use same name for different threads.
 

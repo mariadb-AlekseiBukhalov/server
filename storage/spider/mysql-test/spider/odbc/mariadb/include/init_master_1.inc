@@ -3,9 +3,9 @@ SET spider_direct_order_limit= 10000;
 SET spider_init_sql_alloc_size= 1;
 SET spider_conn_recycle_mode= 0;
 let $MASTER_1_COMMENT_2_1=
-  COMMENT='srv "s_2_1", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "ta_r", wrapper "odbc_mariadb"';
+  COMMENT='srv "s_2_1", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "ta_r", wrapper "odbc"';
 let $MASTER_1_COMMENT2_2_1=
-  COMMENT='srv "s_2_1", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "ta_r_no_idx", wrapper "odbc_mariadb"'
+  COMMENT='srv "s_2_1", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "ta_r_no_idx", wrapper "odbc"'
   CONNECTION='prt "2000000"';
 let $MASTER_1_COMMENT_P_2_1=
   COMMENT='table "ta_r3"'
@@ -24,7 +24,7 @@ let $MASTER_1_COMMENT2_P_2_1=
   );
 let $MASTER_1_COMMENT3_2_1=
   COMMENT='srv "s_2_1", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "ta_r_auto_inc",
-  wrapper "odbc_mariadb"';
+  wrapper "odbc"';
 let $MASTER_1_COMMENT3_P_2_1=
   COMMENT='table "s_2_1_ta_r_int"'
   PARTITION BY LIST(MOD(a, 2)) (
@@ -36,11 +36,11 @@ let $MASTER_1_COMMENT3_P_2_1=
   );
 let $MASTER_1_COMMENT4_2_1=
   COMMENT='srv "s_2_1", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "s_2_1_ta_r_int",
-  wrapper "odbc_mariadb"';
+  wrapper "odbc"';
 let $MASTER_1_COMMENT5_2_1=
-  COMMENT='srv "s_2_1", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "ta_r_3", wrapper "odbc_mariadb"';
+  COMMENT='srv "s_2_1", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "ta_r_3", wrapper "odbc"';
 let $MASTER_1_COMMENT_FT_2_1=
-  COMMENT='srv "s_2_1", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "ft_r", wrapper "odbc_mariadb"';
+  COMMENT='srv "s_2_1", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "ft_r", wrapper "odbc"';
 let $MASTER_1_COMMENT2_FT_P_2_1=
   COMMENT='table "ft_r3"'
   PARTITION BY RANGE(a) (

@@ -27,11 +27,11 @@ let $MASTER_1_COPY_TABLES_2_1=
 
 let $MASTER_1_COMMENT_HA_2_1=
   COMMENT='database "auto_test_remote auto_test_remote2", srv "s_2_1 s_2_2", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "ta_r ta_r3",
-  wrapper "odbc_mariadb"'
+  wrapper "odbc"'
   CONNECTION='msi "$CHILD3_1_SERVER_ID", mkd "2"';
 let $MASTER_1_COMMENT_HA_AS_2_1=
   COMMENT='database "auto_test_remote auto_test_remote2", srv "s_2_1 s_2_2", driver "MariaDB\\\\ ODBC\\\\ 3.0\\\\ Driver", table "ta_r ta_r3",
-  wrapper "odbc_mariadb"'
+  wrapper "odbc"'
   CONNECTION='msi "$CHILD3_1_SERVER_ID", mkd "2", alc "1"';
 let $MASTER_1_COMMENT_HA_P_2_1=
   COMMENT='msi "$CHILD3_1_SERVER_ID", mkd "2"'

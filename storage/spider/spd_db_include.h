@@ -1061,7 +1061,8 @@ public:
     st_spider_db_request_key *request_key
   ) = 0;
   virtual uint limit_mode();
-  virtual int update_name_quote(spider_db_share *share);
+  /* Update the utility for query construction */
+  virtual int update_query_utility(spider_db_share *share);
 };
 
 class spider_db_share

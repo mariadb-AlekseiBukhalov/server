@@ -327,16 +327,6 @@ int spider_udf_get_copy_tgt_tables(
       goto error;
     }
 
-/*
-    if (spider_db_create_table_names_str(tmp_share))
-    {
-      spider_sys_index_end(table_tables);
-      error_num = HA_ERR_OUT_OF_MEM;
-      my_error(HA_ERR_OUT_OF_MEM, MYF(0));
-      goto error;
-    }
-*/
-
     for (roop_count = 0; roop_count < (int) tmp_share->use_dbton_count;
       roop_count++)
     {
@@ -906,6 +896,8 @@ long long spider_copy_tables_body(
     select_ct = src_tbl_conn->copy_table;
     src_tbl_conn->share->access_charset = copy_tables->access_charset;
     select_ct->set_sql_charset(copy_tables->access_charset);
+    if (src_tbl_conn->conn->db_conn->update_query_utility(select_ct->db_share))
+      goto error;
     if (
       select_ct->append_select_str() ||
       select_ct->append_table_columns(table_share)
@@ -947,6 +939,8 @@ long long spider_copy_tables_body(
     insert_ct = dst_tbl_conn->copy_table;
     dst_tbl_conn->share->access_charset = copy_tables->access_charset;
     insert_ct->set_sql_charset(copy_tables->access_charset);
+    if (dst_tbl_conn->conn->db_conn->update_query_utility(insert_ct->db_share))
+      goto error;
     if (
       insert_ct->append_insert_str(SPIDER_DB_INSERT_IGNORE) ||
       insert_ct->append_into_str() ||

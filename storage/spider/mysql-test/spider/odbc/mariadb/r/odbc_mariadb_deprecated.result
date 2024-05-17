@@ -1,0 +1,28 @@
+for master_1
+for child2
+for child3
+SELECT * INTO OUTFILE '$dsn_file' FROM (
+SELECT '[ODBC]' UNION ALL
+SELECT 'Driver=MariaDB ODBC 3.0 Driver' UNION ALL
+SELECT 'Servername=127.0.0.1' UNION ALL
+SELECT 'Database=test' UNION ALL
+SELECT 'User=root' UNION ALL
+SELECT 'Password=' UNION ALL
+SELECT 'Port=$MASTER_1_MYPORT'
+) a;
+SELECT spider_direct_sql('DROP TABLE IF EXISTS t2', '',
+'filedsn "$dsn_file", wrapper "odbc_mariadb"');
+spider_direct_sql('DROP TABLE IF EXISTS t2', '',
+'filedsn "dsn_file", wrapper "odbc_mariadb"')
+1
+Warnings:
+Warning	1287	'odbc_mariadb' is deprecated and will be removed in a future release. Please use odbc instead
+create table t2 (c int, key(c));
+create table t1 (c int, key(c)) ENGINE=Spider
+COMMENT='WRAPPER "odbc_mariadb", TABLE "t2", filedsn "$dsn_file"';
+Warnings:
+Warning	1287	'odbc_mariadb' is deprecated and will be removed in a future release. Please use odbc instead
+drop table t1, t2;
+for master_1
+for child2
+for child3
