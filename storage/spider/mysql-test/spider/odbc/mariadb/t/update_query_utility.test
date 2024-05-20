@@ -1,0 +1,34 @@
+--disable_query_log
+--disable_result_log
+--source ../../t/test_init.inc
+--enable_result_log
+--enable_query_log
+
+# Test that the query utility has been updated in time for the query
+# construction to build the query correctly.
+let $dsn_file=$MYSQLTEST_VARDIR/tmp/filedsn.dsn;
+evalp SELECT * INTO OUTFILE '$dsn_file' FROM (
+  SELECT '[ODBC]' UNION ALL
+  SELECT 'Driver=MariaDB ODBC 3.0 Driver' UNION ALL
+  SELECT 'Servername=127.0.0.1' UNION ALL
+  SELECT 'Database=test' UNION ALL
+  SELECT 'User=root' UNION ALL
+  SELECT 'Password=' UNION ALL
+  SELECT 'Port=$MASTER_1_MYPORT'
+) a;
+
+# Test lock table
+create table t2 (c int, key(c));
+evalp create table t1 (c int, key(c)) ENGINE=Spider
+COMMENT='WRAPPER "odbc", TABLE "t2", filedsn "$dsn_file"';
+lock table t1 read;
+unlock tables;
+
+drop table t1, t2;
+remove_file $dsn_file;
+
+--disable_query_log
+--disable_result_log
+--source ../../t/test_deinit.inc
+--enable_result_log
+--enable_query_log

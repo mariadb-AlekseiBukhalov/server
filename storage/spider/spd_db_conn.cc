@@ -1132,19 +1132,9 @@ void spider_db_append_xid_str(
   format_id_length =
     snprintf(format_id, sizeof(format_id), "%lu", xid->formatID);
   spider_db_append_hex_string(tmp_str, (uchar *) xid->data, xid->gtrid_length);
-/*
-  tmp_str->q_append(SPIDER_SQL_VALUE_QUOTE_STR, SPIDER_SQL_VALUE_QUOTE_LEN);
-  tmp_str->q_append(xid->data, xid->gtrid_length);
-  tmp_str->q_append(SPIDER_SQL_VALUE_QUOTE_STR, SPIDER_SQL_VALUE_QUOTE_LEN);
-*/
   tmp_str->q_append(SPIDER_SQL_COMMA_STR, SPIDER_SQL_COMMA_LEN);
   spider_db_append_hex_string(tmp_str,
     (uchar *) xid->data + xid->gtrid_length, xid->bqual_length);
-/*
-  tmp_str->q_append(SPIDER_SQL_VALUE_QUOTE_STR, SPIDER_SQL_VALUE_QUOTE_LEN);
-  tmp_str->q_append(xid->data + xid->gtrid_length, xid->bqual_length);
-  tmp_str->q_append(SPIDER_SQL_VALUE_QUOTE_STR, SPIDER_SQL_VALUE_QUOTE_LEN);
-*/
   tmp_str->q_append(SPIDER_SQL_COMMA_STR, SPIDER_SQL_COMMA_LEN);
   tmp_str->q_append(format_id, format_id_length);
 #ifndef DBUG_OFF
@@ -1219,6 +1209,7 @@ int spider_db_lock_tables(
   int error_num;
   SPIDER_CONN *conn = spider->conns[link_idx];
   DBUG_ENTER("spider_db_lock_tables");
+  conn->db_conn->update_query_utility(spider->share->dbton_share[conn->dbton_id]);
   error_num = spider->dbton_handler[conn->dbton_id]->lock_tables(link_idx);
   DBUG_RETURN(error_num);
 }
@@ -1230,6 +1221,7 @@ int spider_db_unlock_tables(
   int error_num;
   SPIDER_CONN *conn = spider->conns[link_idx];
   DBUG_ENTER("spider_db_unlock_tables");
+  conn->db_conn->update_query_utility(spider->share->dbton_share[conn->dbton_id]);
   error_num = spider->dbton_handler[conn->dbton_id]->unlock_tables(link_idx);
   DBUG_RETURN(error_num);
 }
