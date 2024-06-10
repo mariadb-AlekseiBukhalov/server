@@ -44,7 +44,8 @@ SET SESSION wsrep_sync_wait=0;
 
 # Wait for the ALTERs to block in sync point
 --let $wait_condition = SELECT COUNT(*) = 2 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE STATE = 'debug sync point: now';
---source include/wait_condition.inc
+--let $wait_condition_on_error_output = SELECT * FROM INFORMATION_SCHEMA.PROCESSLIST;
+--source include/wait_condition_with_debug.inc
 
 # Check that the processing of unrelated events is not affected
 --connect node_1b, 127.0.0.1, root, , test, $NODE_MYPORT_1
@@ -54,7 +55,8 @@ INSERT INTO t3 VALUES (1);
 --connection node_2
 INSERT INTO t3 VALUES (2);
 --let $wait_condition = SELECT COUNT(*) = 2 FROM t3;
---source include/wait_condition.inc
+--let $wait_condition_on_error_output = SELECT * FROM t3;
+--source include/wait_condition_with_debug.inc
 
 SET GLOBAL debug_dbug = '';
 SET DEBUG_SYNC= 'now SIGNAL signal.wsrep_alter_locked_tables';
@@ -62,7 +64,8 @@ SET DEBUG_SYNC= 'now WAIT_FOR signal.wsrep_alter_locked_tables_continued';
 SET DEBUG_SYNC= 'now SIGNAL signal.wsrep_alter_locked_tables';
 
 --let $wait_condition = SELECT COUNT(*) = 0 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE INFO LIKE 'ALTER%';
---source include/wait_condition.inc
+--let $wait_condition_on_error_output = SELECT * FROM INFORMATION_SCHEMA.PROCESSLIST;
+--source include/wait_condition_with_debug.inc
 
 --connection node_1
 --reap
@@ -73,12 +76,16 @@ SET DEBUG_SYNC= 'now SIGNAL signal.wsrep_alter_locked_tables';
 --connection node_1
 SHOW CREATE TABLE t1;
 SHOW CREATE TABLE t2;
-SELECT COUNT(*) = 2 FROM t3;
+SELECT COUNT(*) FROM t1;
+SELECT COUNT(*) FROM t2;
+SELECT COUNT(*) AS EXPECT_2 FROM t3;
 
 --connection node_2
 SHOW CREATE TABLE t1;
 SHOW CREATE TABLE t2;
-SELECT COUNT(*) = 2 FROM t3;
+SELECT COUNT(*) FROM t1;
+SELECT COUNT(*) FROM t2;
+SELECT COUNT(*) AS EXPECT_2 FROM t3;
 
 SET DEBUG_SYNC= 'RESET';
 

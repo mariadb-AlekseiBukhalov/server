@@ -1,8 +1,8 @@
 connection node_2;
 connection node_1;
 connection node_1;
-CREATE TABLE t1 (f1 INTEGER, f2 INTEGER);
-CREATE TABLE t2 (f1 INTEGER);
+CREATE TABLE t1 (f1 INTEGER NOT NULL PRIMARY KEY, f2 INTEGER) ENGINE=INNODB;
+CREATE TABLE t2 (f1 INTEGER NOT NULL PRIMARY KEY) ENGINE=INNODB;
 connect node_1a, 127.0.0.1, root, , test, $NODE_MYPORT_1;
 connection node_1a;
 LOCK TABLE t1 WRITE;
@@ -10,13 +10,15 @@ connection node_1;
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
-  `f1` int(11) DEFAULT NULL,
-  `f2` int(11) DEFAULT NULL
+  `f1` int(11) NOT NULL,
+  `f2` int(11) DEFAULT NULL,
+  PRIMARY KEY (`f1`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 SHOW CREATE TABLE t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `f1` int(11) DEFAULT NULL
+  `f1` int(11) NOT NULL,
+  PRIMARY KEY (`f1`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 SET SESSION wsrep_OSU_method=NBO;
 ALTER TABLE t1 LOCK=SHARED, DROP COLUMN f2;;
@@ -30,13 +32,14 @@ SET SESSION wsrep_sync_wait = 0;
 connection node_2;
 SET SESSION wsrep_OSU_method=TOI;
 INSERT INTO t2 VALUES (2);
-CREATE TABLE t3 (t4 INTEGER);
+CREATE TABLE t3 (t4 INTEGER NOT NULL PRIMARY KEY) ENGINE=INNODB;;
 connection node_1a;
 UNLOCK TABLES;
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
-  `f1` int(11) DEFAULT NULL
+  `f1` int(11) NOT NULL,
+  PRIMARY KEY (`f1`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 connection node_1;
 connection node_1b;
@@ -48,7 +51,8 @@ connection node_2;
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
-  `f1` int(11) DEFAULT NULL
+  `f1` int(11) NOT NULL,
+  PRIMARY KEY (`f1`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 SELECT * FROM t2;
 f1
