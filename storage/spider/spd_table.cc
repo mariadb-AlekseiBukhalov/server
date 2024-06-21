@@ -124,7 +124,6 @@ extern SPIDER_DBTON spider_dbton_mysql;
 extern SPIDER_DBTON spider_dbton_mariadb;
 #ifdef HAVE_SPIDER_UNIXODBC
 extern SPIDER_DBTON spider_dbton_odbc;
-extern SPIDER_DBTON spider_dbton_odbc_mariadb;
 #endif
 SPIDER_THREAD *spider_table_sts_thread;
 SPIDER_THREAD *spider_table_crd_thread;
@@ -3790,11 +3789,6 @@ int spider_parse_connect_info(
           MYF(0), share->tgt_wrappers[roop_count]);
         goto error;
       }
-#ifdef HAVE_SPIDER_UNIXODBC
-      if (spider_dbton[roop_count2].wrapper == spider_dbton_odbc_mariadb.wrapper)
-        warn_deprecated<104>(current_thd, spider_dbton_odbc_mariadb.wrapper,
-                             spider_dbton_odbc.wrapper);
-#endif /* HAVE_SPIDER_UNIXODBC */
 
       DBUG_PRINT("info",
         ("spider server_names_lengths[%d] = %u", roop_count,
@@ -6822,10 +6816,6 @@ int spider_db_init(
   spider_dbton_odbc.dbton_id = dbton_id;
   spider_dbton_odbc.db_util->dbton_id = dbton_id;
   spider_dbton[dbton_id] = spider_dbton_odbc;
-  ++dbton_id;
-  spider_dbton_odbc_mariadb.dbton_id = dbton_id;
-  spider_dbton_odbc_mariadb.db_util->dbton_id = dbton_id;
-  spider_dbton[dbton_id] = spider_dbton_odbc_mariadb;
   ++dbton_id;
 #endif
   DBUG_ASSERT(dbton_id <= SPIDER_DBTON_SIZE);

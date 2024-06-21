@@ -53,11 +53,6 @@ extern PSI_mutex_key spd_key_mutex_bg_direct_sql;
 extern PSI_cond_key spd_key_cond_bg_direct_sql;
 #endif
 
-#ifdef HAVE_SPIDER_UNIXODBC
-extern SPIDER_DBTON spider_dbton_odbc_mariadb;
-extern SPIDER_DBTON spider_dbton_odbc;
-#endif
-
 extern HASH spider_open_connections;
 extern HASH spider_ipport_conns;
 extern pthread_mutex_t spider_conn_mutex;
@@ -1047,11 +1042,6 @@ int spider_udf_set_direct_sql_param_default(
           !strcasecmp(direct_sql->tgt_wrapper,
             spider_dbton[roop_count].wrapper)
         ) {
-#ifdef HAVE_SPIDER_UNIXODBC
-          if (spider_dbton[roop_count].wrapper == spider_dbton_odbc_mariadb.wrapper)
-            warn_deprecated<104>(current_thd, spider_dbton_odbc_mariadb.wrapper,
-                                 spider_dbton_odbc.wrapper);
-#endif /* HAVE_SPIDER_UNIXODBC */
           if (spider_dbton[roop_count].db_access_type ==
             SPIDER_DB_ACCESS_TYPE_SQL)
           {

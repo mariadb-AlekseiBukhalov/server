@@ -15,7 +15,7 @@ SET(SPIDER_SOURCES
   spd_table.cc spd_direct_sql.cc spd_udf.cc spd_ping_table.cc
   spd_copy_tables.cc spd_i_s.cc spd_malloc.cc ha_spider.cc spd_udf.def
   spd_db_mysql.cc spd_group_by_handler.cc spd_db_include.cc
-  spd_db_odbc.cc spd_db_odbc_mariadb.cc
+  spd_db_odbc.cc
 )
 
 set(CPACK_RPM_spider-engine_PACKAGE_SUMMARY "Spider storage engine for MariaDB" PARENT_SCOPE)
