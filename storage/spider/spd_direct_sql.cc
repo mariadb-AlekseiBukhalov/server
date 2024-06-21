@@ -1049,11 +1049,8 @@ int spider_udf_set_direct_sql_param_default(
         ) {
 #ifdef HAVE_SPIDER_UNIXODBC
           if (spider_dbton[roop_count].wrapper == spider_dbton_odbc_mariadb.wrapper)
-            push_warning_printf(current_thd, Sql_condition::WARN_LEVEL_WARN,
-                                ER_WARN_DEPRECATED_SYNTAX,
-                                ER_THD(current_thd, ER_WARN_DEPRECATED_SYNTAX),
-                                spider_dbton_odbc_mariadb.wrapper,
-                                spider_dbton_odbc.wrapper);
+            warn_deprecated<104>(current_thd, spider_dbton_odbc_mariadb.wrapper,
+                                 spider_dbton_odbc.wrapper);
 #endif /* HAVE_SPIDER_UNIXODBC */
           if (spider_dbton[roop_count].db_access_type ==
             SPIDER_DB_ACCESS_TYPE_SQL)
