@@ -3,6 +3,7 @@ include/master-slave.inc
 drop table if exists t1;
 connection slave;
 reset master;
+set @@global.gtid_cleanup_batch_size= 2147483647;
 CREATE TABLE IF NOT EXISTS mysql.server_audit_filters (
 filtername char(80) COLLATE utf8_bin NOT NULL DEFAULT '',
 rule longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'true' CHECK (json_valid(rule)),
@@ -60,5 +61,6 @@ TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,logging=ON,0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,test,'set global server_audit_logging=on',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,test,'select master_pos_wait(\'master-bin.#', POS, 300, \'\')',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,logging=OFF,0
+set @@global.gtid_cleanup_batch_size= 64;
 connection master;
 include/rpl_end.inc

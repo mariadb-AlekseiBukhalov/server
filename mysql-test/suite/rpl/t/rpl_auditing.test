@@ -9,7 +9,9 @@ drop table if exists t1;
 sync_slave_with_master;
 reset master;
 --enable_warnings
-
+# suppress automatic gtid state table cleanup to avoid non-deterministic logging
+--let $save__gtid_cleanup_batch_size= `select @@global.gtid_cleanup_batch_size`
+set @@global.gtid_cleanup_batch_size= 2147483647;
 --disable_warnings
 CREATE TABLE IF NOT EXISTS mysql.server_audit_filters (
     filtername char(80) COLLATE utf8_bin NOT NULL DEFAULT '',
@@ -72,6 +74,7 @@ let $MYSQLD_DATADIR= `SELECT @@datadir`;
 --replace_regex /[0-9]* [0-9][0-9]:[0-9][0-9]:[0-9][0-9]\,[^,]*\,/TIME,HOSTNAME,/ /\,[1-9][0-9]*\,/,1,/ /\,[1-9][0-9]*/,ID/ /000001\\', [0-9]*,/#', POS,/
 cat_file $MYSQLD_DATADIR/server_audit.log;
 remove_file $MYSQLD_DATADIR/server_audit.log;
+--eval set @@global.gtid_cleanup_batch_size= $save__gtid_cleanup_batch_size
 
 connection master;
 --source include/rpl_end.inc
