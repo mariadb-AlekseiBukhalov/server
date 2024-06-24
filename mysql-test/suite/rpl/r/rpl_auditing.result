@@ -61,6 +61,6 @@ TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,logging=ON,0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,test,'set global server_audit_logging=on',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,test,'select master_pos_wait(\'master-bin.#', POS, 300, \'\')',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,logging=OFF,0
-set @@global.gtid_cleanup_batch_size= 64;
+set @@global.gtid_cleanup_batch_size= $save__gtid_cleanup_batch_size;
 connection master;
 include/rpl_end.inc
