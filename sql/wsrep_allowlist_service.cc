@@ -64,7 +64,7 @@ bool Wsrep_allowlist_service::allowlist_cb (
   return res;
 }
 
-std::unique_ptr<wsrep::allowlist_service> entrypoint;
+static std::unique_ptr<wsrep::allowlist_service> entrypoint;
 
 wsrep::allowlist_service* wsrep_allowlist_service_init()
 {

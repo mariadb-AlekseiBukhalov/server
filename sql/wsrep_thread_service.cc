@@ -517,7 +517,7 @@ public:
   }
 };
 
-extern std::unique_ptr<Wsrep_thread_service> entrypoint;
+static std::unique_ptr<Wsrep_thread_service> entrypoint;
 
 #endif /* HAVE_PSI_THREAD_INTERFACE */
 

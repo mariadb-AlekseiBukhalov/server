@@ -379,6 +379,12 @@ static int wsrep_plugin_init(void *p)
   return ret;
 }
 
+static int wsrep_plugin_deinit(void *p)
+{
+  WSREP_DEBUG("wsrep_plugin_deinit()");
+  return 0;
+}
+
 struct st_mysql_storage_engine wsrep_plugin= {
   MYSQL_HANDLERTON_INTERFACE_VERSION
 };
@@ -392,7 +398,7 @@ maria_declare_plugin(wsrep)
   "Wsrep replication plugin",
   PLUGIN_LICENSE_GPL,
   wsrep_plugin_init,
-  NULL,
+  wsrep_plugin_deinit,
   0x0100,
   NULL,                           /* Status variables */
   NULL,                           /* System variables */

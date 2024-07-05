@@ -152,8 +152,8 @@ void Wsrep_server_state::destroy()
 
 bool Wsrep_server_state::init_provider_services()
 {
-  m_provider_services.allowlist_service= wsrep_allowlist_service_init();
   m_provider_services.event_service= Wsrep_event_service::instance();
+  m_provider_services.allowlist_service= wsrep_allowlist_service_init();
 #ifdef HAVE_PSI_THREAD_INTERFACE
   if (pfs_param.m_enabled)
     m_provider_services.thread_service= wsrep_thread_service_init();
