@@ -2327,7 +2327,10 @@ int wsrep_to_buf_helper(
     return 1;
   int ret(0);
 
-  Format_description_log_event tmp_fd(BINLOG_VERSION, NULL, current_binlog_check_alg);
+  Format_description_log_event *tmp_fd=
+    new Format_description_log_event(4, NULL, current_binlog_check_alg);
+  writer.write(tmp_fd);
+  delete tmp_fd;
 
 #ifdef GTID_SUPPORT
   if (thd->variables.gtid_next.type == GTID_GROUP)
@@ -2344,7 +2347,6 @@ int wsrep_to_buf_helper(
   if (thd->slave_thread || wsrep_thd_is_applying(thd) || 
       thd->variables.wsrep_gtid_seq_no)
   {
-    if (writer.write(&tmp_fd)) ret= 1;
     uint64 seqno= thd->variables.gtid_seq_no;
     uint32 domain_id= thd->variables.gtid_domain_id;
     uint32 server_id= thd->variables.server_id;
@@ -2379,14 +2381,12 @@ int wsrep_to_buf_helper(
   /* if there is prepare query, add event for it */
   if (!ret && thd->wsrep_TOI_pre_query)
   {
-    if (writer.write(&tmp_fd)) ret= 1;
     Query_log_event ev(thd, thd->wsrep_TOI_pre_query,
 		       thd->wsrep_TOI_pre_query_len,
 		       FALSE, FALSE, FALSE, 0);
     if (writer.write(&ev)) ret= 1;
   }
 
-  if (!ret && writer.write(&tmp_fd)) ret= 1;
   /* continue to append the actual query */
   Query_log_event ev(thd, query, query_len, FALSE, FALSE, FALSE, 0);
   /* WSREP GTID mode, we need to change server_id */

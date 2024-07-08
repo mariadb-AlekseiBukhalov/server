@@ -8688,6 +8688,7 @@ int ha_abort_transaction(THD *bf_thd, THD *victim_thd, my_bool signal)
 
   DBUG_RETURN(0);
 }
+#endif /* WITH_WSREP */
 
 #ifdef WITH_WSREP
 void wsrep_wait_until_innodb_initialized()
@@ -8696,8 +8697,6 @@ void wsrep_wait_until_innodb_initialized()
   if (hton)  hton->wait_until_initialized(hton);
 }
 #endif /* WITH_WSREP */
-#endif /* WITH_WSREP */
-
 
 /* Remove all indexes for a given table from global index statistics */
 

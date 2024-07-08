@@ -38,7 +38,7 @@ SET SESSION wsrep_sync_wait = 0;
 --connection node_1c
 SET SESSION wsrep_sync_wait = 0;
 
---let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE INFO = 'INSERT INTO t2 VALUES (1)' AND STATE = 'Commit'
+--let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE INFO = 'INSERT INTO t2 VALUES (1)' AND (State = 'Commit' OR State='Waiting for certification')
 --source include/wait_condition.inc
 
 # Remote operations are allowed

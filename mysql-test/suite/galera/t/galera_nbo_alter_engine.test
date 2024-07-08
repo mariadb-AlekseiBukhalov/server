@@ -6,7 +6,7 @@
 --source include/have_innodb.inc
 
 --connection node_1
-SET GLOBAL wsrep_replicate_myisam=ON;
+SET GLOBAL wsrep_mode = REPLICATE_MYISAM;
 
 CREATE TABLE t1 (f1 INTEGER) ENGINE=MyISAM;
 INSERT INTO t1 VALUES (1);
@@ -27,5 +27,4 @@ SET SESSION wsrep_OSU_method=TOI;
 DROP TABLE t1;
 
 --connection node_1
-SET GLOBAL wsrep_replicate_myisam=FALSE;
-
+SET GLOBAL wsrep_mode = DEFAULT;
