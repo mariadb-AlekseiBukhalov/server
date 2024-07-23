@@ -1864,14 +1864,6 @@ int Query_log_event::do_apply_event(rpl_group_info *rgi,
     thd->variables.pseudo_thread_id= thread_id;		// for temp tables
     DBUG_PRINT("query",("%s", thd->query()));
 
-#ifdef WITH_WSREP
-    if (WSREP(thd))
-    {
-      WSREP_DEBUG("Query_log_event thread=%lu for query=%s",
-		  thd_get_thread_id(thd), wsrep_thd_query(thd));
-    }
-#endif
-
     if (unlikely(!(expected_error= !is_rb_alter ? error_code : 0)) ||
         ignored_error_code(expected_error) ||
         !unexpected_error_code(expected_error))
