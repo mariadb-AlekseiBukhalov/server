@@ -6,8 +6,9 @@ SET spider_direct_order_limit= 10000;
 SET spider_init_sql_alloc_size= 1;
 SET spider_conn_recycle_mode= 0;
 let $MASTER_1_COMMENT_2_1=
-  COMMENT='dsn "$ODBC_DSN_HA1", table "$S_2_1_TA_R", wrapper "odbc",
-  pk_name "$S_2_1_TA_R_PK"';
+  COMMENT='table "$S_2_1_TA_R", wrapper "odbc",
+  pk_name "$S_2_1_TA_R_PK"'
+  CONNECTION='dsn=$ODBC_DSN_HA1;';
 let $MASTER_1_COMMENT2_2_1=
   COMMENT='dsn "$ODBC_DSN_HA1", table "$S_2_1_TA_R_NO_IDX", wrapper "odbc"'
   CONNECTION='prt "2000000"';

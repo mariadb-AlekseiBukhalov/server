@@ -2496,6 +2496,32 @@ int st_spider_param_string_parse::fail(bool restore_delim)
   DBUG_RETURN(error_num);
 }
 
+#ifdef HAVE_SPIDER_UNIXODBC
+/**
+  Check if a null-ended connection str may be in the odbc format, and
+  is definitely not of the spider format. If so, update the
+  corresponding field in share. Returns 0 if succeed, 1 if not odbc
+  connection string format, and HA_ERR_OUT_OF_MEM if memory allocation
+  fails.
+*/
+static int spider_try_odbc_connection_string(char *str, SPIDER_SHARE *share)
+{
+  char *ptr= str;
+  while (*ptr != '\0' && my_isvar(&my_charset_bin, *ptr))
+    ptr++;
+  while (*ptr != '\0' && my_isspace(&my_charset_bin, *ptr))
+    ptr++;
+  if (*ptr == ';' || *ptr == '=' || *ptr == '\0')
+  {
+    if (!(share->tgt_odbc_conn_str =
+          spider_create_string(str, strlen(str))))
+      return HA_ERR_OUT_OF_MEM;
+    share->tgt_odbc_conn_str_length = strlen(str);
+    return 0;
+  }
+  return 1;
+}
+#endif
 
 /*
   Parse connection information specified by COMMENT, CONNECT, or engine-defined
@@ -2622,6 +2648,18 @@ int spider_parse_connect_info(
     */
     if (spider_param_ignore_comments(current_thd) || option_specified)
     {
+#ifdef HAVE_SPIDER_UNIXODBC
+      /* If we are dealing with the CONNECTION string, check for use
+      in odbc. */
+      if (i == 1)
+      {
+        if (!(error_num= spider_try_odbc_connection_string(connect_string, share)))
+          continue;
+        if (error_num != 1)
+          goto error;
+        error_num= 0;
+      }
+#endif
       if (!spider_param_suppress_comment_ignored_warning(current_thd))
         push_warning_printf(
           current_thd, Sql_condition::WARN_LEVEL_WARN,
@@ -2631,6 +2669,16 @@ int spider_parse_connect_info(
       continue;
     }
 
+#ifdef HAVE_SPIDER_UNIXODBC
+    if (i == 1)
+    {
+      if (!(error_num= spider_try_odbc_connection_string(connect_string, share)))
+        continue;
+      if (error_num != 1)
+        goto error;
+      error_num= 0;
+    }
+#endif
     if (create_table)
       push_warning_printf(current_thd, Sql_condition::WARN_LEVEL_WARN,
                           HA_ERR_UNSUPPORTED,

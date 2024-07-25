@@ -1,0 +1,43 @@
+--disable_query_log
+--disable_result_log
+--source ../../../t/test_init.inc
+--enable_result_log
+--enable_query_log
+
+let $dsn_file=$MYSQLTEST_VARDIR/tmp/filedsn.dsn;
+evalp SELECT * INTO OUTFILE '$dsn_file' FROM (
+  SELECT '[ODBC]' UNION ALL
+  SELECT 'Driver=PostgreSQL' UNION ALL
+  SELECT 'UserName=mtr' UNION ALL
+  SELECT 'Password=mtr' UNION ALL
+  SELECT 'Port=5432' UNION ALL
+  SELECT 'Database=auto_test_remote'
+) a;
+
+--disable_result_log
+--disable_warnings
+evalp SELECT spider_direct_sql('DROP TABLE IF EXISTS "t2"', '',
+'filedsn "$dsn_file", wrapper "odbc"');
+--enable_warnings
+--enable_result_log
+replace_result $dsn_file dsn_file;
+evalp SELECT spider_direct_sql('CREATE TABLE "t2" ("c" INT)', '',
+'filedsn "$dsn_file", wrapper "odbc"');
+evalp create table t1 (c int) ENGINE=Spider
+WRAPPER=odbc REMOTE_TABLE=t2
+CONNECTION='Driver=PostgreSQL;UserName=mtr;Password=mtr;Port=5432;Database=auto_test_remote';
+
+INSERT INTO t1 VALUES (1), (2), (3);
+select * from t1;
+
+drop table t1;
+replace_result $dsn_file dsn_file;
+evalp SELECT spider_direct_sql('DROP TABLE "t2"', '',
+'filedsn "$dsn_file", wrapper "odbc"');
+remove_file $dsn_file;
+
+--disable_query_log
+--disable_result_log
+--source ../../../t/test_deinit.inc
+--enable_result_log
+--enable_query_log

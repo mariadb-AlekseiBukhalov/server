@@ -59,8 +59,10 @@ extern HASH spider_open_connections;
 extern SPIDER_DBTON spider_dbton[SPIDER_DBTON_SIZE];
 extern const char spider_dig_upper[];
 
-/* Default the identifier quote to double quote, which will be
-updated after calling SQLGetInfo */
+/*
+  Default the identifier quote to double quote, which will be updated
+  after calling SQLGetInfo
+*/
 spider_db_odbc_util spider_db_odbc_utility('"', "'", 1);
 
 #define SPIDER_SQL_ODBC_TYPE_BINARY_STR "sql_binary"
@@ -1046,22 +1048,8 @@ int spider_db_odbc_result::fetch_table_mon_status(
 
 longlong spider_db_odbc_result::num_rows()
 {
-/*
-  SQLRETURN ret;
-  SQLLEN cnt;
-*/
   DBUG_ENTER("spider_db_odbc_result::num_rows");
   DBUG_PRINT("info",("spider this=%p", this));
-/*
-  ret = SQLRowCount(hstm, &cnt);
-  if (ret != SQL_SUCCESS)
-  {
-    stored_error_num = spider_db_odbc_get_error(ret, SQL_HANDLE_STMT,
-      hstm, db_conn->conn, stored_error_msg);
-    DBUG_RETURN(0);
-  }
-  DBUG_RETURN((longlong) cnt);
-*/
   DBUG_RETURN(limit);
 }
 
@@ -1245,7 +1233,11 @@ bool spider_db_odbc::is_connected()
 {
   DBUG_ENTER("spider_db_odbc::is_connected");
   DBUG_PRINT("info",("spider this=%p", this));
-  DBUG_RETURN(hdbc != SQL_NULL_HDBC);
+  /*
+    Even if hdbc is not null, the connection may have not established
+    due to a failed SQLDriverConnect call.
+  */
+  DBUG_RETURN(hdbc != SQL_NULL_HDBC && !conn->connect_error);
 }
 
 void spider_db_odbc::bg_connect()
@@ -1255,30 +1247,209 @@ void spider_db_odbc::bg_connect()
   DBUG_VOID_RETURN;
 }
 
-int spider_db_odbc::connect(
-  char *tgt_host,
-  char *tgt_username,
-  char *tgt_password,
-  long tgt_port,
-  char *tgt_socket,
-  char *server_name,
-  int connect_retry_count,
-  longlong connect_retry_interval
-) {
+static int spider_build_odbc_conn_string(Binary_string *conn_str, SPIDER_CONN *conn)
+{
+  DBUG_ENTER("spider_build_odbc_conn_string");
+  if (conn->tgt_odbc_conn_str)
+  {
+    conn_str->append(conn->tgt_odbc_conn_str, conn->tgt_odbc_conn_str_length);
+    if (conn_str->end()[-1] != ';' && conn_str->append(";", 1))
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+  }
+  /* additional connect parameter for ODBC */
+  if (conn->tgt_ssl_ca)
+  {
+    if (conn_str->append(conn->tgt_ssl_ca, conn->tgt_ssl_ca_length))
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+  }
+
+  if (conn->tgt_filedsn)
+  {
+    DBUG_PRINT("info",("spider filedsn:%s", conn->tgt_filedsn));
+    if (conn_str->append(SPIDER_DB_FILEDSN_STR, SPIDER_DB_FILEDSN_LEN) ||
+        conn_str->append(SPIDER_SQL_ODBC_EQUAL_STR,
+                         SPIDER_SQL_ODBC_EQUAL_LEN) ||
+        conn_str->append(conn->tgt_filedsn, conn->tgt_filedsn_length) ||
+        conn_str->append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
+    {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+  }
+
+  if (conn->tgt_dsn)
+  {
+    DBUG_PRINT("info",("spider dsn:%s", conn->tgt_dsn));
+    if (conn_str->append(SPIDER_DB_DSN_STR, SPIDER_DB_DSN_LEN) ||
+        conn_str->append(SPIDER_SQL_ODBC_EQUAL_STR,
+                         SPIDER_SQL_ODBC_EQUAL_LEN) ||
+        conn_str->append(conn->tgt_dsn, conn->tgt_dsn_length) ||
+        conn_str->append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
+    {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+  }
+
+  /* additional connect parameter for ODBC */
+  if (conn->tgt_ssl_capath)
+  {
+    if (conn_str->append(conn->tgt_ssl_capath, conn->tgt_ssl_capath_length))
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+  }
+
+  if (conn->tgt_driver)
+  {
+    DBUG_PRINT("info",("spider driver:%s", conn->tgt_driver));
+    if (conn_str->append(SPIDER_DB_DRIVER_STR, SPIDER_DB_DRIVER_LEN) ||
+        conn_str->append(SPIDER_SQL_ODBC_EQUAL_STR,
+                         SPIDER_SQL_ODBC_EQUAL_LEN) ||
+        conn_str->append(SPIDER_SQL_OPEN_BRACE_STR,
+                         SPIDER_SQL_OPEN_BRACE_LEN) ||
+        conn_str->append(conn->tgt_driver, conn->tgt_driver_length) ||
+        conn_str->append(SPIDER_SQL_CLOSE_BRACE_STR,
+                         SPIDER_SQL_CLOSE_BRACE_LEN) ||
+        conn_str->append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
+    {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+  }
+
+  if (conn->tgt_host)
+  {
+    if (conn_str->append(SPIDER_DB_SERVER_STR, SPIDER_DB_SERVER_LEN) ||
+        conn_str->append(SPIDER_SQL_ODBC_EQUAL_STR,
+                         SPIDER_SQL_ODBC_EQUAL_LEN) ||
+        conn_str->append(SPIDER_SQL_OPEN_BRACE_STR,
+                         SPIDER_SQL_OPEN_BRACE_LEN) ||
+        conn_str->append(conn->tgt_host, conn->tgt_host_length) ||
+        conn_str->append(SPIDER_SQL_CLOSE_BRACE_STR,
+                         SPIDER_SQL_CLOSE_BRACE_LEN) ||
+        conn_str->append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
+    {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+  }
+
+  /*
+    Empty socket is ignored. This is to prevent recognising
+    unspecified socket in CREATE SERVER as specified empty, as CREATE
+    SERVER at the sql layer without specifying socket results in an
+    empty string for socket. Compared to other attributes like
+    hostname, empty socket makes absolutely no sense, so here we
+    ignore it. An alternative would be to change the assignment
+    behaviour of server fields in get_server_from_table_to_cache(),
+    but that will affect other clients of SERVER such as
+    ha_federated.
+  */
+  if (conn->tgt_socket_length)
+  {
+    if (conn_str->append(SPIDER_DB_SOCKET_STR, SPIDER_DB_SOCKET_LEN) ||
+        conn_str->append(SPIDER_SQL_ODBC_EQUAL_STR,
+                         SPIDER_SQL_ODBC_EQUAL_LEN) ||
+        conn_str->append(SPIDER_SQL_OPEN_BRACE_STR,
+                         SPIDER_SQL_OPEN_BRACE_LEN) ||
+        conn_str->append(conn->tgt_socket, conn->tgt_socket_length) ||
+        conn_str->append(SPIDER_SQL_CLOSE_BRACE_STR,
+                         SPIDER_SQL_CLOSE_BRACE_LEN) ||
+        conn_str->append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
+    {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+  }
+
+  if (conn->tgt_port)
+  {
+    char buf[6]; // 5 + 1 (port num + \0)
+    my_sprintf(buf, (buf, "%05ld", conn->tgt_port));
+    if (conn_str->append(SPIDER_DB_PORT_STR, SPIDER_DB_PORT_LEN) ||
+        conn_str->append(SPIDER_SQL_ODBC_EQUAL_STR,
+                         SPIDER_SQL_ODBC_EQUAL_LEN) ||
+        conn_str->append(buf, 5) ||
+        conn_str->append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
+    {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+  }
+
+  /* additional connect parameter for ODBC */
+  if (conn->tgt_ssl_cert)
+  {
+    if (conn_str->append(conn->tgt_ssl_cert, conn->tgt_ssl_cert_length))
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+  }
+
+  if (conn->tgt_db)
+  {
+    DBUG_PRINT("info",("spider db:%s", conn->tgt_db));
+    if (conn_str->append(SPIDER_SQL_DATABASE_STR, SPIDER_SQL_DATABASE_LEN) ||
+        conn_str->append(SPIDER_SQL_ODBC_EQUAL_STR,
+                         SPIDER_SQL_ODBC_EQUAL_LEN) ||
+        conn_str->append(SPIDER_SQL_OPEN_BRACE_STR,
+                         SPIDER_SQL_OPEN_BRACE_LEN) ||
+        conn_str->append(conn->tgt_db, conn->tgt_db_length) ||
+        conn_str->append(SPIDER_SQL_CLOSE_BRACE_STR,
+                         SPIDER_SQL_CLOSE_BRACE_LEN) ||
+        conn_str->append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
+    {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+  }
+
+  /* additional connect parameter for ODBC */
+  if (conn->tgt_ssl_cipher)
+  {
+    if (conn_str->append(conn->tgt_ssl_cipher, conn->tgt_ssl_cipher_length))
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+  }
+
+  if (conn->tgt_username)
+  {
+    if (conn_str->append(SPIDER_SQL_UID_STR, SPIDER_SQL_UID_LEN) ||
+        conn_str->append(SPIDER_SQL_ODBC_EQUAL_STR,
+                         SPIDER_SQL_ODBC_EQUAL_LEN) ||
+        conn_str->append(SPIDER_SQL_OPEN_BRACE_STR,
+                         SPIDER_SQL_OPEN_BRACE_LEN) ||
+        conn_str->append(conn->tgt_username, conn->tgt_username_length) ||
+        conn_str->append(SPIDER_SQL_CLOSE_BRACE_STR,
+                         SPIDER_SQL_CLOSE_BRACE_LEN) ||
+        conn_str->append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+  }
+
+  if (conn->tgt_password)
+  {
+    if (conn_str->append(SPIDER_SQL_PWD_STR, SPIDER_SQL_PWD_LEN) ||
+        conn_str->append(SPIDER_SQL_ODBC_EQUAL_STR,
+                         SPIDER_SQL_ODBC_EQUAL_LEN) ||
+        conn_str->append(SPIDER_SQL_OPEN_BRACE_STR,
+                         SPIDER_SQL_OPEN_BRACE_LEN) ||
+        conn_str->append(conn->tgt_password, conn->tgt_password_length) ||
+        conn_str->append(SPIDER_SQL_CLOSE_BRACE_STR,
+                         SPIDER_SQL_CLOSE_BRACE_LEN) ||
+        conn_str->append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
+    {
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+    }
+  }
+
+  /* additional connect parameter for ODBC */
+  if (conn->tgt_ssl_key)
+  {
+    if (conn_str->append(conn->tgt_ssl_key, conn->tgt_ssl_key_length))
+      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+  }
+  DBUG_RETURN(0);
+}
+
+int spider_db_odbc::connect(char *, char *, char *, long, char *, char *, int,
+                            longlong)
+{
   SQLRETURN ret;
   SQLUINTEGER login_tmo;
   SQLUINTEGER net_tmo;
-  bool use_filedsn;
-  bool use_dsn;
-  bool use_driver;
-  bool use_db;
-  bool use_uid;
-  bool use_socket;
-  bool use_server;
-  bool use_port;
   SQLSMALLINT dummy_len;
   Binary_string conn_str;
   char nm_quote[2];
+  int error_num= 0;
   DBUG_ENTER("spider_db_odbc::connect");
   DBUG_PRINT("info",("spider this=%p", this));
 #ifndef DBUG_OFF
@@ -1341,192 +1512,9 @@ int spider_db_odbc::connect(
     (SQLPOINTER) (SQLULEN) net_tmo, SQL_IS_UINTEGER);
 
   /* create connect string */
-  use_filedsn = conn->tgt_filedsn_length ? TRUE : FALSE;
-  DBUG_PRINT("info",("spider use_filedsn:%s", use_filedsn ? "TRUE" : "FALSE"));
-  use_dsn = conn->tgt_dsn_length ? TRUE : FALSE;
-  DBUG_PRINT("info",("spider use_dsn:%s", use_dsn ? "TRUE" : "FALSE"));
-  use_driver = conn->tgt_driver_length ? TRUE : FALSE;
-  DBUG_PRINT("info",("spider use_driver:%s", use_driver ? "TRUE" : "FALSE"));
-  use_server = conn->tgt_host_length ? TRUE : FALSE;
-  DBUG_PRINT("info",("spider use_server:%s", use_server ? "TRUE" : "FALSE"));
-  use_socket = conn->tgt_socket_length ? TRUE : FALSE;
-  DBUG_PRINT("info",("spider use_socket:%s", use_socket ? "TRUE" : "FALSE"));
-  use_port = conn->tgt_port ? TRUE : FALSE;
-  DBUG_PRINT("info",("spider use_port:%s", use_port ? "TRUE" : "FALSE"));
-  use_db = conn->tgt_db_length ? TRUE : FALSE;
-  DBUG_PRINT("info",("spider use_db:%s", use_db ? "TRUE" : "FALSE"));
-  use_uid = conn->tgt_username_length ? TRUE : FALSE;
-  DBUG_PRINT("info",("spider use_uid:%s", use_uid ? "TRUE" : "FALSE"));
-
   conn_str= String();
-
-  /* additional connect parameter for ODBC */
-  if (conn->tgt_ssl_ca_length)
-  {
-    if (conn_str.append(conn->tgt_ssl_ca, conn->tgt_ssl_ca_length))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-  }
-
-  if (use_filedsn)
-  {
-    DBUG_PRINT("info",("spider filedsn:%s", conn->tgt_filedsn));
-    if (conn_str.append(SPIDER_DB_FILEDSN_STR, SPIDER_DB_FILEDSN_LEN) ||
-        conn_str.append(SPIDER_SQL_ODBC_EQUAL_STR,
-                        SPIDER_SQL_ODBC_EQUAL_LEN) ||
-        conn_str.append(conn->tgt_filedsn, conn->tgt_filedsn_length) ||
-        conn_str.append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
-    {
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    }
-  }
-
-  if (use_dsn)
-  {
-    DBUG_PRINT("info",("spider dsn:%s", conn->tgt_dsn));
-    if (conn_str.append(SPIDER_DB_DSN_STR, SPIDER_DB_DSN_LEN) ||
-        conn_str.append(SPIDER_SQL_ODBC_EQUAL_STR,
-                        SPIDER_SQL_ODBC_EQUAL_LEN) ||
-        conn_str.append(conn->tgt_dsn, conn->tgt_dsn_length) ||
-        conn_str.append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
-    {
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    }
-  }
-
-  /* additional connect parameter for ODBC */
-  if (conn->tgt_ssl_capath_length)
-  {
-    if (conn_str.append(conn->tgt_ssl_capath, conn->tgt_ssl_capath_length))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-  }
-
-  if (use_driver)
-  {
-    DBUG_PRINT("info",("spider driver:%s", conn->tgt_driver));
-    if (conn_str.append(SPIDER_DB_DRIVER_STR, SPIDER_DB_DRIVER_LEN) ||
-        conn_str.append(SPIDER_SQL_ODBC_EQUAL_STR,
-                        SPIDER_SQL_ODBC_EQUAL_LEN) ||
-        conn_str.append(SPIDER_SQL_OPEN_BRACE_STR,
-                        SPIDER_SQL_OPEN_BRACE_LEN) ||
-        conn_str.append(conn->tgt_driver, conn->tgt_driver_length) ||
-        conn_str.append(SPIDER_SQL_CLOSE_BRACE_STR,
-                        SPIDER_SQL_CLOSE_BRACE_LEN) ||
-        conn_str.append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
-    {
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    }
-  }
-
-  if (use_server)
-  {
-    if (conn_str.append(SPIDER_DB_SERVER_STR, SPIDER_DB_SERVER_LEN) ||
-        conn_str.append(SPIDER_SQL_ODBC_EQUAL_STR,
-                        SPIDER_SQL_ODBC_EQUAL_LEN) ||
-        conn_str.append(SPIDER_SQL_OPEN_BRACE_STR,
-                        SPIDER_SQL_OPEN_BRACE_LEN) ||
-        conn_str.append(conn->tgt_host, conn->tgt_host_length) ||
-        conn_str.append(SPIDER_SQL_CLOSE_BRACE_STR,
-                        SPIDER_SQL_CLOSE_BRACE_LEN) ||
-        conn_str.append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
-    {
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    }
-  }
-
-  if (use_socket)
-  {
-    if (conn_str.append(SPIDER_DB_SOCKET_STR, SPIDER_DB_SOCKET_LEN) ||
-        conn_str.append(SPIDER_SQL_ODBC_EQUAL_STR,
-                        SPIDER_SQL_ODBC_EQUAL_LEN) ||
-        conn_str.append(SPIDER_SQL_OPEN_BRACE_STR,
-                        SPIDER_SQL_OPEN_BRACE_LEN) ||
-        conn_str.append(conn->tgt_socket, conn->tgt_socket_length) ||
-        conn_str.append(SPIDER_SQL_CLOSE_BRACE_STR,
-                        SPIDER_SQL_CLOSE_BRACE_LEN) ||
-        conn_str.append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
-    {
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    }
-  }
-
-  if (use_port)
-  {
-    char buf[6]; // 5 + 1 (port num + \0)
-    my_sprintf(buf, (buf, "%05ld", conn->tgt_port));
-    if (conn_str.append(SPIDER_DB_PORT_STR, SPIDER_DB_PORT_LEN) ||
-        conn_str.append(SPIDER_SQL_ODBC_EQUAL_STR,
-                        SPIDER_SQL_ODBC_EQUAL_LEN) ||
-        conn_str.append(buf, 5) ||
-        conn_str.append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
-    {
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    }
-  }
-
-  /* additional connect parameter for ODBC */
-  if (conn->tgt_ssl_cert_length)
-  {
-    if (conn_str.append(conn->tgt_ssl_cert, conn->tgt_ssl_cert_length))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-  }
-
-  if (use_db)
-  {
-    DBUG_PRINT("info",("spider db:%s", conn->tgt_db));
-    if (conn_str.append(SPIDER_SQL_DATABASE_STR, SPIDER_SQL_DATABASE_LEN) ||
-        conn_str.append(SPIDER_SQL_ODBC_EQUAL_STR,
-                        SPIDER_SQL_ODBC_EQUAL_LEN) ||
-        conn_str.append(SPIDER_SQL_OPEN_BRACE_STR,
-                        SPIDER_SQL_OPEN_BRACE_LEN) ||
-        conn_str.append(conn->tgt_db, conn->tgt_db_length) ||
-        conn_str.append(SPIDER_SQL_CLOSE_BRACE_STR,
-                        SPIDER_SQL_CLOSE_BRACE_LEN) ||
-        conn_str.append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
-    {
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    }
-  }
-
-  /* additional connect parameter for ODBC */
-  if (conn->tgt_ssl_cipher_length)
-  {
-    if (conn_str.append(conn->tgt_ssl_cipher, conn->tgt_ssl_cipher_length))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-  }
-
-  if (use_uid)
-  {
-    DBUG_PRINT("info",("spider uid:%s", conn->tgt_username));
-    if (conn_str.append(SPIDER_SQL_UID_STR, SPIDER_SQL_UID_LEN) ||
-        conn_str.append(SPIDER_SQL_ODBC_EQUAL_STR,
-                        SPIDER_SQL_ODBC_EQUAL_LEN) ||
-        conn_str.append(SPIDER_SQL_OPEN_BRACE_STR,
-                        SPIDER_SQL_OPEN_BRACE_LEN) ||
-        conn_str.append(conn->tgt_username, conn->tgt_username_length) ||
-        conn_str.append(SPIDER_SQL_CLOSE_BRACE_STR,
-                        SPIDER_SQL_CLOSE_BRACE_LEN) ||
-        conn_str.append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN) ||
-        conn_str.append(SPIDER_SQL_PWD_STR, SPIDER_SQL_PWD_LEN) ||
-        conn_str.append(SPIDER_SQL_ODBC_EQUAL_STR,
-                        SPIDER_SQL_ODBC_EQUAL_LEN) ||
-        conn_str.append(SPIDER_SQL_OPEN_BRACE_STR,
-                        SPIDER_SQL_OPEN_BRACE_LEN) ||
-        conn_str.append(conn->tgt_password, conn->tgt_password_length) ||
-        conn_str.append(SPIDER_SQL_CLOSE_BRACE_STR,
-                        SPIDER_SQL_CLOSE_BRACE_LEN) ||
-        conn_str.append(SPIDER_SQL_SEMICOLON_STR, SPIDER_SQL_SEMICOLON_LEN))
-    {
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-    }
-  }
-
-  /* additional connect parameter for ODBC */
-  if (conn->tgt_ssl_key_length)
-  {
-    if (conn_str.append(conn->tgt_ssl_key, conn->tgt_ssl_key_length))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-  }
-
+  if ((error_num= spider_build_odbc_conn_string(&conn_str, conn)))
+    DBUG_RETURN(error_num);
   DBUG_PRINT("info",("spider conn_str=%s", conn_str.ptr()));
 
   dummy_len= 0;
@@ -2637,8 +2625,10 @@ bool spider_db_odbc::cmp_request_key_to_snd(
   DBUG_RETURN(TRUE);
 }
 
-/* Update driver-specific properties of the shared utility for query
-construction. */
+/*
+  Update driver-specific properties of the shared utility for query
+  construction.
+*/
 int spider_db_odbc::update_query_utility(spider_db_share *share)
 {
   int error_num;
@@ -2651,17 +2641,21 @@ int spider_db_odbc::update_query_utility(spider_db_share *share)
   }
   else
   {
-    /* The quote being the default '\0' implies a connection has not
-    been established which is used to assign the quote by calling
-    SQLGetInfo. */
+    /*
+      The quote being the default '\0' implies a connection has not
+      been established which is used to assign the quote by calling
+      SQLGetInfo.
+    */
     DBUG_ASSERT(!is_connected());
     if ((error_num= spider_db_connect(share->spider_share, conn, conn->link_idx)))
       DBUG_RETURN(error_num);
     utility->name_quote[0]= name_quote;
   }
 
-  /* Update the key_select and table_select strings using the correct
-  identifier quote. */
+  /*
+    Update the key_select and table_select strings using the correct
+    identifier quote.
+  */
   DBUG_RETURN(((spider_odbc_share *)share)->update_table_key_select_strings());
 }
 
@@ -2900,16 +2894,6 @@ int spider_db_odbc_util::append_column_value(ha_spider *spider,
     u.f = (float) field->val_real();
     bool minus = (u.i & 0x80000000) ? TRUE : FALSE;
     int32 e = (u.i & 0x7F800000) >> 23;
-/*
-    TODO:
-    if(e == 255)
-    {
-*/
-      /* NaN or Infinity */
-/*
-    }
-    else
-*/
     {
       if(e == 0)
       {

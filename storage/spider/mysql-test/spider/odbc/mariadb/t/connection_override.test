@@ -1,0 +1,51 @@
+--disable_query_log
+--disable_result_log
+--source ../../../t/test_init.inc
+--enable_result_log
+--enable_query_log
+--connection master_1
+set spider_same_server_link= 1;
+
+# CONNECTION: Second appearance of same keyword (UID) wins
+create table t2 (c int);
+evalp
+create table t1 (c int) ENGINE=Spider
+COMMENT='WRAPPER "odbc",TABLE "t2"'
+CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=test;UID=invalid;UID=root;PWD;HOST=127.0.0.1;PORT=$MASTER_1_MYPORT';
+insert into t1 values (1), (2), (3);
+select * from t1;
+drop table t1, t2;
+
+# CONNECTION: Invalid option ignored
+create table t2 (c int);
+evalp
+create table t1 (c int) ENGINE=Spider
+COMMENT='WRAPPER "odbc",TABLE "t2"'
+CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=test;INVALID=abc;UID=root;PWD;HOST=127.0.0.1;PORT=$MASTER_1_MYPORT';
+insert into t1 values (1), (2), (3);
+select * from t1;
+drop table t1, t2;
+
+# COMMENT overrides ODBC style CONNECTION (database: invalid vs test)
+create table t2 (c int);
+evalp create table t1 (c int) ENGINE=Spider
+CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=invalid;UID=root;PWD;HOST=127.0.0.1;PORT=$MASTER_1_MYPORT'
+COMMENT='WRAPPER "odbc", TABLE "t2", database "test"';
+insert into t1 values (1), (2), (3);
+select * from t1;
+drop table t1, t2;
+
+# COMMENT overrides ODBC style CONNECTION (password: invalid vs <empty>)
+create table t2 (c int);
+evalp create table t1 (c int) ENGINE=Spider
+CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=test;User=root;PWD=invalid;HOST=127.0.0.1;PORT=$MASTER_1_MYPORT'
+COMMENT='WRAPPER "odbc", TABLE "t2", password ""';
+insert into t1 values (1), (2), (3);
+select * from t1;
+drop table t1, t2;
+
+--disable_query_log
+--disable_result_log
+--source ../../../t/test_deinit.inc
+--enable_result_log
+--enable_query_log
