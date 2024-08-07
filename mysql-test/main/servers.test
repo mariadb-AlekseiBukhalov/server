@@ -102,6 +102,10 @@ drop server s1;
 # Restore the table back to original engine, to not disrupt following tests.
 ALTER TABLE mysql.servers ENGINE=Aria;
 
+CREATE SERVER s1 FOREIGN DATA WRAPPER mysql OPTIONS(SOCKET '/tmp/1234567890_1234567890_1234567890_1234567890_1234567890_1234567890.sock');
+SELECT Socket FROM mysql.servers where Server_name = 's1';
+DROP SERVER s1;
+
 --echo #
 --echo # MDEV-35622 SEGV, ASAN use-after-poison when reading system table with less than expected number of columns
 --echo # MDEV-37777 upgrade from MySQL 5.7 regression, mysql.servers invalid structure
