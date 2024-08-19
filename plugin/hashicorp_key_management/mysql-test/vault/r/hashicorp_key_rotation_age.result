@@ -1,14 +1,17 @@
-SHOW GLOBAL variables LIKE "hashicorp%";
-Variable_name	Value
-hashicorp_key_management_cache_timeout	9223372036854775807
-hashicorp_key_management_cache_version_timeout	0
-hashicorp_key_management_caching_enabled	ON
-hashicorp_key_management_check_kv_version	OFF
-hashicorp_key_management_max_retries	3
-hashicorp_key_management_timeout	60
-hashicorp_key_management_use_cache_on_timeout	ON
-hashicorp_key_management_vault_ca	
-hashicorp_key_management_vault_url	VAULT_ADDR/v1/mariadbtest/
+SELECT VARIABLE_NAME, VARIABLE_VALUE
+FROM information_schema.GLOBAL_VARIABLES
+WHERE VARIABLE_NAME LIKE 'hashicorp%'
+  AND VARIABLE_NAME NOT LIKE 'hashicorp_key_management_namespace%';
+VARIABLE_NAME	VARIABLE_VALUE
+HASHICORP_KEY_MANAGEMENT_MAX_RETRIES	3
+HASHICORP_KEY_MANAGEMENT_VAULT_URL	VAULT_ADDR/v1/mariadbtest/
+HASHICORP_KEY_MANAGEMENT_CACHE_TIMEOUT	9223372036854775807
+HASHICORP_KEY_MANAGEMENT_CACHE_VERSION_TIMEOUT	0
+HASHICORP_KEY_MANAGEMENT_USE_CACHE_ON_TIMEOUT	ON
+HASHICORP_KEY_MANAGEMENT_VAULT_CA	
+HASHICORP_KEY_MANAGEMENT_CHECK_KV_VERSION	OFF
+HASHICORP_KEY_MANAGEMENT_TIMEOUT	60
+HASHICORP_KEY_MANAGEMENT_CACHING_ENABLED	ON
 # Restart the server with encryption
 # restart: with restart_parameters
 CREATE TABLE t1 (f1 INT, f2 VARCHAR(256))engine=innodb;

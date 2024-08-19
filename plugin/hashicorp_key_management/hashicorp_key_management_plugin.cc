@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2022 MariaDB Corporation
+/* Copyright (C) 2019-2025 MariaDB Corporation
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -75,7 +75,9 @@ private:
   char *vault_url_data;
   size_t vault_url_len;
   char *local_token;
+  char *local_namespace;
   char *token_header;
+  char *namespace_header;
   bool curl_inited;
 public:
   HCData()
@@ -83,7 +85,9 @@ public:
     vault_url_data(NULL),
     vault_url_len(0),
     local_token(NULL),
+    local_namespace(NULL),
     token_header(NULL),
+    namespace_header(NULL),
     curl_inited(false)
   {}
   unsigned int get_latest_version (unsigned int key_id);
@@ -110,10 +114,20 @@ public:
       free(vault_url_data);
       vault_url_data = NULL;
     }
+    if (namespace_header)
+    {
+      free(namespace_header);
+      namespace_header = NULL;
+    }
     if (token_header)
     {
       free(token_header);
       token_header = NULL;
+    }
+    if (local_namespace)
+    {
+      free(local_namespace);
+      local_namespace = NULL;
     }
     if (local_token)
     {
@@ -183,10 +197,10 @@ void HCData::cache_add (const KEY_INFO& info, bool update_version)
 #if HASHICORP_DEBUG_LOGGING
   my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
                   "cache_add: key_id = %u, key_version = %u, "
-                  "timestamp = %u, update_version = %u, new version = %u",
+                  "timestamp = %llu, update_version = %u, new version = %u",
                   ME_ERROR_LOG_ONLY | ME_NOTE, key_id, key_version,
-                  ver_info.timestamp, (int) update_version,
-                  ver_info.key_version);
+                  (unsigned long long) ver_info.timestamp,
+                  (int) update_version, ver_info.key_version);
 #endif
   mtx.unlock();
 }
@@ -216,11 +230,12 @@ unsigned int
 #if HASHICORP_DEBUG_LOGGING
     my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
                     "cache_get: key_id = %u, key_version = %u, "
-                    "last version = %u, version timestamp = %u, "
-                    "current time = %u, diff = %u",
+                    "last version = %u, version timestamp = %llu, "
+                    "current time = %llu, diff = %llu",
                     ME_ERROR_LOG_ONLY | ME_NOTE, key_id, key_version,
-                    version, timestamp, current_time,
-                    current_time - timestamp);
+                    version, (unsigned long long) timestamp,
+                    (unsigned long long) current_time,
+                    (unsigned long long) (current_time - timestamp));
 #endif
     if (with_timeouts && current_time - timestamp > cache_max_ver_time)
     {
@@ -244,11 +259,12 @@ unsigned int
 #if HASHICORP_DEBUG_LOGGING
   my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
                   "cache_get: key_id = %u, key_version = %u, "
-                  "effective version = %u, key data timestamp = %u, "
-                  "current time = %u, diff = %u",
+                  "effective version = %u, key data timestamp = %llu, "
+                  "current time = %llu, diff = %llu",
                   ME_ERROR_LOG_ONLY | ME_NOTE, key_id, key_version,
-                  version, info.timestamp, current_time,
-                  current_time - info.timestamp);
+                  version, (unsigned long long) info.timestamp,
+                  (unsigned long long) current_time,
+                  (unsigned long long) (current_time - info.timestamp));
 #endif
   unsigned int length= info.length;
   if (with_timeouts && current_time - info.timestamp > cache_max_time)
@@ -320,11 +336,12 @@ unsigned int HCData::cache_check_version (unsigned int key_id)
 #if HASHICORP_DEBUG_LOGGING
   my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
                   "cache_check_version: key_id = %u, "
-                  "last version = %u, version timestamp = %u, "
-                  "current time = %u, diff = %u",
-                  ME_ERROR_LOG_ONLY | ME_NOTE, key_id, version,
-                  version, timestamp, current_time,
-                  current_time - timestamp);
+                  "last version = %u, version timestamp = %llu, "
+                  "current time = %llu, diff = %llu",
+                  ME_ERROR_LOG_ONLY | ME_NOTE, key_id,
+                  version, (unsigned long long) timestamp,
+                  (unsigned long long) current_time,
+                  (unsigned long long) (current_time - timestamp));
 #endif
   if (current_time - timestamp <= cache_max_ver_time)
   {
@@ -337,6 +354,8 @@ unsigned int HCData::cache_check_version (unsigned int key_id)
 }
 
 static char* vault_url;
+static char* vault_namespace;
+static char vault_namespace_env_check;
 static char* token;
 static char* vault_ca;
 static int timeout;
@@ -359,6 +378,17 @@ static MYSQL_SYSVAR_STR(vault_url, vault_url,
   PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_READONLY,
   "HTTP[s] URL that is used to connect to the Hashicorp Vault server",
   NULL, NULL, "");
+
+static MYSQL_SYSVAR_STR(namespace, vault_namespace,
+  PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_READONLY,
+  "Namespace that is used in interactions with the Hashicorp Vault server",
+  NULL, NULL, "");
+
+static MYSQL_SYSVAR_BOOL(namespace_env_check, vault_namespace_env_check,
+  PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_READONLY,
+  "Enables or disables checking for a match between the VAULT_NAMESPACE "
+  "environment variable and the --hashicorp-key-management-namespace parameter",
+  NULL, NULL, 1);
 
 static MYSQL_SYSVAR_STR(token, token,
   PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_READONLY | PLUGIN_VAR_NOSYSVAR,
@@ -427,6 +457,8 @@ static MYSQL_SYSVAR_BOOL(use_cache_on_timeout, use_cache_on_timeout,
 
 static struct st_mysql_sys_var *settings[] = {
   MYSQL_SYSVAR(vault_url),
+  MYSQL_SYSVAR(namespace),
+  MYSQL_SYSVAR(namespace_env_check),
   MYSQL_SYSVAR(token),
   MYSQL_SYSVAR(vault_ca),
   MYSQL_SYSVAR(timeout),
@@ -499,6 +531,20 @@ int HCData::curl_run (const char *url, std::string *response,
     return OPERATION_ERROR;
   }
   curl_errbuf[0] = '\0';
+#if HASHICORP_DEBUG_LOGGING
+  my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
+                  "send request with url = [%s]",
+                  ME_ERROR_LOG_ONLY | ME_NOTE, url);
+  {
+    struct curl_slist *current = slist;
+    while (current) {
+      my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
+                  "request slist element = [%s]",
+                  ME_ERROR_LOG_ONLY | ME_NOTE, current->data);
+      current = current->next;
+    }
+  }
+#endif
   if ((curl_res= curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, curl_errbuf)) !=
           CURLE_OK ||
       (curl_res= curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
@@ -550,7 +596,6 @@ int HCData::curl_run (const char *url, std::string *response,
   bool is_error = http_code < 200 || http_code >= 300;
   if (is_error)
   {
-    const char *res = response->c_str();
     /*
       Error 404 requires special handling - we should ignore this
       error at this level, since this means the missing key (this
@@ -563,8 +608,9 @@ int HCData::curl_run (const char *url, std::string *response,
     }
     else if (is_error)
     {
+      const char *res = response->c_str();
       my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
-                      "Hashicorp server error: %ld, response: %s",
+                      "Hashicorp server error: %ld (http response is: %s)",
                       ME_ERROR_LOG_ONLY | ME_WARNING, http_code, res);
     }
   }
@@ -941,9 +987,9 @@ struct st_mariadb_encryption hashicorp_key_management_plugin= {
 
 int HCData::init ()
 {
-  const static char *x_vault_token = "X-Vault-Token:";
-  const static size_t x_vault_token_len = strlen(x_vault_token);
-  char *token_env= getenv("VAULT_TOKEN");
+  static constexpr char x_vault_token [] = "X-Vault-Token:";
+  static constexpr size_t x_vault_token_len = sizeof(x_vault_token) - 1;
+  char *token_env = getenv("VAULT_TOKEN");
   size_t token_len = strlen(token);
   if (token_len == 0)
   {
@@ -968,7 +1014,8 @@ int HCData::init ()
         local_token = token;
       }
     }
-    if (token_len == 0) {
+    if (token_len == 0)
+    {
       my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
                       "The --hashicorp-key-management-token option value "
                       "or the value of the corresponding parameter in the "
@@ -998,9 +1045,9 @@ int HCData::init ()
       {
         my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
                         "The --hashicorp-key-management-token option value "
-                        "or the value of the corresponding parameter is not "
-                        "equal to the value of the VAULT_TOKEN environment "
-                        "variable",
+                        "or the value of the corresponding configuration "
+                        "parameter is not equal to the value of the "
+                        "VAULT_TOKEN environment variable",
                         ME_ERROR_LOG_ONLY | ME_WARNING);
       }
     }
@@ -1015,7 +1062,66 @@ int HCData::init ()
   {
     return 1;
   }
-  snprintf(token_header, buf_len, "%s%s", x_vault_token, token);
+  memcpy(token_header, x_vault_token, x_vault_token_len);
+  memcpy(token_header + x_vault_token_len, token, token_len + 1);
+  /*
+    Let's construct a header for the namespace (if the corresponding
+    parameter or environment variable is present):
+  */
+  char *namespace_env = getenv("VAULT_NAMESPACE");
+  size_t namespace_len = 0;
+  if (vault_namespace && *vault_namespace)
+  {
+    namespace_len = strlen(vault_namespace);
+    /*
+      Issue a warning if the VAULT_NAMESPACE environment variable
+      is not equal to the namespace parameter:
+    */
+    if (vault_namespace_env_check && namespace_env != NULL &&
+        strcmp(namespace_env, vault_namespace) != 0)
+    {
+      my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
+                      "The --hashicorp-key-management-namespace option "
+                      "value or the value of the corresponding configuration "
+                      "parameter is not equal to the value of the "
+                      "VAULT_NAMESPACE environment variable",
+                      ME_ERROR_LOG_ONLY | ME_WARNING);
+    }
+  }
+  else if (namespace_env)
+  {
+    namespace_len = strlen(namespace_env);
+    if (namespace_len != 0)
+    {
+      /*
+        The value of the namespace parameter obtained using the getenv()
+        system call, which does not guarantee that the memory pointed
+        to by the returned pointer can be read in the long term (for
+        example, after changing the values of the environment variables
+        of the current process). Therefore, we need to copy the namespace
+        value to the working buffer:
+      */
+      if (!(vault_namespace = (char *) alloc(namespace_len + 1)))
+      {
+        return 1;
+      }
+      memcpy(vault_namespace, namespace_env, namespace_len + 1);
+      local_namespace = vault_namespace;
+    }
+  }
+  if (namespace_len)
+  {
+    static constexpr char x_vault_namespace [] = "X-Vault-Namespace:";
+    static constexpr size_t x_vault_namespace_len = sizeof(x_vault_namespace) - 1;
+    size_t ns_buf_len = x_vault_namespace_len + namespace_len + 1;
+    if (!(namespace_header = (char *) alloc(ns_buf_len)))
+    {
+      return 1;
+    }
+    memcpy(namespace_header, x_vault_namespace, x_vault_namespace_len);
+    memcpy(namespace_header + x_vault_namespace_len, vault_namespace,
+           namespace_len + 1);
+  }
   /* We need to check that the path inside the URL starts with "/v1/": */
   const char *suffix = strchr(vault_url, '/');
   if (suffix == NULL)
@@ -1173,6 +1279,16 @@ No_Secret:
                     "curl: unable to construct slist", 0);
     return 1;
   }
+  if (namespace_header)
+  {
+    slist = curl_slist_append(slist, namespace_header);
+    if (slist == NULL)
+    {
+      my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
+                      "curl: unable to append to slist", 0);
+      return 1;
+    }
+  }
   /*
     If we do not need to check the key-value storage version,
     then we immediately return from this function:
@@ -1186,8 +1302,6 @@ No_Secret:
   char *mount_url = (char *) alloc(vault_url_len + 11 + 6);
   if (mount_url == NULL)
   {
-    my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
-                    "Memory allocation error", 0);
     return 1;
   }
   /*
@@ -1236,10 +1350,17 @@ storage_error:
   if (json_get_object_key(response, response + response_len, "options",
                           &js, &js_len) != JSV_OBJECT)
   {
-    my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
-                    "Unable to get storage options (http response is: %s)",
-                    0, response);
-    return 1;
+    /* Check for the new syntax introduced in the Enterprise versions: */
+    if (json_get_object_key(response, response + response_len, "data",
+                            &js, &js_len) != JSV_OBJECT ||
+        json_get_object_key(js, js + js_len, "options",
+                            &js, &js_len) != JSV_OBJECT)
+    {
+      my_printf_error(ER_UNKNOWN_ERROR, PLUGIN_ERROR_HEADER
+                      "Unable to get storage options (http response is: %s)",
+                      0, response);
+      return 1;
+    }
   }
   const char *ver;
   int ver_len;
@@ -1300,10 +1421,10 @@ maria_declare_plugin(hashicorp_key_management)
   PLUGIN_LICENSE_GPL,
   hashicorp_key_management_plugin_init,
   hashicorp_key_management_plugin_deinit,
-  0x0200 /* 2.0 */,
+  0x0201 /* 2.1 */,
   NULL, /* status variables */
   settings,
-  "2.0",
+  "2.1",
   MariaDB_PLUGIN_MATURITY_STABLE
 }
 maria_declare_plugin_end;

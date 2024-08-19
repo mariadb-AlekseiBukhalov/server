@@ -1,4 +1,4 @@
-# Copyright (C) 2019-2022 MariaDB Corporation
+# Copyright (C) 2019-2025 MariaDB Corporation
 #
 # This is a default configuration for the Hashicorp Vault plugin.
 # You can read more about the parameters of this plugin in the
@@ -29,6 +29,20 @@
 # "https://127.0.0.1:8200/v1/my_secrets"
 #
 #hashicorp-key-management-vault-url="<url>"
+
+#
+# An optional parameter that specifies the namespace
+# that will be used for all API calls (note that namespaces
+# is currently only available in the enterprise version of
+# Hashicorp Vault server):
+#
+#hashicorp-key-management-namespace="<namespace>"
+
+#
+# An optional parameter that enables or disables checking for
+# a match between the VAULT_NAMESPACE environment variable and
+# the --hashicorp-key-management-namespace parameter:
+#hashicorp-key-management-namespace-env-check="on"
 
 #
 # Authentication token that passed to the Hashicorp Vault

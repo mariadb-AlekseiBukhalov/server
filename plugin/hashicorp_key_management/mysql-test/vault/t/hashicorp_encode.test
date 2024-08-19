@@ -4,7 +4,10 @@
 --source hashicorp_init.inc
 
 replace_result $VAULT_ADDR VAULT_ADDR;
-SHOW GLOBAL variables LIKE "hashicorp%";
+SELECT VARIABLE_NAME, VARIABLE_VALUE
+FROM information_schema.GLOBAL_VARIABLES
+WHERE VARIABLE_NAME LIKE 'hashicorp%'
+  AND VARIABLE_NAME NOT LIKE 'hashicorp_key_management_namespace%';
 
 create table t1(c1 bigint not null, b char(200)) engine=innodb encrypted=yes encryption_key_id=1;
 show create table t1;

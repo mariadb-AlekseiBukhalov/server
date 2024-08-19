@@ -14,7 +14,7 @@ The current version of this plugin implements the following features:
   the HashiCorp Vault server;
 - JSON parsing is performed through the JSON service
   (through the include/mysql/service_json.h);
-- HashiCorp Vault 1.2.4 was used for development and testing.
+- HashiCorp Vault 1.17.3 was used for development and testing.
 
 Since we require support for key versioning, then the key-value
 storage must be configured in Hashicorp Vault as a key-value storage
@@ -93,6 +93,27 @@ operation:
   By default, the path is not set, therefore you must
   replace with the correct path to your secrets.
 
+--[loose-]hashicorp-key-management-namespace="<namespace>"
+
+  An optional parameter that specifies the namespace
+  that will be used for all API calls (note that namespaces
+  is currently only available in the enterprise version of
+  Hashicorp Vault server).
+
+  The plugin also supports the standard Hashicorp environment
+  variable VAULT_NAMESPACE, and may issues a warning if its
+  value does not match the configuration parameter (see below).
+
+--[loose-]hashicorp-key-management-namespace-env-check="on"|"off"
+
+  An optional parameter that enables or disables verification
+  of a match between the VAULT_NAMESPACE environment variable
+  and the --hashicorp-key-management-namespace parameter.
+
+  By default, the plugin checks whether the environment
+  variable (if set) matches the parameter value (if set),
+  and issues a warning if they do not match.
+
 --[loose-]hashicorp-key-management-token="<token>"
 
   Authentication token that passed to the Hashicorp Vault
@@ -101,6 +122,11 @@ operation:
   By default, this parameter contains an empty string,
   so you must specify the correct value for it, otherwise
   the Hashicorp Vault server will refuse authorization.
+
+  Alternatively, the plugin also supports the standard
+  Hashicorp environment variable VAULT_TOKEN (if set),
+  and issues a warning if its value does not match the
+  configuration parameter.
 
 --[loose-]hashicorp-key-management-vault-ca="<path>"
 

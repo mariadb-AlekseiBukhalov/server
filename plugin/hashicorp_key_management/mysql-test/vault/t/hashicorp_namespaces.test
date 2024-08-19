@@ -1,0 +1,57 @@
+# MENT-2303: Adding namespace support to Hashicorp Vault KMS plugin.
+
+# Check namespace support (only for enterprise editions of Hashicorp Vault).
+
+# The test presumes that the local vault is running at $VAULT_ADDR,
+# and the token is configured in $VAULT_TOKEN.
+
+--source include/have_innodb.inc
+--source include/have_namespaces.inc
+--source hashicorp_plugin.inc
+
+--let $test_namespace=ns1
+if ($VAULT_NAMESPACE)
+{
+  --let $test_namespace=$VAULT_NAMESPACE/ns1
+}
+
+--let $namespace_to_delete=ns1
+--source include/delete_namespace.inc
+
+--exec vault namespace create ns1 > /dev/null
+
+--exec vault secrets disable -namespace $test_namespace test1 > /dev/null
+--exec vault secrets enable -namespace $test_namespace -path test1 -version=2 kv > /dev/null
+--exec vault kv put -namespace $test_namespace test1/11 data=01234567890123456789012345678901 > /dev/null
+--exec vault kv put -namespace $test_namespace test1/12 data=01234567890123456789012345678904 > /dev/null
+
+--let $restart_parameters=--plugin-load-add=hashicorp_key_management --hashicorp-key-management-vault-url=$VAULT_ADDR/v1/test1/ --hashicorp-key-management-token=$VAULT_TOKEN --hashicorp-key-management-namespace=$test_namespace --hashicorp-key-management-namespace-env-check=0
+--let $restart_noprint=1
+--source include/restart_mysqld.inc
+
+--replace_regex /(.*\/)?ns1/ns1/
+select @@hashicorp_key_management_namespace;
+
+CREATE TABLE t1 (a VARCHAR(8)) ENGINE=InnoDB ENCRYPTED=YES ENCRYPTION_KEY_ID=11;
+INSERT INTO t1 VALUES ('foo'),('bar');
+
+--source include/restart_mysqld.inc
+
+--replace_regex /(.*\/)?ns1/ns1/
+select @@hashicorp_key_management_namespace;
+
+CREATE TABLE t2 (a VARCHAR(8)) ENGINE=InnoDB ENCRYPTED=YES ENCRYPTION_KEY_ID=12;
+INSERT INTO t2 VALUES ('foo'),('bar');
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+# Cleanup
+DROP TABLE t1, t2;
+
+--let $restart_parameters=
+--source include/restart_mysqld.inc
+
+--exec vault secrets disable -namespace $test_namespace test1 > /dev/null
+
+--source include/delete_namespace.inc
