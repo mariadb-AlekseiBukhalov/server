@@ -559,6 +559,7 @@ from
 --echo #
 --echo # MDEV-6081: ORDER BY+ref(const): selectivity is very incorrect (MySQL Bug#14338686)
 --echo #
+--source include/have_sequence.inc
 
 
 # Table t2 has 100 equal values / key value, which causes it to prefer index scan instead of ref
