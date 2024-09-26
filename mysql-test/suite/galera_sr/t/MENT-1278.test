@@ -11,9 +11,12 @@ XA START 'a';
 SET GLOBAL wsrep_provider_options='repl.max_ws_size=512';
 SET max_session_mem_used=50000;
 XA END 'a';
---error ER_XA_RBDEADLOCK
+#
+# MENT-2024 commit 0f02d56b changed handling empty XA transactions no
+# longer replicated during prepare step
+#
 XA PREPARE 'a';
---error ER_LOCK_DEADLOCK
+--error ER_OPTION_PREVENTS_STATEMENT
 CALL sys.statement_performance_analyzer ('overALL', NULL, 'with_full_table_scans');
 --error ER_OPTION_PREVENTS_STATEMENT
 CALL sys.statement_performance_analyzer ('overALL', NULL, 'with_full_table_scans');

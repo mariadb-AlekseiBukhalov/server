@@ -5,11 +5,10 @@ SET GLOBAL wsrep_provider_options='repl.max_ws_size=512';
 SET max_session_mem_used=50000;
 XA END 'a';
 XA PREPARE 'a';
-ERROR XA102: XA_RBDEADLOCK: Transaction branch was rolled back: deadlock was detected
 CALL sys.statement_performance_analyzer ('overALL', NULL, 'with_full_table_scans');
-ERROR 40001: Deadlock found when trying to get lock; try restarting transaction
+ERROR HY000: The MariaDB server is running with the --max-session-mem-used=50000 option so it cannot execute this statement
 CALL sys.statement_performance_analyzer ('overALL', NULL, 'with_full_table_scans');
-ERROR HY000: The MariaDB server is running with the --max-thread-mem-used=50000 option so it cannot execute this statement
+ERROR HY000: The MariaDB server is running with the --max-session-mem-used=50000 option so it cannot execute this statement
 XA ROLLBACK 'a';
 SET max_session_mem_used=DEFAULT;
 SET GLOBAL wsrep_max_ws_size = 2147483647;
