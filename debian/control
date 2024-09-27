@@ -964,26 +964,6 @@ Description: RocksDB storage engine for MariaDB server
  at maximising storage efficiency while maintaining InnoDB-like performance.
  This package contains the RocksDB plugin for MariaDB server.
 
-Package: mariadb-plugin-mroonga
-Architecture: any-alpha any-amd64 any-arm any-arm64 any-i386 any-ia64 any-mips64el any-mips64r6el any-mipsel any-mipsr6el any-nios2 any-powerpcel any-ppc64el any-sh3 any-sh4 any-tilegx
-Depends: mariadb-server (= ${server:Version}),
-         ${misc:Depends},
-         ${shlibs:Depends}
-Breaks: mariadb-server-10.0,
-        mariadb-server-10.1,
-        mariadb-server-10.2,
-        mariadb-server-10.3,
-        mariadb-server-10.4
-Replaces: mariadb-server-10.0,
-          mariadb-server-10.1,
-          mariadb-server-10.2,
-          mariadb-server-10.3,
-          mariadb-server-10.4
-Description: Mroonga storage engine for MariaDB server
- Mroonga (formerly named Groonga Storage Engine) is a storage engine that
- provides fast CJK-ready full text searching using column store.
- This package contains the Mroonga plugin for MariaDB server.
-
 Package: mariadb-plugin-spider
 Architecture: any
 Depends: mariadb-server (= ${server:Version}),
