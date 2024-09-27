@@ -5197,16 +5197,10 @@ bool wsrep_check_support(THD* thd,
              "SYSTEM VERSIONING AS SELECT in Galera cluster");
     return true;
   }
-  /*
-    CREATE TABLE ... ENGINE=SEQUENCE is not supported in
-    Galera cluster.
-    CREATE SEQUENCE ... ENGINE=xxx Galera cluster supports
+  /* CREATE SEQUENCE ... ENGINE=xxx Galera cluster supports
     only InnoDB-sequences.
   */
-  if (((used_engine && create_info->db_type &&
-       (create_info->db_type->db_type == DB_TYPE_SEQUENCE ||
-        create_info->db_type->db_type >= DB_TYPE_FIRST_DYNAMIC)) ||
-       thd->lex->sql_command == SQLCOM_CREATE_SEQUENCE) &&
+  if (thd->lex->sql_command == SQLCOM_CREATE_SEQUENCE &&
       wsrep_check_sequence(thd, create_info->seq_create_info, used_engine))
     return true;
 
@@ -13644,11 +13638,34 @@ bool Sql_cmd_create_table_like::execute(THD *thd)
 #endif
 
 #ifdef WITH_WSREP
-  if (WSREP(thd) &&
-      wsrep_check_support(thd, wsrep_ctas, used_engine, &create_info))
+  if (WSREP(thd))
   {
-    res= 1;
-    goto end_with_restore_list;
+    /* [CREATE|ALTER] TABLE ... ENGINE= */
+    if (create_info.used_fields & HA_CREATE_USED_ENGINE)
+    {
+        handlerton *orig_ht= create_info.db_type;
+	if (check_engine(thd, create_table->db.str, create_table->table_name.str, &create_info))
+	{
+	  create_info.db_type= orig_ht;
+	  res=1;
+	  goto end_with_restore_list;
+	}
+	create_info.db_type= orig_ht;
+	if (create_info.db_type->db_type >= DB_TYPE_FIRST_DYNAMIC)
+	{
+	  my_error(ER_NOT_SUPPORTED_YET, MYF(0),
+		   "used ENGINE (in Galera cluster)");
+	  res=1;
+	  goto end_with_restore_list;
+	}
+    }
+    /* CREATE TABLE ... [AS SELECT| WITH SYSTEM VERSIONING
+       CREATE SEQUENCE ... */
+    if(wsrep_check_support(thd, wsrep_ctas, used_engine, &create_info))
+    {
+      res= 1;
+      goto end_with_restore_list;
+    }
   }
 #endif /* WITH_WSREP */
 
