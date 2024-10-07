@@ -585,8 +585,10 @@ bool trans_xa_prepare(THD *thd)
         ha_prepare(thd))
     {
       if (!mdl_request.ticket)
+      {
         /* Failed to get the backup lock */
         ha_rollback_trans(thd, TRUE);
+      }
       thd->variables.option_bits&= ~(OPTION_BEGIN | OPTION_BINLOG_THIS_TRX);
       thd->transaction->all.reset();
       thd->server_status&=
@@ -598,6 +600,7 @@ bool trans_xa_prepare(THD *thd)
         MYSQL_ROLLBACK_TRANSACTION(thd->m_transaction_psi);
         thd->m_transaction_psi= NULL;
         wsrep_override_current_error(thd);
+        trans_xa_release_backup_lock(thd);
         DBUG_RETURN(1);
       }
 #endif /* WITH_WSREP */
@@ -803,6 +806,8 @@ bool trans_xa_commit(THD *thd)
              xid_cache_delete(thd, &thd->transaction->xid_state);
              ha_rollback_trans(thd, TRUE);
           }
+
+          trans_xa_release_backup_lock(thd);
           thd->variables.option_bits&= ~(OPTION_BEGIN | OPTION_BINLOG_THIS_TRX);
           thd->server_status&=
             ~(SERVER_STATUS_IN_TRANS | SERVER_STATUS_IN_TRANS_READONLY);
@@ -967,12 +972,12 @@ bool trans_xa_rollback(THD *thd)
     DBUG_RETURN(true);
   }
 
-  error= xa_trans_force_rollback(thd);
-  trans_xa_release_backup_lock(thd);
 #ifdef WITH_WSREP
   if (WSREP(thd))
     thd->wsrep_cs().reset_error();
 #endif /* WITH_WSREP */
+  error= xa_trans_force_rollback(thd);
+  trans_xa_release_backup_lock(thd);
   DBUG_RETURN(error);
 }
 
