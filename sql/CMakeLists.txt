@@ -217,6 +217,8 @@ SET (SQL_SOURCE
                opt_vcol_substitution.h
                opt_vcol_substitution.cc
                sql_type_row.cc
+               sql_type_composite.cc sql_type_composite.h
+               item_composite.cc item_composite.h
                ${CMAKE_CURRENT_BINARY_DIR}/lex_hash.h
                ${CMAKE_CURRENT_BINARY_DIR}/lex_token.h
                ${GEN_SOURCES}
