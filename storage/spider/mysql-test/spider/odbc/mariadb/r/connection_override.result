@@ -3,6 +3,52 @@ for child2
 for child3
 connection master_1;
 set spider_same_server_link= 1;
+CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+Driver "MariaDB ODBC 3.0 Driver",
+Servername "127.0.0.1",
+Database "test",
+UID "invalid",
+User "root",
+Password "",
+Port $MASTER_1_MYPORT
+);
+create table t2 (c int);
+create table t1 (c int) ENGINE=Spider
+COMMENT='WRAPPER "odbc", srv "srv",TABLE "t2"';
+Warnings:
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+insert into t1 values (1), (2), (3);
+select * from t1;
+c
+1
+2
+3
+drop table t1, t2;
+drop server srv;
+CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+Driver "MariaDB ODBC 3.0 Driver",
+Servername "127.0.0.1",
+Database "test",
+User "root",
+Password "",
+Blah "yo", # ignored by the driver
+Port $MASTER_1_MYPORT
+);
+create table t2 (c int);
+create table t1 (c int) ENGINE=Spider
+COMMENT='WRAPPER "odbc", srv "srv",TABLE "t2"';
+Warnings:
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+insert into t1 values (1), (2), (3);
+select * from t1;
+c
+1
+2
+3
+drop table t1, t2;
+drop server srv;
 create table t2 (c int);
 create table t1 (c int) ENGINE=Spider
 COMMENT='WRAPPER "odbc",TABLE "t2"'
@@ -29,6 +75,27 @@ c
 2
 3
 drop table t1, t2;
+CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+Driver "MariaDB ODBC 3.0 Driver",
+Servername "127.0.0.1",
+Database "test",
+User "invalid",
+Password "",
+Port $MASTER_1_MYPORT
+);
+create table t2 (c int);
+create table t1 (c int) ENGINE=Spider
+WRAPPER=odbc REMOTE_TABLE=t2 REMOTE_SERVER=srv
+CONNECTION='User=root';
+insert into t1 values (1), (2), (3);
+select * from t1;
+c
+1
+2
+3
+drop table t1, t2;
+drop server srv;
 create table t2 (c int);
 create table t1 (c int) ENGINE=Spider
 CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=invalid;UID=root;PWD;HOST=127.0.0.1;PORT=$MASTER_1_MYPORT'
@@ -55,6 +122,70 @@ c
 2
 3
 drop table t1, t2;
+CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+Driver "MariaDB ODBC 3.0 Driver",
+Servername "127.0.0.1",
+Database "invalid",
+User "root",
+Password "",
+Port $MASTER_1_MYPORT
+);
+create table t2 (c int);
+create table t1 (c int) ENGINE=Spider
+COMMENT='WRAPPER "odbc",TABLE "t2", database "test", srv "srv"';
+Warnings:
+Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
+insert into t1 values (1), (2), (3);
+select * from t1;
+c
+1
+2
+3
+drop table t1, t2;
+drop server srv;
+CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+Driver "MariaDB ODBC 3.0 Driver",
+Database "invalid",
+User "invalid",
+Password "",
+Port $MASTER_1_MYPORT
+);
+create table t2 (c int);
+create table t1 (c int) ENGINE=Spider
+REMOTE_DATABASE=test WRAPPER=odbc REMOTE_SERVER=srv REMOTE_TABLE=t2
+CONNECTION="User=root;Servername=127.0.0.1";
+insert into t1 values (1), (2), (3);
+select * from t1;
+c
+1
+2
+3
+drop table t1, t2;
+drop server srv;
+CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+Driver "MariaDB ODBC 3.0 Driver",
+User "invalid",
+Password "",
+Port $MASTER_1_MYPORT
+);
+SELECT spider_direct_sql('CREATE TABLE t2 (c INT)', '',
+'filedsn "$dsn_file", wrapper "odbc", database "test", user "root", srv "srv"');
+spider_direct_sql('CREATE TABLE t2 (c INT)', '',
+'filedsn "$dsn_file", wrapper "odbc", database "test", user "root", srv "srv"')
+1
+create table t1 (c int) ENGINE=Spider
+REMOTE_DATABASE=test WRAPPER=odbc REMOTE_SERVER=srv REMOTE_TABLE=t2 REMOTE_USERNAME=root;
+insert into t1 values (1), (2), (3);
+select * from t1;
+c
+1
+2
+3
+drop table t1, t2;
+drop server srv;
 for master_1
 for child2
 for child3

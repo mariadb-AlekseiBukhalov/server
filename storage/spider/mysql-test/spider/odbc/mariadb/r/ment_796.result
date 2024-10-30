@@ -1,0 +1,88 @@
+for master_1
+for child2
+for child3
+CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+Driver "MariaDB ODBC 3.0 Driver",
+Servername "255.255.255.255",
+Database "test",
+Password "",
+Port $MASTER_1_MYPORT
+);
+select Options from mysql.servers where Server_name = "srv";
+Options
+{"Driver": "MariaDB ODBC 3.0 Driver", "Servername": "255.255.255.255", "Database": "test", "Password": "", "Port": "MASTER_1_MYPORT"}
+ALTER SERVER srv OPTIONS (Servername "127.0.0.1", User "root");
+select Options from mysql.servers where Server_name = "srv";
+Options
+{"Driver": "MariaDB ODBC 3.0 Driver", "Database": "test", "Password": "", "Port": "MASTER_1_MYPORT", "Servername": "127.0.0.1", "User": "root"}
+SELECT spider_direct_sql('DROP TABLE IF EXISTS `t2`', '',
+'srv "srv", wrapper "odbc"');
+spider_direct_sql('DROP TABLE IF EXISTS `t2`', '',
+'srv "srv", wrapper "odbc"')
+1
+SELECT spider_direct_sql('CREATE TABLE `t2` (`c` INT)', '',
+'srv "srv", wrapper "odbc"');
+spider_direct_sql('CREATE TABLE `t2` (`c` INT)', '',
+'srv "srv", wrapper "odbc"')
+1
+create table t1 (c int) ENGINE=Spider
+WRAPPER=odbc REMOTE_TABLE=t2 REMOTE_SERVER=srv;
+INSERT INTO t1 VALUES (1), (2), (3);
+select * from t2;
+c
+1
+2
+3
+select * from t1;
+c
+1
+2
+3
+drop table t1, t2;
+drop server srv;
+select priv into @root_priv from mysql.global_priv where user='root' and host='localhost';
+CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+Driver "MariaDB ODBC 3.0 Driver",
+Servername "127.0.0.1",
+User "root",
+Database "test",
+Password "",
+Port $MASTER_1_MYPORT
+);
+SET PASSWORD FOR 'root'@localhost = PASSWORD('"hello!!');
+ALTER SERVER srv OPTIONS (Password '"hello!!');
+select Options from mysql.servers where Server_name = "srv";
+Options
+{"Driver": "MariaDB ODBC 3.0 Driver", "Servername": "127.0.0.1", "User": "root", "Database": "test", "Port": "MASTER_1_MYPORT", "Password": "\"hello!!"}
+SELECT spider_direct_sql('DROP TABLE IF EXISTS `t2`', '',
+'srv "srv", wrapper "odbc"');
+spider_direct_sql('DROP TABLE IF EXISTS `t2`', '',
+'srv "srv", wrapper "odbc"')
+1
+SELECT spider_direct_sql('CREATE TABLE `t2` (`c` INT)', '',
+'srv "srv", wrapper "odbc"');
+spider_direct_sql('CREATE TABLE `t2` (`c` INT)', '',
+'srv "srv", wrapper "odbc"')
+1
+create table t1 (c int) ENGINE=Spider
+WRAPPER=odbc REMOTE_TABLE=t2 REMOTE_SERVER=srv;
+INSERT INTO t1 VALUES (1), (2), (3);
+select * from t2;
+c
+1
+2
+3
+select * from t1;
+c
+1
+2
+3
+drop table t1, t2;
+drop server srv;
+SET PASSWORD FOR 'root'@localhost = PASSWORD('');
+update mysql.global_priv set priv=@root_priv where user='root' and host='localhost';
+for master_1
+for child2
+for child3

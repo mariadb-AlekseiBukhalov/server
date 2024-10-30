@@ -569,6 +569,41 @@ int spider_get_server(
     DBUG_PRINT("info",("spider tgt_wrappers=%s",
       share->tgt_wrappers[link_idx]));
   }
+#ifdef HAVE_SPIDER_UNIXODBC
+  if (!strcasecmp(server->scheme, "odbc"))
+  {
+    Binary_string conn_str;
+    conn_str= String();
+    for (engine_option_value *option= server->option_list; option;
+         option= option->next)
+    {
+      conn_str.append(option->name);
+      conn_str.append("=", 1);
+      conn_str.append(option->value);
+      conn_str.append(";", 1);
+    }
+    /* Append existing the odbc connection string (if exists) to the
+    one constructed from the server */
+    if (share->tgt_odbc_conn_strs_lengths[link_idx])
+    {
+      conn_str.append(share->tgt_odbc_conn_strs[link_idx],
+                      share->tgt_odbc_conn_strs_lengths[link_idx]);
+      spider_free(spider_current_trx, share->tgt_odbc_conn_strs[link_idx],
+                  MYF(0));
+    }
+    if (conn_str.length() &&
+        !(share->tgt_odbc_conn_strs[link_idx]=
+          spider_create_string(conn_str.ptr(), conn_str.length())))
+    {
+      error_num= HA_ERR_OUT_OF_MEM;
+      my_error(ER_OUT_OF_RESOURCES, MYF(0), HA_ERR_OUT_OF_MEM);
+      goto error;
+    }
+    share->tgt_odbc_conn_strs_lengths[link_idx]= conn_str.length();
+    free_root(&mem_root, MYF(0));
+    DBUG_RETURN(0);
+  }
+#endif /* HAVE_SPIDER_UNIXODBC */
 
   if (!share->tgt_hosts[link_idx] && server->host)
   {
@@ -2512,10 +2547,18 @@ static int spider_try_odbc_connection_string(char *str, SPIDER_SHARE *share)
     ptr++;
   if (*ptr == ';' || *ptr == '=' || *ptr == '\0')
   {
-    if (!(share->tgt_odbc_conn_str =
+    if (!(share->tgt_odbc_conn_strs = (char**)
+          spider_bulk_malloc(
+            spider_current_trx, SPD_MID_TRY_ODBC_CONNECTION_STRING_1,
+            MYF(MY_WME | MY_ZEROFILL),
+            &share->tgt_odbc_conn_strs, (uint) (sizeof(char*)),
+            &share->tgt_odbc_conn_strs_lengths, (uint) (sizeof(uint)),
+            NullS)))
+      return HA_ERR_OUT_OF_MEM;
+    if (!(share->tgt_odbc_conn_strs[0] =
           spider_create_string(str, strlen(str))))
       return HA_ERR_OUT_OF_MEM;
-    share->tgt_odbc_conn_str_length = strlen(str);
+    share->tgt_odbc_conn_strs_lengths[0] = strlen(str);
     return 0;
   }
   return 1;

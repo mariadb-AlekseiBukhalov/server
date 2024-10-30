@@ -115,7 +115,7 @@ Spider_mon_table_cache_version	0
 Spider_mon_table_cache_version_req	1
 INSERT INTO ta_l2 (a, b, c) VALUES
 (6, 'e', '2011-05-05 20:04:05');
-ERROR HY000: Table 'auto_test_remote3.ta_r4' get a problem
+ERROR HY000: Table 's_2_3.ta_r4' get a problem
 DELETE FROM ta_l2 WHERE a = 6;
 SELECT db_name, table_name, link_id, link_status FROM mysql.spider_tables
 ORDER BY db_name, table_name, link_id;
@@ -268,7 +268,7 @@ Spider_mon_table_cache_version	1
 Spider_mon_table_cache_version_req	1
 INSERT INTO ta_l2 (a, b, c) VALUES
 (6, 'e', '2011-05-05 20:04:05');
-ERROR HY000: Table 'auto_test_remote.ta_r2' get a problem
+ERROR HY000: Table 's_2_1.ta_r2' get a problem
 DELETE FROM ta_l2 WHERE a = 6;
 SELECT db_name, table_name, link_id, link_status FROM mysql.spider_tables
 ORDER BY db_name, table_name, link_id;

@@ -1,0 +1,28 @@
+for master_1
+for child2
+for child3
+CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(Driver "SQLite3", Servername "127.0.0.1", Database "$db_file");
+SELECT spider_direct_sql('DROP TABLE IF EXISTS "t2"', '',
+'srv "srv", wrapper "odbc"');
+spider_direct_sql('DROP TABLE IF EXISTS "t2"', '',
+'srv "srv", wrapper "odbc"')
+1
+SELECT spider_direct_sql('CREATE TABLE "t2" ("c" INT)', '',
+'srv "srv", wrapper "odbc"');
+spider_direct_sql('CREATE TABLE "t2" ("c" INT)', '',
+'srv "srv", wrapper "odbc"')
+1
+create table t1 (c int) ENGINE=Spider
+WRAPPER=odbc REMOTE_TABLE=t2 REMOTE_SERVER=srv;
+INSERT INTO t1 VALUES (1), (2), (3);
+select * from t1;
+c
+1
+2
+3
+drop table t1;
+drop server srv;
+for master_1
+for child2
+for child3

@@ -6,6 +6,44 @@
 --connection master_1
 set spider_same_server_link= 1;
 
+# Second occurrence of User/UID overrides the first
+evalp CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+  Driver "MariaDB ODBC 3.0 Driver",
+  Servername "127.0.0.1",
+  Database "test",
+  UID "invalid",
+  User "root",
+  Password "",
+  Port $MASTER_1_MYPORT
+);
+create table t2 (c int);
+create table t1 (c int) ENGINE=Spider
+COMMENT='WRAPPER "odbc", srv "srv",TABLE "t2"';
+insert into t1 values (1), (2), (3);
+select * from t1;
+drop table t1, t2;
+drop server srv;
+
+# Invalid option in the odbc SERVER ignored by the driver
+evalp CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+  Driver "MariaDB ODBC 3.0 Driver",
+  Servername "127.0.0.1",
+  Database "test",
+  User "root",
+  Password "",
+  Blah "yo", # ignored by the driver
+  Port $MASTER_1_MYPORT
+);
+create table t2 (c int);
+create table t1 (c int) ENGINE=Spider
+COMMENT='WRAPPER "odbc", srv "srv",TABLE "t2"';
+insert into t1 values (1), (2), (3);
+select * from t1;
+drop table t1, t2;
+drop server srv;
+
 # CONNECTION: Second appearance of same keyword (UID) wins
 create table t2 (c int);
 evalp
@@ -26,6 +64,25 @@ insert into t1 values (1), (2), (3);
 select * from t1;
 drop table t1, t2;
 
+# ODBC style CONNECTION overrides odbc SERVER
+evalp CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+  Driver "MariaDB ODBC 3.0 Driver",
+  Servername "127.0.0.1",
+  Database "test",
+  User "invalid",
+  Password "",
+  Port $MASTER_1_MYPORT
+);
+create table t2 (c int);
+create table t1 (c int) ENGINE=Spider
+WRAPPER=odbc REMOTE_TABLE=t2 REMOTE_SERVER=srv
+CONNECTION='User=root';
+insert into t1 values (1), (2), (3);
+select * from t1;
+drop table t1, t2;
+drop server srv;
+
 # COMMENT overrides ODBC style CONNECTION (database: invalid vs test)
 create table t2 (c int);
 evalp create table t1 (c int) ENGINE=Spider
@@ -43,6 +100,59 @@ COMMENT='WRAPPER "odbc", TABLE "t2", password ""';
 insert into t1 values (1), (2), (3);
 select * from t1;
 drop table t1, t2;
+
+# COMMENT overrides odbc SERVER
+evalp CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+  Driver "MariaDB ODBC 3.0 Driver",
+  Servername "127.0.0.1",
+  Database "invalid",
+  User "root",
+  Password "",
+  Port $MASTER_1_MYPORT
+);
+create table t2 (c int);
+evalp create table t1 (c int) ENGINE=Spider
+COMMENT='WRAPPER "odbc",TABLE "t2", database "test", srv "srv"';
+insert into t1 values (1), (2), (3);
+select * from t1;
+drop table t1, t2;
+drop server srv;
+
+# odbc CONNECTION + OPTION + odbc SERVER
+evalp CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+  Driver "MariaDB ODBC 3.0 Driver",
+  Database "invalid",
+  User "invalid",
+  Password "",
+  Port $MASTER_1_MYPORT
+);
+create table t2 (c int);
+evalp create table t1 (c int) ENGINE=Spider
+REMOTE_DATABASE=test WRAPPER=odbc REMOTE_SERVER=srv REMOTE_TABLE=t2
+CONNECTION="User=root;Servername=127.0.0.1";
+insert into t1 values (1), (2), (3);
+select * from t1;
+drop table t1, t2;
+drop server srv;
+
+# Overriding in UDF
+evalp CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
+(
+  Driver "MariaDB ODBC 3.0 Driver",
+  User "invalid",
+  Password "",
+  Port $MASTER_1_MYPORT
+);
+SELECT spider_direct_sql('CREATE TABLE t2 (c INT)', '',
+'filedsn "$dsn_file", wrapper "odbc", database "test", user "root", srv "srv"');
+create table t1 (c int) ENGINE=Spider
+REMOTE_DATABASE=test WRAPPER=odbc REMOTE_SERVER=srv REMOTE_TABLE=t2 REMOTE_USERNAME=root;
+insert into t1 values (1), (2), (3);
+select * from t1;
+drop table t1, t2;
+drop server srv;
 
 --disable_query_log
 --disable_result_log

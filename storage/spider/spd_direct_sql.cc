@@ -615,6 +615,40 @@ int spider_udf_direct_sql_get_server(
     }
     DBUG_PRINT("info",("spider tgt_wrapper=%s", direct_sql->tgt_wrapper));
   }
+#ifdef HAVE_SPIDER_UNIXODBC
+  if (!strcasecmp(direct_sql->tgt_wrapper, "odbc"))
+  {
+    Binary_string conn_str;
+    conn_str= String();
+    for (engine_option_value *option= server->option_list; option;
+         option= option->next)
+    {
+      conn_str.append(option->name);
+      conn_str.append("=", 1);
+      conn_str.append(option->value);
+      conn_str.append(";", 1);
+    }
+    /* Append existing the odbc connection string (if exists) to the
+    one constructed from the server */
+    if (direct_sql->tgt_odbc_conn_str_length)
+    {
+      conn_str.append(direct_sql->tgt_odbc_conn_str,
+                      direct_sql->tgt_odbc_conn_str_length);
+      spider_free(spider_current_trx, direct_sql->tgt_odbc_conn_str, MYF(0));
+    }
+    if (conn_str.length() &&
+        !(direct_sql->tgt_odbc_conn_str=
+          spider_create_string(conn_str.ptr(), conn_str.length())))
+    {
+      error_num= HA_ERR_OUT_OF_MEM;
+      my_error(ER_OUT_OF_RESOURCES, MYF(0), HA_ERR_OUT_OF_MEM);
+      goto error;
+    }
+    direct_sql->tgt_odbc_conn_str_length= conn_str.length();
+    free_root(&mem_root, MYF(0));
+    DBUG_RETURN(0);
+  }
+#endif /* HAVE_SPIDER_UNIXODBC */
 
   if (!direct_sql->tgt_host && server->host)
   {
