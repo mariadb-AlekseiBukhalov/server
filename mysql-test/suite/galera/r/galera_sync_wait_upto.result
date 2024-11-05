@@ -1,7 +1,7 @@
 connection node_2;
 connection node_1;
 connection node_2;
-CALL mtr.add_suppression("Ignoring server id for non bootstrap node");
+CALL mtr.add_suppression("Ignoring server id .* for non bootstrap node");
 connection node_1;
 CREATE TABLE t1 (f1 INTEGER) ENGINE=InnoDB;
 INSERT INTO t1 VALUES (1);
