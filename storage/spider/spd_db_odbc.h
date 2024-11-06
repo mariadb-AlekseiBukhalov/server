@@ -321,7 +321,7 @@ public:
   bool has_result() override;
   void free_result() override;
   SPIDER_DB_ROW *current_row() override;
-  SPIDER_DB_ROW *fetch_row() override;
+  SPIDER_DB_ROW *fetch_row(MY_BITMAP *skips = NULL) override;
   SPIDER_DB_ROW *fetch_row_from_tmp_table(
     TABLE *tmp_table
   ) override;
@@ -1431,7 +1431,8 @@ public:
     uint alias_length,
     bool use_fields,
     spider_fields *fields,
-    ulong sql_type
+    ulong sql_type,
+    int
   ) override;
   int append_list_item_select(
     List<Item> *select,

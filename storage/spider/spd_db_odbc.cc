@@ -881,7 +881,7 @@ SPIDER_DB_ROW *spider_db_odbc_result::current_row()
   DBUG_RETURN((SPIDER_DB_ROW *) row.clone());
 }
 
-SPIDER_DB_ROW *spider_db_odbc_result::fetch_row()
+SPIDER_DB_ROW *spider_db_odbc_result::fetch_row(MY_BITMAP *)
 {
   SQLRETURN ret;
   DBUG_ENTER("spider_db_odbc_result::fetch_row");
@@ -11536,7 +11536,8 @@ int spider_odbc_handler::append_list_item_select_part(
   uint alias_length,
   bool use_fields,
   spider_fields *fields,
-  ulong sql_type
+  ulong sql_type,
+  int
 ) {
   int err;
   spider_string *str;
