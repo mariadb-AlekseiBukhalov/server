@@ -4426,11 +4426,10 @@ int spider_db_odbc_util::open_item_func(
 #if SPIDER_ODBC_VERSION >= 0200
         else if (!strncasecmp("timestampdiff", func_name, func_name_length))
         {
-#ifdef ITEM_FUNC_TIMESTAMPDIFF_ARE_PUBLIC
           Item_func_timestamp_diff *item_func_timestamp_diff =
             (Item_func_timestamp_diff *) item_func;
           func_name = spider_db_timefunc_interval_str[
-            item_func_timestamp_diff->int_type];
+            item_func_timestamp_diff->get_int_type()];
           if (!func_name)
           {
             DBUG_RETURN(ER_SPIDER_COND_SKIP_NUM);
@@ -4466,9 +4465,6 @@ int spider_db_odbc_util::open_item_func(
               SPIDER_SQL_ODBC_CLOSE_FUNC_LEN);
           }
           DBUG_RETURN(0);
-#else
-          DBUG_RETURN(ER_SPIDER_COND_SKIP_NUM);
-#endif
         }
 #endif
         DBUG_RETURN(ER_SPIDER_COND_SKIP_NUM);
