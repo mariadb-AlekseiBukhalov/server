@@ -17,10 +17,6 @@
 #define MYSQL_SERVER 1
 #include <my_global.h>
 #include "mysql_version.h"
-#if MYSQL_VERSION_ID < 50500
-#include "mysql_priv.h"
-#include <mysql/plugin.h>
-#else
 #include "sql_priv.h"
 #include "probes_mysql.h"
 #include "sql_class.h"
@@ -29,7 +25,6 @@
 #include "sql_base.h"
 #include "tztime.h"
 #include "sql_select.h"
-#endif
 #include "sql_common.h"
 #include <mysql.h>
 #include <errmsg.h>
@@ -4753,11 +4748,7 @@ int spider_db_odbc_util::open_item_func(
     case Item_func::UDF_FUNC:
       DBUG_PRINT("info",("spider UDF_FUNC"));
       DBUG_RETURN(ER_SPIDER_COND_SKIP_NUM);
-#ifdef MARIADB_BASE_VERSION
     case Item_func::XOR_FUNC:
-#else
-    case Item_func::COND_XOR_FUNC:
-#endif
       if (str)
         str->length(str->length() - SPIDER_SQL_OPEN_PAREN_LEN);
       DBUG_RETURN(
@@ -9990,11 +9981,7 @@ int spider_odbc_handler::bulk_tmp_table_rnd_next()
   int err;
   DBUG_ENTER("spider_odbc_handler::bulk_tmp_table_rnd_next");
   DBUG_PRINT("info",("spider this=%p", this));
-#if defined(MARIADB_BASE_VERSION) && MYSQL_VERSION_ID >= 50200
   err = upd_tmp_tbl->file->ha_rnd_next(upd_tmp_tbl->record[0]);
-#else
-  err = upd_tmp_tbl->file->rnd_next(upd_tmp_tbl->record[0]);
-#endif
   if (!err)
   {
     err = restore_sql_from_bulk_tmp_table(&insert_sql, upd_tmp_tbl);
