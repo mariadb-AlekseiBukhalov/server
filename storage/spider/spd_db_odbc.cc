@@ -5229,9 +5229,7 @@ spider_odbc_share::spider_odbc_share(
   table_names_str(NULL),
   db_names_str(NULL),
   db_table_str(NULL),
-#ifdef SPIDER_HAS_HASH_VALUE_TYPE
   db_table_str_hash_value(NULL),
-#endif
   table_nm_max_length(0),
   db_nm_max_length(0),
   column_name_str(NULL),
@@ -5302,10 +5300,8 @@ int spider_odbc_share::init()
       __func__, __FILE__, __LINE__, MYF(MY_WME | MY_ZEROFILL),
       &key_select_pos,
         sizeof(int) * keys,
-#ifdef SPIDER_HAS_HASH_VALUE_TYPE
       &db_table_str_hash_value,
         sizeof(my_hash_value_type) * spider_share->all_link_count,
-#endif
       NullS))
   ) {
     DBUG_RETURN(HA_ERR_OUT_OF_MEM);
@@ -5581,10 +5577,8 @@ int spider_odbc_share::create_table_names_str()
         goto error;
       }
     }
-#ifdef SPIDER_HAS_HASH_VALUE_TYPE
     db_table_str_hash_value[roop_count] = my_calc_hash(
       &spider_open_connections, (uchar*) str->ptr(), str->length());
-#endif
   }
   DBUG_RETURN(0);
 
@@ -5925,10 +5919,8 @@ int spider_odbc_handler::init()
     link_for_hash[roop_count].link_idx = roop_count;
     link_for_hash[roop_count].db_table_str =
       &odbc_share->db_table_str[roop_count];
-#ifdef SPIDER_HAS_HASH_VALUE_TYPE
     link_for_hash[roop_count].db_table_str_hash_value =
       odbc_share->db_table_str_hash_value[roop_count];
-#endif
   }
   DBUG_RETURN(0);
 }
@@ -10160,7 +10152,6 @@ int spider_odbc_handler::append_lock_tables_list(
     &odbc_share->db_table_str[conn_link_idx];
   DBUG_PRINT("info",("spider db_table_str=%s",
     tmp_link_for_hash2->db_table_str->c_ptr_safe()));
-#ifdef SPIDER_HAS_HASH_VALUE_TYPE
   tmp_link_for_hash2->db_table_str_hash_value =
     odbc_share->db_table_str_hash_value[conn_link_idx];
   if (!(tmp_link_for_hash = (SPIDER_LINK_FOR_HASH *)
@@ -10169,12 +10160,6 @@ int spider_odbc_handler::append_lock_tables_list(
       tmp_link_for_hash2->db_table_str_hash_value,
       (uchar*) tmp_link_for_hash2->db_table_str->ptr(),
       tmp_link_for_hash2->db_table_str->length())))
-#else
-  if (!(tmp_link_for_hash = (SPIDER_LINK_FOR_HASH *) my_hash_search(
-    &db_conn->lock_table_hash,
-    (uchar*) tmp_link_for_hash2->db_table_str->ptr(),
-    tmp_link_for_hash2->db_table_str->length())))
-#endif
   {
     if ((err = insert_lock_tables_list(conn, link_idx)))
       DBUG_RETURN(err);
