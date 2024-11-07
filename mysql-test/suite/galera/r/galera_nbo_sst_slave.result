@@ -37,10 +37,12 @@ CALL mtr.add_suppression("Non-blocking operation in progress, cannot donate SST"
 CALL mtr.add_suppression("Resource temporarily unavailable");
 CALL mtr.add_suppression("Cleanup after exit with status:");
 CALL mtr.add_suppression("Failed to send NBO-end");
+CALL mtr.add_suppression("No donor candidates temporarily available in suitable state");
 connection node_2;
 CALL mtr.add_suppression("Resource temporarily unavailable");
-CALL mtr.add_suppression("Will never receive state");
-CALL mtr.add_suppression("terminated unexpectedly");
 CALL mtr.add_suppression("Cleanup after exit with status:");
 CALL mtr.add_suppression("Failed to send NBO-end");
+CALL mtr.add_suppression("Will never receive state");
+CALL mtr.add_suppression("terminated unexpectedly");
+CALL mtr.add_suppression("No donor candidates temporarily available in suitable state");
 CALL mtr.add_suppression("TO isolation failed for NBO phase two:");
