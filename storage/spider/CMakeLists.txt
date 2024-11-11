@@ -18,6 +18,12 @@ SET(SPIDER_SOURCES
   spd_db_odbc.cc spd_db_odbc_mariadb.cc
 )
 
+set(CPACK_RPM_spider-engine_PACKAGE_SUMMARY "Spider storage engine for MariaDB" PARENT_SCOPE)
+set(CPACK_RPM_spider-engine_PACKAGE_DESCRIPTION " The Spider storage engine with built-in sharding features. It supports
+ partitioning and xa transactions, and allows tables of different MariaDB
+ instances to be handled as if they were on the same instance. It refers to one
+ possible implementation of ISO/IEC 9075-9:2008 SQL/MED." PARENT_SCOPE)
+
 FIND_PATH(UNIXODBC_INCLUDE_DIR sql.h sqlext.h PATHS /usr/include)
 FIND_LIBRARY(UNIXODBC_LIBRARY NAMES odbc PATHS /usr/lib64)
 
