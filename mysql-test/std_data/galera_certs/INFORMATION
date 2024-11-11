@@ -1,2 +1,59 @@
-WSREP certificates signed with root certificate.
-Password used is `galera`.
+Certificates for Galera testing:
+
+The certificates have been generated in the following way:
+
+Root certificate:
+
+    openssl req -x509 \
+      -newkey rsa:4096 \
+      -keyout galera.root.key \
+      -out galera.root.crt \
+      -sha256 \
+      -days 3650 \
+      -nodes \
+      -subj "/C=FI/ST=Helsinki/L=Helsinki/O=Galera/CN=galera.root"
+
+Create extensions file 'v3.ext' with contents:
+
+    authorityKeyIdentifier=keyid,issuer
+    basicConstraints=CA:FALES
+
+Node 1:
+
+    openssl req \
+        -new \
+        -newkey rsa:4096 \
+        -keyout galera.1.key \
+        -out galera.1.csr \
+        -nodes \
+        -subj "/C=FI/ST=Helsinki/L=Helsinki/O=Galera/CN=galera.1"
+
+    openssl x509 \
+        -req \
+        -in galera.1.csr \
+        -CA galera.root.crt \
+        -CAkey galera.root.key \
+        -CAcreateserial \
+        -out galera.1.crt \
+        -days 3650 \
+        -extfile v3.ext
+
+Node 2:
+
+    openssl req \
+        -new \
+        -newkey rsa:4096 \
+        -keyout galera.2.key \
+        -out galera.2.csr \
+        -nodes \
+        -subj "/C=FI/ST=Helsinki/L=Helsinki/O=Galera/CN=galera.2"
+
+    openssl x509 \
+        -req \
+        -in galera.2.csr \
+        -CA galera.root.crt \
+        -CAkey galera.root.key \
+        -CAcreateserial \
+        -out galera.2.crt \
+        -days 3650 \
+        -extfile v3.ext
