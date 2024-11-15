@@ -65,3 +65,15 @@ SET DEBUG_SYNC= 'now SIGNAL signal.wsrep_alter_locked_tables';
 SET GLOBAL debug_dbug= @save_debug;
 SET DEBUG_SYNC='RESET';
 DROP TABLE t2;
+
+--connection node_2
+#
+# We are using debug sync points and sometimes at lock_wait for table we
+# report wait information on debug builds. This happens for NBO as
+# it will not take similar MDL-locks as TOI
+#
+call mtr.add_suppression("WSREP: BF request is not compatible with victim.*");
+call mtr.add_suppression("WSREP: BF requesting lock.*"); 
+call mtr.add_suppression("WSREP: victim holding lock.*"); 
+call mtr.add_suppression("InnoDB: WSREP state:*"); 
+call mtr.add_suppression("WSREP: Thread.*");
