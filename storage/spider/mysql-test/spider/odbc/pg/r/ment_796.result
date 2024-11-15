@@ -4,15 +4,15 @@ for child3
 create server srv foreign data wrapper odbc options
 (driver 'PostgreSQL', username 'mtr', password 'mtr', port '5432',
 database 'auto_test_remote');
-SELECT spider_direct_sql('DROP TABLE IF EXISTS "t2"', '',
+SELECT spider_direct_sql('DROP TABLE IF EXISTS "t796"', '',
 'srv "srv", wrapper "odbc"');
-SELECT spider_direct_sql('CREATE TABLE "t2" ("c" INT)', '',
+SELECT spider_direct_sql('CREATE TABLE "t796" ("c" INT)', '',
 'srv "srv", wrapper "odbc"');
-spider_direct_sql('CREATE TABLE "t2" ("c" INT)', '',
+spider_direct_sql('CREATE TABLE "t796" ("c" INT)', '',
 'srv "srv", wrapper "odbc"')
 1
 create table t1 (c int) ENGINE=Spider
-WRAPPER=odbc REMOTE_TABLE=t2 REMOTE_SERVER=srv;
+WRAPPER=odbc REMOTE_TABLE=t796 REMOTE_SERVER=srv;
 INSERT INTO t1 VALUES (1), (2), (3);
 select * from t1;
 c
@@ -20,11 +20,12 @@ c
 2
 3
 drop table t1;
-SELECT spider_direct_sql('DROP TABLE "t2"', '',
+SELECT spider_direct_sql('DROP TABLE "t796"', '',
 'srv "srv", wrapper "odbc"');
-spider_direct_sql('DROP TABLE "t2"', '',
+spider_direct_sql('DROP TABLE "t796"', '',
 'srv "srv", wrapper "odbc"')
 1
+drop server srv;
 for master_1
 for child2
 for child3

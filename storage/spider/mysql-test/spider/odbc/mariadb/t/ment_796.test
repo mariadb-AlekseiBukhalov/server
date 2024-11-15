@@ -8,7 +8,7 @@
 evalp CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
 (
   Driver "MariaDB ODBC 3.0 Driver",
-  Servername "255.255.255.255",
+  Host "255.255.255.255",
   Database "test",
   Password "",
   Port $MASTER_1_MYPORT
@@ -17,7 +17,7 @@ evalp CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
 replace_result $MASTER_1_MYPORT MASTER_1_MYPORT;
 select Options from mysql.servers where Server_name = "srv";
 replace_result $MASTER_1_MYPORT MASTER_1_MYPORT;
-ALTER SERVER srv OPTIONS (Servername "127.0.0.1", User "root");
+ALTER SERVER srv OPTIONS (HOST "127.0.0.1", User "root");
 replace_result $MASTER_1_MYPORT MASTER_1_MYPORT;
 select Options from mysql.servers where Server_name = "srv";
 
@@ -40,7 +40,7 @@ select priv into @root_priv from mysql.global_priv where user='root' and host='l
 evalp CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
 (
   Driver "MariaDB ODBC 3.0 Driver",
-  Servername "127.0.0.1",
+  Host "127.0.0.1",
   User "root",
   Database "test",
   Password "",

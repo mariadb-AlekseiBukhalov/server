@@ -7,7 +7,7 @@
 create table t2 (c int, key(c));
 evalp create table t1 (c int, key(c))
 ENGINE=Spider WRAPPER=odbc REMOTE_TABLE=t2
-CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=test;UID=root;PWD;HOST=127.0.0.1;PORT=$MASTER_1_MYPORT';
+CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=test;UID=root;PWD=;SERVER=127.0.0.1;PORT=$MASTER_1_MYPORT';
 
 INSERT INTO t1 VALUES (1), (2), (3);
 select * from t2;

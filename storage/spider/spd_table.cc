@@ -569,6 +569,18 @@ int spider_get_server(
     DBUG_PRINT("info",("spider tgt_wrappers=%s",
       share->tgt_wrappers[link_idx]));
   }
+
+  if (!share->tgt_hosts[link_idx] && server->host)
+  {
+    share->tgt_hosts_lengths[link_idx] = strlen(server->host);
+    if (!(share->tgt_hosts[link_idx] =
+      spider_create_string(server->host, share->tgt_hosts_lengths[link_idx])))
+    {
+      error_num = HA_ERR_OUT_OF_MEM;
+      goto error;
+    }
+    DBUG_PRINT("info",("spider tgt_hosts=%s", share->tgt_hosts[link_idx]));
+  }
 #ifdef HAVE_SPIDER_UNIXODBC
   if (!strcasecmp(server->scheme, "odbc"))
   {
@@ -604,18 +616,6 @@ int spider_get_server(
     DBUG_RETURN(0);
   }
 #endif /* HAVE_SPIDER_UNIXODBC */
-
-  if (!share->tgt_hosts[link_idx] && server->host)
-  {
-    share->tgt_hosts_lengths[link_idx] = strlen(server->host);
-    if (!(share->tgt_hosts[link_idx] =
-      spider_create_string(server->host, share->tgt_hosts_lengths[link_idx])))
-    {
-      error_num = HA_ERR_OUT_OF_MEM;
-      goto error;
-    }
-    DBUG_PRINT("info",("spider tgt_hosts=%s", share->tgt_hosts[link_idx]));
-  }
 
   if (share->tgt_ports[link_idx] == -1)
   {

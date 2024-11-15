@@ -6,7 +6,7 @@ set spider_same_server_link= 1;
 CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
 (
 Driver "MariaDB ODBC 3.0 Driver",
-Servername "127.0.0.1",
+Host "127.0.0.1",
 Database "test",
 UID "invalid",
 User "root",
@@ -29,7 +29,7 @@ drop server srv;
 CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
 (
 Driver "MariaDB ODBC 3.0 Driver",
-Servername "127.0.0.1",
+Host "127.0.0.1",
 Database "test",
 User "root",
 Password "",
@@ -52,7 +52,7 @@ drop server srv;
 create table t2 (c int);
 create table t1 (c int) ENGINE=Spider
 COMMENT='WRAPPER "odbc",TABLE "t2"'
-CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=test;UID=invalid;UID=root;PWD;HOST=127.0.0.1;PORT=$MASTER_1_MYPORT';
+CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=test;UID=invalid;UID=root;PWD=;SERVER=127.0.0.1;PORT=$MASTER_1_MYPORT';
 Warnings:
 Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
 insert into t1 values (1), (2), (3);
@@ -65,7 +65,7 @@ drop table t1, t2;
 create table t2 (c int);
 create table t1 (c int) ENGINE=Spider
 COMMENT='WRAPPER "odbc",TABLE "t2"'
-CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=test;INVALID=abc;UID=root;PWD;HOST=127.0.0.1;PORT=$MASTER_1_MYPORT';
+CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=test;INVALID=abc;UID=root;PWD=;SERVER=127.0.0.1;PORT=$MASTER_1_MYPORT';
 Warnings:
 Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
 insert into t1 values (1), (2), (3);
@@ -78,7 +78,7 @@ drop table t1, t2;
 CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
 (
 Driver "MariaDB ODBC 3.0 Driver",
-Servername "127.0.0.1",
+Host "127.0.0.1",
 Database "test",
 User "invalid",
 Password "",
@@ -98,7 +98,7 @@ drop table t1, t2;
 drop server srv;
 create table t2 (c int);
 create table t1 (c int) ENGINE=Spider
-CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=invalid;UID=root;PWD;HOST=127.0.0.1;PORT=$MASTER_1_MYPORT'
+CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=invalid;UID=root;PWD=;SERVER=127.0.0.1;PORT=$MASTER_1_MYPORT'
 COMMENT='WRAPPER "odbc", TABLE "t2", database "test"';
 Warnings:
 Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
@@ -111,7 +111,7 @@ c
 drop table t1, t2;
 create table t2 (c int);
 create table t1 (c int) ENGINE=Spider
-CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=test;User=root;PWD=invalid;HOST=127.0.0.1;PORT=$MASTER_1_MYPORT'
+CONNECTION='Driver=MariaDB ODBC 3.0 Driver;Database=test;User=root;PWD=invalid;SERVER=127.0.0.1;PORT=$MASTER_1_MYPORT'
 COMMENT='WRAPPER "odbc", TABLE "t2", password ""';
 Warnings:
 Warning	138	Spider table params in COMMENT or CONNECTION strings have been deprecated and will be removed in a future release. Please use table options instead.
@@ -125,7 +125,7 @@ drop table t1, t2;
 CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
 (
 Driver "MariaDB ODBC 3.0 Driver",
-Servername "127.0.0.1",
+Host "127.0.0.1",
 Database "invalid",
 User "root",
 Password "",
@@ -155,7 +155,7 @@ Port $MASTER_1_MYPORT
 create table t2 (c int);
 create table t1 (c int) ENGINE=Spider
 REMOTE_DATABASE=test WRAPPER=odbc REMOTE_SERVER=srv REMOTE_TABLE=t2
-CONNECTION="User=root;Servername=127.0.0.1";
+CONNECTION="User=root;Server=127.0.0.1";
 insert into t1 values (1), (2), (3);
 select * from t1;
 c
@@ -172,12 +172,12 @@ Password "",
 Port $MASTER_1_MYPORT
 );
 SELECT spider_direct_sql('CREATE TABLE t2 (c INT)', '',
-'filedsn "$dsn_file", wrapper "odbc", database "test", user "root", srv "srv"');
+'filedsn "$dsn_file", wrapper "odbc", database "test", user "root", srv "srv", host "127.0.0.1"');
 spider_direct_sql('CREATE TABLE t2 (c INT)', '',
-'filedsn "$dsn_file", wrapper "odbc", database "test", user "root", srv "srv"')
+'filedsn "$dsn_file", wrapper "odbc", database "test", user "root", srv "srv", host "127.0.0.1"')
 1
 create table t1 (c int) ENGINE=Spider
-REMOTE_DATABASE=test WRAPPER=odbc REMOTE_SERVER=srv REMOTE_TABLE=t2 REMOTE_USERNAME=root;
+REMOTE_DATABASE=test WRAPPER=odbc REMOTE_SERVER=srv REMOTE_TABLE=t2 REMOTE_USERNAME=root REMOTE_HOST="127.0.0.1";
 insert into t1 values (1), (2), (3);
 select * from t1;
 c

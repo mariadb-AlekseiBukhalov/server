@@ -615,6 +615,19 @@ int spider_udf_direct_sql_get_server(
     }
     DBUG_PRINT("info",("spider tgt_wrapper=%s", direct_sql->tgt_wrapper));
   }
+
+  if (!direct_sql->tgt_host && server->host)
+  {
+    direct_sql->tgt_host_length = strlen(server->host);
+    if (!(direct_sql->tgt_host =
+      spider_create_string(server->host, direct_sql->tgt_host_length)))
+    {
+      error_num = HA_ERR_OUT_OF_MEM;
+      my_error(ER_OUT_OF_RESOURCES, MYF(0), HA_ERR_OUT_OF_MEM);
+      goto error;
+    }
+    DBUG_PRINT("info",("spider tgt_host=%s", direct_sql->tgt_host));
+  }
 #ifdef HAVE_SPIDER_UNIXODBC
   if (!strcasecmp(direct_sql->tgt_wrapper, "odbc"))
   {
@@ -649,19 +662,6 @@ int spider_udf_direct_sql_get_server(
     DBUG_RETURN(0);
   }
 #endif /* HAVE_SPIDER_UNIXODBC */
-
-  if (!direct_sql->tgt_host && server->host)
-  {
-    direct_sql->tgt_host_length = strlen(server->host);
-    if (!(direct_sql->tgt_host =
-      spider_create_string(server->host, direct_sql->tgt_host_length)))
-    {
-      error_num = HA_ERR_OUT_OF_MEM;
-      my_error(ER_OUT_OF_RESOURCES, MYF(0), HA_ERR_OUT_OF_MEM);
-      goto error;
-    }
-    DBUG_PRINT("info",("spider tgt_host=%s", direct_sql->tgt_host));
-  }
 
   if (direct_sql->tgt_port == -1)
   {

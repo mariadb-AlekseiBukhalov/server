@@ -1214,15 +1214,36 @@ void spider_db_odbc::bg_connect()
   DBUG_VOID_RETURN;
 }
 
+/**
+  Construct the ODBC connection string.
+
+  Multiple sources are used to construct the string, including the
+  CONNECTION string in CREATE TABLE ... CONNECTION=..., SERVER
+  attributes, and table options and comments.
+
+  @param conn_str  The output connection string. Should be empty to
+                   begin with.
+  @param conn      A SPIDER_CONN whose attributes are used to assemble
+                   the connection string.
+  @retval 0        Success
+          >0       Error
+*/
 static int spider_build_odbc_conn_string(Binary_string *conn_str, SPIDER_CONN *conn)
 {
   DBUG_ENTER("spider_build_odbc_conn_string");
+  /* From CONNECTION string and SERVER attributes */
   if (conn->tgt_odbc_conn_str)
   {
     conn_str->append(conn->tgt_odbc_conn_str, conn->tgt_odbc_conn_str_length);
     if (conn_str->end()[-1] != ';' && conn_str->append(";", 1))
       DBUG_RETURN(HA_ERR_OUT_OF_MEM);
   }
+  /*
+    TODO(MDEV-2076): Only 6 keywords are specified in the standard:
+    DSN, FILEDSN, DRIVER, UID, PWD, SAVEFILE. The rest are
+    driver-specific and should be used depending on the driver (e.g.
+    spider_db_odbc::dbms_name).
+  */
   /* additional connect parameter for ODBC */
   if (conn->tgt_ssl_ca)
   {
@@ -1280,7 +1301,12 @@ static int spider_build_odbc_conn_string(Binary_string *conn_str, SPIDER_CONN *c
     }
   }
 
-  if (conn->tgt_host)
+  /*
+    Empty host is ignored, because CREATE SERVER by default assigns an
+    empty string to host if not specified and there's no way to tell
+    between unspecified and empty hosts.
+  */
+  if (conn->tgt_host_length)
   {
     if (conn_str->append(SPIDER_DB_SERVER_STR, SPIDER_DB_SERVER_LEN) ||
         conn_str->append(SPIDER_SQL_ODBC_EQUAL_STR,
