@@ -2320,7 +2320,8 @@ int wsrep_to_buf_helper(
 {
   IO_CACHE tmp_io_cache;
   enum_binlog_checksum_alg current_binlog_check_alg=
-    (enum_binlog_checksum_alg) binlog_checksum_options;
+    (enum_binlog_checksum_alg) BINLOG_CHECKSUM_ALG_OFF;
+
   Log_event_writer writer(&tmp_io_cache, NULL, current_binlog_check_alg, NULL);
   if (open_cached_file(&tmp_io_cache, mysql_tmpdir, TEMP_PREFIX,
                        65536, MYF(MY_WME)))
