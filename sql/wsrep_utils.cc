@@ -510,6 +510,7 @@ thd::thd (my_bool ini, bool system_thread)
 
     ptr->tx_read_only= false;
     ptr->variables.tx_read_only= false;
+    ptr->system_thread= SYSTEM_THREAD_GENERIC;
     ptr->variables.tx_isolation= ISO_READ_COMMITTED;
     ptr->variables.sql_log_bin = 0;
     ptr->variables.option_bits &= ~OPTION_BIN_LOG; // disable binlog

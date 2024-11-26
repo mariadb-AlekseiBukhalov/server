@@ -1575,6 +1575,9 @@ static int run_sql_command_thd(THD *thd, const char *query)
     PSI_statement_locker *parent_locker= thd->m_statement_psi;
     thd->set_query_id(next_query_id());
 
+    lex_start(thd);
+    thd->m_statement_psi= NULL;
+
     mysql_parse(thd, thd->query(), thd->query_length(), &ps);
     if (thd->is_error())
     {
