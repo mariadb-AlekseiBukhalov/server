@@ -1,0 +1,14 @@
+--source include/have_innodb.inc
+SET sql_mode='';
+INSTALL PLUGIN Spider SONAME 'ha_spider.so';
+set spider_same_server_link= 1;
+evalp CREATE SERVER srv FOREIGN DATA WRAPPER mysql
+OPTIONS (SOCKET "$MASTER_1_MYSOCK", DATABASE 'test',user 'root');
+CREATE TABLE t (c INT) ENGINE=InnoDB;
+CREATE TABLE t1 (c INT) ENGINE=Spider COMMENT='WRAPPER "mysql",SRV "srv",TABLE "t"';
+SET sql_mode=34359738368;
+SELECT * FROM t1;
+drop table t, t1;
+drop server srv;
+--disable_result_log
+--source ../../include/clean_up_spider.inc

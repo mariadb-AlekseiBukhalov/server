@@ -3944,6 +3944,9 @@ sql_mode_t full_sql_mode =
 #ifdef MODE_TIME_ROUND_FRACTIONAL
   MODE_TIME_ROUND_FRACTIONAL |
 #endif
+#ifdef MODE_EXTENDED_ALIASES
+  MODE_EXTENDED_ALIASES |
+#endif
   0;
 
 #ifdef MODE_REAL_AS_FLOAT
@@ -4068,6 +4071,9 @@ sql_mode_t full_sql_mode =
 #ifdef MODE_TIME_ROUND_FRACTIONAL
 /* pushdown */
 #define SPIDER_SQL_MODE_TIME_ROUND_FRACTIONAL
+#endif
+#ifdef MODE_EXTENDED_ALIASES
+/* no pushdown */
 #endif
 
 sql_mode_t pushdown_sql_mode =
