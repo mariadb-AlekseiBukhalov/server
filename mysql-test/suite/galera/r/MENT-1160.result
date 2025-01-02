@@ -5,3 +5,4 @@ SET GLOBAL debug_dbug='d,sync.wsrep_alter_locked_tables';
 DROP INDEX nonexisting_idx ON nonexisting_tbl;
 ERROR 42S02: Table 'test.nonexisting_tbl' doesn't exist
 SET GLOBAL debug_dbug='';
+SET SESSION wsrep_osu_method=DEFAULT;

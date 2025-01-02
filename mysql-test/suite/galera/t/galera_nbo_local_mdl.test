@@ -26,7 +26,7 @@ SET SESSION wsrep_OSU_method=NBO;
 --connect node_1b, 127.0.0.1, root, , test, $NODE_MYPORT_1
 --connection node_1b
 SET SESSION wsrep_sync_wait = 0;
---let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE STATE = 'Waiting for table metadata lock'
+--let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE STATE LIKE 'Waiting for table metadata lock%' OR STATE LIKE 'Waiting to execute in isolation%';
 --let $wait_condition_on_error_output = SELECT * FROM INFORMATION_SCHEMA.PROCESSLIST;
 --source include/wait_condition_with_debug.inc
 
@@ -38,7 +38,7 @@ SET SESSION wsrep_sync_wait = 0;
 --connection node_1c
 SET SESSION wsrep_sync_wait = 0;
 
---let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE INFO = 'INSERT INTO t2 VALUES (1)' AND (State = 'Commit' OR State='Waiting for certification')
+--let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE INFO = 'INSERT INTO t2 VALUES (1)' AND (STATE LIKE '%committing%' OR STATE LIKE 'Commit' OR STATE LIKE 'Waiting for certification');
 --let $wait_condition_on_error_output = SELECT * FROM INFORMATION_SCHEMA.PROCESSLIST;
 --source include/wait_condition_with_debug.inc
 
@@ -64,9 +64,10 @@ SELECT * FROM t2;
 --reap
 SHOW CREATE TABLE t1;
 SELECT * FROM t2;
+SET SESSION wsrep_OSU_method=DEFAULT;
 
 --connection node_1
-SET SESSION wsrep_OSU_method=TOI;
+SET SESSION wsrep_OSU_method=DEFAULT;
 SELECT * FROM t2;
 
 --disconnect node_1a

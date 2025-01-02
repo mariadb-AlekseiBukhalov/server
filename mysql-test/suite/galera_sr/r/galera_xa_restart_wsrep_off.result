@@ -43,5 +43,5 @@ f1
 connection node_2;
 DROP TABLE t1;
 call mtr.add_suppression('Found 1 prepared XA transactions');
-call mtr.add_suppression('You need to use --log-bin to make --binlog-format work.');
-call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs.');
+call mtr.add_suppression('You need to use --log-bin to make --binlog-format work\\.');
+call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs\\.');

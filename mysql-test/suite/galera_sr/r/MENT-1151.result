@@ -10,7 +10,7 @@ DELETE FROM t1;
 SET SESSION wsrep_trx_fragment_size=1;
 ERROR 25000: You are not allowed to execute this command in a transaction
 CREATE TEMPORARY SEQUENCE s1;
-ERROR 42000: This version of MariaDB doesn't yet support 'CACHE without INCREMENT BY 0 in Galera cluster'
+Got one of the listed errors
 XA END 'b';
 XA PREPARE 'b';
 XA COMMIT 'b';

@@ -8,4 +8,4 @@ COUNT(*) > 0
 connection node_2;
 connection node_1;
 include/assert_grep.inc [certificate verify failed]
-CALL mtr.add_suppression('WSREP:.* certificate verify failed.*');
+CALL mtr.add_suppression('WSREP:.* certificate verify failed');

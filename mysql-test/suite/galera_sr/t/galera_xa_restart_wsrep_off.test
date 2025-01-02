@@ -4,6 +4,7 @@
 #
 
 --source include/galera_cluster.inc
+
 # Save original auto_increment_offset values.
 --let $node_1=node_1
 --let $node_2=node_2
@@ -11,7 +12,6 @@
 
 --connect trx1, 127.0.0.1, root, , test, $NODE_MYPORT_2
 --connect trx2, 127.0.0.1, root, , test, $NODE_MYPORT_2
-
 
 CREATE TABLE t1 (f1 INTEGER PRIMARY KEY);
 
@@ -97,5 +97,5 @@ DROP TABLE t1;
 --source ../galera/include/auto_increment_offset_restore.inc
 
 call mtr.add_suppression('Found 1 prepared XA transactions');
-call mtr.add_suppression('You need to use --log-bin to make --binlog-format work.');
-call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs.');
+call mtr.add_suppression('You need to use --log-bin to make --binlog-format work\\.');
+call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs\\.');

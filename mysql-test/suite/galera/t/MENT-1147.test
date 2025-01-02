@@ -42,3 +42,4 @@ SET SESSION wsrep_osu_method=NBO;
 OPTIMIZE TABLE t0;
 SET SESSION wsrep_osu_method=TOI;
 DROP TABLE t0;
+SET SESSION wsrep_osu_method=DEFAULT;

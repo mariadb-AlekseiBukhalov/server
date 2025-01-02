@@ -14,7 +14,7 @@ t1	CREATE TABLE `t1` (
   `f1` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 connection node_2;
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;
 connection node_1;
 CALL mtr.add_suppression("WSREP: Event 1 Query apply failed");

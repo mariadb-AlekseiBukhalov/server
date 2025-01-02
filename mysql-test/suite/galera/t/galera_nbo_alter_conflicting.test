@@ -3,6 +3,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
 
@@ -47,7 +48,7 @@ SET DEBUG_SYNC = 'RESET';
 --error 0,ER_MULTIPLE_PRI_KEY
 --reap
 
-SET SESSION wsrep_OSU_method=TOI;
+SET SESSION wsrep_OSU_method=DEFAULT;
 
 DROP TABLE t1;
 
@@ -56,4 +57,6 @@ CALL mtr.add_suppression("ALTER TABLE isolation failure");
 --connection node_2
 CALL mtr.add_suppression("Slave SQL: Error 'Multiple primary key defined' on query");
 
-SET GLOBAL wsrep_slave_threads = 1;
+SET GLOBAL wsrep_slave_threads=DEFAULT;
+
+--disconnect node_1a

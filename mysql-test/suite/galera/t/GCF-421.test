@@ -3,11 +3,44 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
 
 --connection node_1
 CREATE TABLE t1 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
+
+#
+# Setup for DROP TABLE t1
+# Park DROP TABLE statement in a debug sync point, right
+# before TOI replication.
+#
+--connect drop_in_node_1, 127.0.0.1, root, , test, $NODE_MYPORT_1
+--connection drop_in_node_1
+SET SESSION lock_wait_timeout= 3;
+SET SESSION wsrep_retry_autocommit= 0;
+SET DEBUG_SYNC= "wsrep_toi_begin SIGNAL wsrep_toi_begin_reached WAIT_FOR wsrep_toi_begin_continue";
+--send DROP TABLE t1
+
+--connection node_1
+SET DEBUG_SYNC="now WAIT_FOR wsrep_toi_begin_reached";
+
+--connect drop_in_node_2, 127.0.0.1, root, , test, $NODE_MYPORT_2
+--connection drop_in_node_2
+SET SESSION lock_wait_timeout= 3;
+SET SESSION wsrep_retry_autocommit= 0;
+SET DEBUG_SYNC= "wsrep_toi_begin SIGNAL wsrep_toi_begin_reached WAIT_FOR wsrep_toi_begin_continue";
+--send DROP TABLE t1
+
+--connection node_2
+SET DEBUG_SYNC="now WAIT_FOR wsrep_toi_begin_reached";
+
+
+#
+# Issue ALTER TABLE t1 in NBO mode,
+# and park it in a debug sync point after it reached phase 1
+#
+--connection node_1
 SET GLOBAL DEBUG_DBUG = 'd,sync.wsrep_alter_locked_tables';
 
 --connection node_2
@@ -23,31 +56,57 @@ SET SESSION wsrep_osu_method=NBO;
 --let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE INFO LIKE 'ALTER%' AND STATE = 'debug sync point: now'
 --source include/wait_condition.inc
 
+SET DEBUG_SYNC= 'now SIGNAL wsrep_toi_begin_continue';
+
+
+#
+# Expect DROP TABLE to fail with ER_DEADLOCK_ERROR,
+# due to certification conflict.
+#
+--connection drop_in_node_1
+--error ER_LOCK_DEADLOCK
+--reap
+
+#
+# ALTER can continue in node_1
+#
+--connection node_1a
 SET GLOBAL DEBUG_DBUG = '';
 SET DEBUG_SYNC= 'now SIGNAL signal.wsrep_alter_locked_tables';
 SET DEBUG_SYNC= 'now WAIT_FOR signal.wsrep_alter_locked_tables_continued';
 SET DEBUG_SYNC= 'RESET';
 
-SET SESSION lock_wait_timeout= 3;
---error ER_LOCK_DEADLOCK
-DROP TABLE t1;
 
 --connection node_2
 --let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE INFO LIKE 'ALTER%' AND STATE = 'debug sync point: now'
 --source include/wait_condition.inc
 
-SET SESSION lock_wait_timeout= 3;
---error ER_LOCK_DEADLOCK
-DROP TABLE t1;
+SET DEBUG_SYNC= 'now SIGNAL wsrep_toi_begin_continue';
 
+--connection drop_in_node_2
+--error ER_LOCK_DEADLOCK
+--reap
+
+
+#
+# ALTER can continue in node_2
+#
+--connection node_2
 SET GLOBAL DEBUG_DBUG = '';
 SET DEBUG_SYNC= 'now SIGNAL signal.wsrep_alter_locked_tables';
 SET DEBUG_SYNC= 'now WAIT_FOR signal.wsrep_alter_locked_tables_continued';
 SET DEBUG_SYNC= 'RESET';
 
+
+#
+# Expect ALTER to succeed
+#
 --connection node_1
 --reap
 
-SET SESSION wsrep_osu_method=TOI;
-DROP TABLE t1;
+#
+# Cleanup
+#
+SET SESSION wsrep_osu_method = DEFAULT;
 
+DROP TABLE t1;

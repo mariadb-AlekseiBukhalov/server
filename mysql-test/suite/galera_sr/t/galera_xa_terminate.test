@@ -1,20 +1,18 @@
---source include/galera_cluster.inc
-
---connect node_1a, 127.0.0.1, root, , test, $NODE_MYPORT_1
---connect node_2a, 127.0.0.1, root, , test, $NODE_MYPORT_2
-
-
 #
 # Test termination of prepared XA transaction on behalf of another
 # node in the cluster.
 #
 
+--source include/galera_cluster.inc
+--source include/have_innodb.inc
+
+--connect node_1a, 127.0.0.1, root, , test, $NODE_MYPORT_1
+--connect node_2a, 127.0.0.1, root, , test, $NODE_MYPORT_2
 
 # Save original auto_increment_offset values.
 --let $node_1=node_1
 --let $node_2=node_2
 --source ../galera/include/auto_increment_offset_save.inc
-
 
 --connection node_1
 SET GLOBAL wsrep_provider_options = 'pc.ignore_sb=true';
@@ -121,7 +119,8 @@ SET GLOBAL wsrep_provider_options = 'pc.ignore_sb=false';
 --connection node_2
 DROP TABLE t1;
 SET GLOBAL wsrep_provider_options = 'pc.ignore_sb=false';
+
 call mtr.add_suppression('Found 1 prepared XA transactions');
-call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs.');
+call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs\\.');
 
 --source ../galera/include/auto_increment_offset_restore.inc

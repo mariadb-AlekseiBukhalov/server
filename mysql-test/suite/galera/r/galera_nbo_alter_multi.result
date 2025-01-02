@@ -11,4 +11,6 @@ t1	CREATE TABLE `t1` (
   `f2` int(11) DEFAULT NULL,
   PRIMARY KEY (`f1`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
+connection node_1;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;

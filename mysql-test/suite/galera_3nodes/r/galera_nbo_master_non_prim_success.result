@@ -45,5 +45,7 @@ t1	CREATE TABLE `t1` (
 SELECT COUNT(*) = 1 FROM t1;
 COUNT(*) = 1
 1
+SET SESSION wsrep_osu_method=DEFAULT;
 connection node_1;
 DROP TABLE t1;
+disconnect node_2a;

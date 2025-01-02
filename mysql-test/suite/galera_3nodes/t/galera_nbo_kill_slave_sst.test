@@ -68,7 +68,7 @@ CALL mtr.add_suppression("WSREP: gcs_caused\\(\\) returned -1 \\(Operation not p
 SELECT COUNT(*) = 2 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';
 SELECT COUNT(*) = 5 FROM t1;
 
-SET SESSION wsrep_OSU_method=TOI;
+SET SESSION wsrep_OSU_method=DEFAULT;
 DROP TABLE t1;
 
 --source suite/galera/include/auto_increment_offset_restore.inc

@@ -2433,7 +2433,8 @@ resume:
       if (wsrep_current_error(thd) && !wsrep_command_no_result(command))
       {
         /* todo: Pass wsrep client state current error to override */
-        wsrep_override_error(thd, wsrep_current_error(thd));
+        wsrep_override_error(thd, wsrep_current_error(thd),
+                             wsrep_current_error_status(thd));
         WSREP_LOG_THD(thd, "leave");
       }
     }

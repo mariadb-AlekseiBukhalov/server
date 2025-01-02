@@ -6,5 +6,5 @@ SET sql_mode='';
 SET SESSION wsrep_osu_method=NBO;
 ALTER TABLE t0 ENGINE=none;
 ERROR 42000: wsrep_OSU_method NBO not supported for query
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t0;

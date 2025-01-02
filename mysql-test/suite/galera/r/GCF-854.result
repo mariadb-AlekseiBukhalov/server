@@ -24,3 +24,5 @@ SELECT COUNT(*) = 2 FROM t1;
 COUNT(*) = 2
 1
 DROP TABLE t1;
+connection node_1;
+SET SESSION wsrep_osu_method=DEFAULT;

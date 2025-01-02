@@ -3,6 +3,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
 
@@ -51,10 +52,12 @@ SHOW CREATE TABLE t2;
 SHOW CREATE TABLE t1;
 SHOW CREATE TABLE t2;
 
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 
 DROP TABLE t1;
 DROP TABLE t2;
 SET DEBUG_SYNC= 'RESET';
 --connection node_2
 SET DEBUG_SYNC= 'RESET';
+
+--disconnect node_1a

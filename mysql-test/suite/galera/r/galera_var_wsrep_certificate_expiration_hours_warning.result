@@ -12,4 +12,4 @@ connection node_2;
 connection node_1;
 SET GLOBAL wsrep_certificate_expiration_hours_warning=DEFAULT;
 include/assert_grep.inc [certificate expiration warning: the peer certificate for]
-CALL mtr.add_suppression('WSREP:.* certificate expiration warning: the peer certificate for.*');
+CALL mtr.add_suppression('WSREP:.* certificate expiration warning: the peer certificate for ');

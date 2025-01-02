@@ -46,8 +46,9 @@ t1	CREATE TABLE `t1` (
 SELECT COUNT(*) = 1 FROM t1;
 COUNT(*) = 1
 1
+disconnect node_1a;
 connection node_1;
-SET SESSION wsrep_OSU_method=TOI;
+SET SESSION wsrep_OSU_method=DEFAULT;
 DROP TABLE t1;
 CALL mtr.add_suppression("gcs_caused\\(\\) returned -1");
 connection node_3;

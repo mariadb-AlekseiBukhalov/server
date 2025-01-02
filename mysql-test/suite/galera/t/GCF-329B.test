@@ -55,7 +55,7 @@ SHOW CREATE TABLE t1;
 --reap
 
 SELECT COUNT(*) AS EXPECT_2 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='t1';
-SET SESSION wsrep_OSU_method=TOI;
+SET SESSION wsrep_OSU_method=DEFAULT;
 
 --disable_query_log
 --eval SET GLOBAL wsrep_provider_options = '$wsrep_provider_options_orig';

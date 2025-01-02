@@ -21,7 +21,7 @@ CREATE DATABASE db1;
 ERROR 42000: wsrep_OSU_method NBO not supported for query
 DROP DATABASE db1;
 ERROR 42000: wsrep_OSU_method NBO not supported for query
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (

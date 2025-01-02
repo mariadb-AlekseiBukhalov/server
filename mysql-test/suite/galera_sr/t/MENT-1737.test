@@ -3,6 +3,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 
 CREATE TABLE t1 (c INT) ENGINE=INNODB;
 SET SESSION TRANSACTION ISOLATION LEVEL SERIALIZABLE;

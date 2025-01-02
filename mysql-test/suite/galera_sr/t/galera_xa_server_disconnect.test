@@ -44,7 +44,6 @@ INSERT INTO t1 VALUES (3);
 XA END 't3';
 XA PREPARE 't3';
 
-
 --connection node_1
 SELECT COUNT(*) AS expect_3 FROM mysql.wsrep_streaming_log;
 

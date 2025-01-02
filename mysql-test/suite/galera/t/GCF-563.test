@@ -3,6 +3,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
 
@@ -60,4 +61,8 @@ SHOW CREATE TABLE t2;
 DROP TABLE t1;
 DROP TABLE t2;
 
-SET GLOBAL wsrep_slave_threads=1;
+SET GLOBAL wsrep_slave_threads = DEFAULT;
+
+--disconnect node_1a
+--connection node_1
+SET SESSION wsrep_osu_method = DEFAULT;

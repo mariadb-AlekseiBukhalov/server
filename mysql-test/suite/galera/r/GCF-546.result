@@ -35,5 +35,5 @@ t1	CREATE TABLE `t1` (
   PRIMARY KEY (`f1`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 CALL mtr.add_suppression("Slave SQL: Error");
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;

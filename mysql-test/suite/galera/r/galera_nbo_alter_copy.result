@@ -48,8 +48,9 @@ COUNT(*) = 1
 SELECT COUNT(*) = 2 FROM t2;
 COUNT(*) = 2
 1
-SET SESSION wsrep_OSU_method=TOI;
+SET SESSION wsrep_OSU_method=DEFAULT;
 DROP TABLE t1;
 DROP TABLE t2;
 connection node_2;
 SET DEBUG_SYNC= 'RESET';
+disconnect node_1a;

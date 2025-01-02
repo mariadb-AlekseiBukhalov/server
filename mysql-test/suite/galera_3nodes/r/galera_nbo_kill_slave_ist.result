@@ -44,5 +44,5 @@ COUNT(*) = 2
 SELECT COUNT(*) = 5 FROM t1;
 COUNT(*) = 5
 1
-SET SESSION wsrep_OSU_method=TOI;
+SET SESSION wsrep_OSU_method=DEFAULT;
 DROP TABLE t1;

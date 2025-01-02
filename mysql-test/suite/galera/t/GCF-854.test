@@ -3,6 +3,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 --source include/big_test.inc
 
 --let $node_1=node_1
@@ -44,5 +45,7 @@ SELECT COUNT(*) = 2 FROM t1;
 
 DROP TABLE t1;
 
---source suite/galera/include/auto_increment_offset_restore.inc
+--connection node_1
+SET SESSION wsrep_osu_method=DEFAULT;
 
+--source suite/galera/include/auto_increment_offset_restore.inc

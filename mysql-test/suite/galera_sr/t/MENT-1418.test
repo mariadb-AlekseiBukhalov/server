@@ -4,6 +4,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 
 --connection node_1
 SET SESSION wsrep_trx_fragment_size=1;

@@ -4,6 +4,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
 
@@ -50,7 +51,6 @@ SET DEBUG_SYNC= 'now SIGNAL signal.wsrep_alter_locked_tables';
 SET DEBUG_SYNC = 'now WAIT_FOR signal.wsrep_alter_locked_tables_continued';
 SET DEBUG_SYNC = 'RESET';
 
-
 SET SESSION wsrep_on=OFF;
 SET SESSION wsrep_sync_wait = 0;
 --let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE STATE = 'acquiring total order isolation for NBO phase two'
@@ -88,7 +88,11 @@ SHOW CREATE TABLE t1;
 --source include/wait_condition.inc
 SELECT COUNT(*) = 1 FROM t1;
 
+SET SESSION wsrep_osu_method=DEFAULT;
+
 --connection node_1
 DROP TABLE t1;
+
+--disconnect node_2a
 
 --source suite/galera/include/auto_increment_offset_restore.inc

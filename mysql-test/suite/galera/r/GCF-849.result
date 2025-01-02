@@ -20,3 +20,4 @@ t1	CREATE TABLE `t1` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 DROP TABLE t1;
 connection node_1;
+SET SESSION wsrep_osu_method=DEFAULT;

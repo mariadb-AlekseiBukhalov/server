@@ -53,7 +53,7 @@ INSERT INTO t1 VALUES (1,2);
 SELECT COUNT(*) = 2 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';
 SELECT COUNT(*) = 1 FROM t1;
 CALL mtr.add_suppression("WSREP: no corresponding NBO begin found for NBO end source");
-CALL mtr.add_suppression("WSREP: TO isolation failed for NBO phase two.*");
+CALL mtr.add_suppression("WSREP: TO isolation failed for NBO phase two");
 
 --connection node_2
 SELECT COUNT(*) = 2 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';
@@ -65,11 +65,11 @@ CALL mtr.add_suppression("WSREP: gcs_caused() returned -1 \\(Operation not permi
 SELECT COUNT(*) = 2 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';
 SELECT COUNT(*) = 1 FROM t1;
 
-SET SESSION wsrep_OSU_method=TOI;
+SET SESSION wsrep_OSU_method=DEFAULT;
 DROP TABLE t1;
 
 --source suite/galera/include/auto_increment_offset_restore.inc
 
 --connection node_3
 CALL mtr.add_suppression("WSREP: Failed to send NBO-end");
-CALL mtr.add_suppression("NBO phase two begin failed for:");
+CALL mtr.add_suppression("NBO phase two begin failed for: ");

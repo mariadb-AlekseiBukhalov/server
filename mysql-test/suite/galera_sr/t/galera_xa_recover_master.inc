@@ -102,4 +102,4 @@ SET GLOBAL wsrep_provider_options = 'pc.ignore_sb=false';
 DROP TABLE t1;
 SET GLOBAL wsrep_provider_options = 'pc.ignore_sb=false';
 call mtr.add_suppression('Found 2 prepared XA transactions');
-call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs.');
+call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs\\.');

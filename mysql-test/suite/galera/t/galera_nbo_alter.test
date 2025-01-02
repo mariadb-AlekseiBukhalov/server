@@ -1,4 +1,5 @@
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 
 call mtr.add_suppression("WSREP: ALTER TABLE isolation failure");
 
@@ -7,5 +8,5 @@ SET sql_mode='';
 SET SESSION wsrep_osu_method=NBO;
 --error ER_NOT_SUPPORTED_YET
 ALTER TABLE t0 ENGINE=none;
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t0;

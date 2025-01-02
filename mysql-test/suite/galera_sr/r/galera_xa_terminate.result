@@ -73,4 +73,4 @@ connection node_2;
 DROP TABLE t1;
 SET GLOBAL wsrep_provider_options = 'pc.ignore_sb=false';
 call mtr.add_suppression('Found 1 prepared XA transactions');
-call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs.');
+call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs\\.');

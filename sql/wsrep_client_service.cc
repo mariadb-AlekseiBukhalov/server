@@ -333,7 +333,6 @@ enum wsrep::provider::status Wsrep_client_service::replay()
   replayer_thd->wsrep_rgi= wsrep_relay_group_init(replayer_thd, "wsrep_relay");
   replayer_thd->system_thread_info.rpl_sql_info=
     new rpl_sql_thread_info(replayer_thd->wsrep_rgi->rli->mi->rpl_filter);
-
   replayer_thd->thread_stack= m_thd->thread_stack;
   replayer_thd->real_id= pthread_self();
   replayer_thd->prior_thr_create_utime=
@@ -390,7 +389,6 @@ void Wsrep_client_service::wait_for_replayers(wsrep::unique_lock<wsrep::mutex>& 
   mysql_mutex_unlock(&LOCK_wsrep_replaying);
   lock.lock();
 }
-
 
 class thd_context_switch
 {

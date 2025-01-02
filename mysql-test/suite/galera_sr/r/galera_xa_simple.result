@@ -179,6 +179,8 @@ INSERT INTO t1 VALUES(1);
 SET @@session.pseudo_slave_mode=1;
 XA END 'a';
 XA PREPARE 'a';
+Warnings:
+Warning	4205	Pseudo thread id should not be modified by the client as it will be overwritten
 XA ROLLBACK 'a';
 SET @@session.pseudo_slave_mode=DEFAULT;
 Warnings:
@@ -189,6 +191,8 @@ SET SESSION TRANSACTION READ ONLY;
 XA START 'a';
 XA END 'a';
 XA PREPARE 'a';
+Warnings:
+Warning	4205	Pseudo thread id should not be modified by the client as it will be overwritten
 XA COMMIT 'a';
 ERROR XA100: XA_RBROLLBACK: Transaction branch was rolled back
 SET @@session.pseudo_slave_mode=DEFAULT;

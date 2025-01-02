@@ -47,7 +47,7 @@ SELECT * FROM t1;
 --error ER_LOCK_WAIT_TIMEOUT
 INSERT INTO t1 VALUES (1111);
 
---error ER_LOCK_DEADLOCK
+--error ER_LOCK_WAIT_TIMEOUT
 DROP TABLE t1;
 
 #
@@ -65,6 +65,8 @@ SET DEBUG_SYNC= 'now SIGNAL signal.wsrep_alter_locked_tables';
 SET GLOBAL debug_dbug= @save_debug;
 SET DEBUG_SYNC='RESET';
 DROP TABLE t2;
+
+SET SESSION wsrep_osu_method=DEFAULT;
 
 --connection node_2
 #

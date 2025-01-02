@@ -57,9 +57,11 @@ COUNT(*) = 2
 1
 connection node_1;
 DROP TABLE t1;
+disconnect node_2a;
 connection node_2;
+SET SESSION wsrep_osu_method=DEFAULT;
 CALL mtr.add_suppression("Lock wait timeout while waiting NBO end to replicate");
 CALL mtr.add_suppression("Failed to acquire total order isolation for non-blocking DDL end event, provider returned error code 6");
 CALL mtr.add_suppression("This will leave database in inconsistent state since DDL execution cannot be terminated in order");
-CALL mtr.add_suppression("NBO phase two begin failed for:");
+CALL mtr.add_suppression("NBO phase two begin failed for: ");
 CALL mtr.add_suppression("WSREP: TO isolation failed for NBO phase two: 1, schema: test, sql: ALTER TABLE t1 ALGORITHM=INPLACE, LOCK=SHARED, ADD COLUMN f2 INTEGER\\.");

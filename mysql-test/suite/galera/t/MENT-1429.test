@@ -1,4 +1,5 @@
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 
 CREATE TABLE ti (id INT PRIMARY KEY) ENGINE=InnoDB;
 SET SESSION sql_mode='ONLY_FULL_GROUP_BY';

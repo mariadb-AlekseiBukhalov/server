@@ -28,5 +28,6 @@ t1	CREATE TABLE `t1` (
 SELECT COUNT(*) = 2 FROM t1;
 COUNT(*) = 2
 1
-SET SESSION wsrep_osu_method=TOI;
+connection node_1;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;

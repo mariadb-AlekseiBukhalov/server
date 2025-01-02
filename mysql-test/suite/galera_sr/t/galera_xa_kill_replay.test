@@ -11,13 +11,11 @@
 --let $node_2=node_2
 --source ../galera/include/auto_increment_offset_save.inc
 
-
 #
 # Test A: Crash the server *before* the rollback step during replay
 #
 --let $sync_point_name = crash_xa_replay_before_rollback
 --source galera_xa_kill_replay.inc
-
 
 #
 # Test B: Crash the server *after* the rollback step during replay

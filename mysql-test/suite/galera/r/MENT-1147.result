@@ -31,3 +31,4 @@ test.t0	optimize	note	Table does not support optimize, doing recreate + analyze 
 test.t0	optimize	status	OK
 SET SESSION wsrep_osu_method=TOI;
 DROP TABLE t0;
+SET SESSION wsrep_osu_method=DEFAULT;

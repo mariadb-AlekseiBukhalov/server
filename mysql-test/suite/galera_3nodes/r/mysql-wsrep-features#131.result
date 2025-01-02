@@ -19,5 +19,6 @@ SET DEBUG_SYNC = 'RESET';
 connection node_2;
 ERROR 23000: Duplicate entry '1' for key 'PRIMARY'
 connection node_1;
-SET SESSION wsrep_OSU_method=TOI;
+SET SESSION wsrep_OSU_method=DEFAULT;
 DROP TABLE t1;
+disconnect node_2a;

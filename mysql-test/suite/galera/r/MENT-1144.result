@@ -5,5 +5,5 @@ CREATE TABLE t2 (a INT);
 SET SESSION wsrep_osu_method=NBO;
 OPTIMIZE TABLE t1, t2;
 ERROR 42000: wsrep_OSU_method NBO not supported for query
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1, t2;

@@ -24,3 +24,5 @@ COUNT(*) = 1
 DROP TABLE t1;
 DROP TABLE t2;
 SET DEBUG_SYNC = 'RESET';
+connection node_1;
+SET SESSION wsrep_osu_method=DEFAULT;

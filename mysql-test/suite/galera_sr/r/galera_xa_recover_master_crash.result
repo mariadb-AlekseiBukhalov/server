@@ -30,7 +30,7 @@ XA START 'crash';
 INSERT INTO t1 VALUES(999);
 XA END 'crash';
 XA PREPARE 'crash';
-ERROR HY000: Lost connection to server during query
+Got one of the listed errors
 connection conn_control;
 SET SESSION wsrep_sync_wait = 0;
 connection conn_restart;
@@ -118,6 +118,6 @@ connection node_2;
 DROP TABLE t1;
 SET GLOBAL wsrep_provider_options = 'pc.ignore_sb=false';
 call mtr.add_suppression('Found 2 prepared XA transactions');
-call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs.');
-call mtr.add_suppression('WSREP: Discovered discontinuity in recovered wsrep transaction XIDs. Truncating the recovery list.*');
+call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs\\.');
+call mtr.add_suppression('WSREP: Discovered discontinuity in recovered wsrep transaction XIDs\\. Truncating the recovery list');
 call mtr.add_suppression('Found 3 prepared XA transactions');

@@ -245,14 +245,10 @@ void Wsrep_server_service::log_message(enum wsrep::log::level level,
   case wsrep::log::error:
     WSREP_ERROR("%s", message);
     break;
-  /*
   case wsrep::log::unknown:
     WSREP_UNKNOWN("%s", message);
     assert(0);
     break;
-  */
-  case wsrep::log::unknown:
-    assert(0); break;
   }
 }
 

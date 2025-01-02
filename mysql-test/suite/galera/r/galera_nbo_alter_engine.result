@@ -21,7 +21,7 @@ t1	CREATE TABLE `t1` (
 SELECT COUNT(*) = 2 FROM t1;
 COUNT(*) = 2
 1
-SET SESSION wsrep_OSU_method=TOI;
 DROP TABLE t1;
 connection node_1;
 SET GLOBAL wsrep_mode = DEFAULT;
+SET SESSION wsrep_OSU_method = DEFAULT;

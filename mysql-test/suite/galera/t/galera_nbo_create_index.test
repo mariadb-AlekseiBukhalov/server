@@ -3,6 +3,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 
 CREATE TABLE t1 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
 INSERT INTO t1 VALUES (1),(1);
@@ -32,3 +33,6 @@ SHOW CREATE TABLE t1;
 SHOW CREATE TABLE t1;
 
 DROP TABLE t1;
+
+--connection node_1
+SET SESSION wsrep_osu_method=DEFAULT;

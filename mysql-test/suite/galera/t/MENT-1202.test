@@ -3,8 +3,6 @@
 --source include/have_debug_sync.inc
 --source include/galera_have_debug_sync.inc
 
-
-
 CREATE TABLE p (
 	i VARCHAR(100) PRIMARY KEY,
 	j INT
@@ -20,7 +18,6 @@ CREATE TABLE c (
 INSERT INTO p VALUES('aaaa', 0);
 INSERT INTO p VALUES('aaab', 0);
 INSERT INTO p VALUES('aaac', 0);
-
 
 SET GLOBAL wsrep_slave_threads = 3;
 
@@ -38,24 +35,19 @@ INSERT INTO c VALUES(1, 'aaab');
 --connection node_1a
 SET SESSION wsrep_sync_wait=0;
 
-
 --connection node_2
 UPDATE p SET j = 20;
-
 
 # Wait for first UPDATE to arrive in sync point
 --connection node_1a
 SET SESSION DEBUG_SYNC = "now WAIT_FOR sync.wsrep_apply_cb_reached";
 
-
 # Set sync point for second UPDATE
 --let $galera_sync_point = apply_monitor_slave_enter_sync
 --source include/galera_set_sync_point.inc
 
-
 --connection node_2
 UPDATE p SET j = 21;
-
 
 # Wait for second UPDATE to arrive in sync point
 --connection node_1a
@@ -67,18 +59,14 @@ UPDATE p SET j = 21;
 --let $galera_sync_point = commit_monitor_master_enter_sync
 --source include/galera_set_sync_point.inc
 
-
-
 --connection node_1
 --send COMMIT
-
 
 # Wait for the INSERT to arrive in sync point
 --connection node_1a
 --let $galera_sync_point = apply_monitor_slave_enter_sync commit_monitor_master_enter_sync
 --source include/galera_wait_sync_point.inc
 --source include/galera_clear_sync_point.inc
-
 
 # Release the INSERT
 --let $galera_sync_point = commit_monitor_master_enter_sync
@@ -98,7 +86,6 @@ SET debug_sync='RESET';
 --source include/galera_signal_sync_point.inc
 --source include/galera_clear_sync_point.inc
 
-
 --connection node_1
 --reap
 
@@ -107,7 +94,6 @@ SELECT * FROM c;
 
 SET GLOBAL wsrep_slave_threads = DEFAULT;
 
-
 --connection node_2
 SELECT * FROM p;
 SELECT * FROM c;
@@ -115,13 +101,3 @@ SELECT * FROM c;
 --connection node_1
 DROP TABLE c;
 DROP TABLE p;
-
-
-
-
-
-
-
-
-
-

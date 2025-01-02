@@ -76,7 +76,7 @@ SHOW CREATE TABLE t1;
 --let $wait_condition = SELECT VARIABLE_VALUE = 2 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size'
 --source include/wait_condition.inc
 
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;
 
 --source suite/galera/include/auto_increment_offset_restore.inc
@@ -86,7 +86,6 @@ SET DEBUG_SYNC= 'RESET';
 
 --connection node_1
 CALL mtr.add_suppression("Non-blocking operation in progress, cannot donate SST");
-
 CALL mtr.add_suppression("Resource temporarily unavailable");
 CALL mtr.add_suppression("Cleanup after exit with status:");
 CALL mtr.add_suppression("Failed to send NBO-end");
@@ -100,3 +99,5 @@ CALL mtr.add_suppression("Will never receive state");
 CALL mtr.add_suppression("terminated unexpectedly");
 CALL mtr.add_suppression("No donor candidates temporarily available in suitable state");
 CALL mtr.add_suppression("TO isolation failed for NBO phase two:");
+
+--disconnect node_1a

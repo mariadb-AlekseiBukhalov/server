@@ -5730,8 +5730,6 @@ int ha_release_savepoint(THD *thd, SAVEPOINT *sv);
 #ifdef WITH_WSREP
 int ha_abort_transaction(THD *bf_thd, THD *victim_thd, my_bool signal);
 void wsrep_wait_until_innodb_initialized();
- #else
-inline void ha_fake_trx_id(THD *thd) { }
 #endif /* WITH_WSREP */
 
 /* these are called by storage engines */

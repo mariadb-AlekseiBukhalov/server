@@ -42,7 +42,8 @@ t1	CREATE TABLE `t1` (
 SELECT COUNT(*) = 0 FROM t1;
 COUNT(*) = 0
 1
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;
 connection node_2;
 SET DEBUG_SYNC= 'RESET';
+disconnect node_1a;

@@ -31,9 +31,11 @@ SELECT COUNT(*) = 4 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';
 --connection node_2
 SELECT COUNT(*) = 4 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';
 
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;
 
---connection node_2
 CALL mtr.add_suppression("Slave SQL: Error 'Duplicate column name");
 CALL mtr.add_suppression("WSREP: Event 1 Query apply failed");
+
+--connection node_1
+SET SESSION wsrep_osu_method=DEFAULT;

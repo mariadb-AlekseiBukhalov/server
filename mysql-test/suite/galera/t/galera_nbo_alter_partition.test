@@ -3,9 +3,8 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 --source include/have_partition.inc
---source include/have_debug_sync.inc
---source include/have_debug.inc
 
 --connection node_1
 CREATE TABLE t1 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
@@ -26,5 +25,6 @@ INSERT INTO t1 VALUES (2);
 SHOW CREATE TABLE t1;
 SELECT COUNT(*) = 2 FROM t1;
 
-SET SESSION wsrep_osu_method=TOI;
+--connection node_1
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;

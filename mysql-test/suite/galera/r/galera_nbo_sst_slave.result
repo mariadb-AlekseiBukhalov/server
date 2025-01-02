@@ -28,7 +28,7 @@ t1	CREATE TABLE `t1` (
   PRIMARY KEY (`f1`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
 connection node_1;
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;
 connection node_1a;
 SET DEBUG_SYNC= 'RESET';
@@ -46,3 +46,4 @@ CALL mtr.add_suppression("Will never receive state");
 CALL mtr.add_suppression("terminated unexpectedly");
 CALL mtr.add_suppression("No donor candidates temporarily available in suitable state");
 CALL mtr.add_suppression("TO isolation failed for NBO phase two:");
+disconnect node_1a;

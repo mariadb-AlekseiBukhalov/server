@@ -35,6 +35,6 @@ XA ROLLBACK 'xatest_prepared';
 DROP TABLE t1;
 
 call mtr.add_suppression('Found 1 prepared XA transactions');
-call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs.');
+call mtr.add_suppression('Discovered discontinuity in recovered wsrep transaction XIDs\\.');
 
 --source ../galera/include/auto_increment_offset_restore.inc

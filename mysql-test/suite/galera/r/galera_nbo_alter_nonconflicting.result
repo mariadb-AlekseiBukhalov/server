@@ -39,6 +39,8 @@ t1	CREATE TABLE `t1` (
   PRIMARY KEY (`f1`),
   KEY `f2` (`f2`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
-SET GLOBAL wsrep_slave_threads = 1;
-SET SESSION wsrep_OSU_method=TOI;
+SET GLOBAL wsrep_slave_threads=DEFAULT;
+disconnect node_1a;
+connection node_1;
+SET SESSION wsrep_OSU_method=DEFAULT;
 DROP TABLE t1;

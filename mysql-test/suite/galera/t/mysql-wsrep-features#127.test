@@ -2,7 +2,6 @@
 
 --source include/galera_cluster.inc
 
-
 --connection node_1
 CREATE TABLE t1 (f1 INTEGER);
 SET GLOBAL wsrep_OSU_method=NBO;
@@ -11,6 +10,5 @@ SET GLOBAL wsrep_OSU_method=NBO;
 ALTER TABLE t1 LOCK=SHARED, ADD COLUMN f2 INTEGER;
 
 --connection node_1
-SET GLOBAL wsrep_OSU_method=TOI;
+SET GLOBAL wsrep_OSU_method=DEFAULT;
 DROP TABLE t1;
-

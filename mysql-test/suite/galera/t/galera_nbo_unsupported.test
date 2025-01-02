@@ -3,6 +3,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 
 call mtr.add_suppression("WSREP: CREATE TABLE isolation failure");
 
@@ -37,7 +38,7 @@ CREATE DATABASE db1;
 --error ER_NOT_SUPPORTED_YET
 DROP DATABASE db1;
 
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 
 SHOW CREATE TABLE t1;
 DROP TABLE t1;

@@ -1,7 +1,7 @@
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
-
 
 CREATE TABLE t1 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
 CREATE TABLE t2 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
@@ -37,3 +37,6 @@ DROP TABLE t1;
 DROP TABLE t2;
 
 SET DEBUG_SYNC = 'RESET';
+
+--connection node_1
+SET SESSION wsrep_osu_method=DEFAULT;

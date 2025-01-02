@@ -18,7 +18,7 @@ SET GLOBAL debug_dbug="d,crash_replicate_fragment_after_certify";
 XA START 'crash';
 INSERT INTO t1 VALUES(999);
 XA END 'crash';
---error 2013 # server lost
+--error 2013,2026 # server lost
 XA PREPARE 'crash';
 
 --connection $conn_control

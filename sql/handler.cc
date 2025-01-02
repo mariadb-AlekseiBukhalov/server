@@ -2440,8 +2440,8 @@ int ha_rollback_trans(THD *thd, bool all)
 #ifdef WITH_WSREP
   if (WSREP(thd) && thd->is_error())
   {
-    WSREP_DEBUG("ha_rollback_trans(%lld) rolled back: msg %s is_real %d wsrep_err %s",
-                thd->thread_id,
+    WSREP_DEBUG("ha_rollback_trans(%lld, %s) rolled back: msg %s is_real %d wsrep_err %s",
+                thd->thread_id, all ? "TRUE" : "FALSE",
                 thd->get_stmt_da()->message(), is_real_trans,
                 wsrep::to_c_string(thd->wsrep_cs().current_error()));
   }
@@ -3824,6 +3824,7 @@ int handler::ha_rnd_next(uchar *buf)
       DBUG_RETURN(HA_ERR_WRONG_IN_RECORD);
     }
   });
+
   do
   {
     TABLE_IO_WAIT(tracker, PSI_TABLE_FETCH_ROW, MAX_KEY, result,
@@ -8688,15 +8689,14 @@ int ha_abort_transaction(THD *bf_thd, THD *victim_thd, my_bool signal)
 
   DBUG_RETURN(0);
 }
-#endif /* WITH_WSREP */
 
-#ifdef WITH_WSREP
 void wsrep_wait_until_innodb_initialized()
 {
   handlerton *hton= installed_htons[DB_TYPE_INNODB];
-  if (hton)  hton->wait_until_initialized(hton);
+  if (hton) hton->wait_until_initialized(hton);
 }
 #endif /* WITH_WSREP */
+
 
 /* Remove all indexes for a given table from global index statistics */
 

@@ -8,4 +8,3 @@
 --source include/have_innodb.inc
 
 SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%';
-

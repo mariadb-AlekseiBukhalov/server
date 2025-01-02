@@ -40,3 +40,4 @@ COUNT(*) = 1
 DROP TABLE t1;
 connection node_2b;
 CALL mtr.add_suppression("WSREP: no corresponding NBO begin found for NBO end source");
+disconnect node_2a;

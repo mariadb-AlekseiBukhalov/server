@@ -42,7 +42,7 @@ SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LI
 --let $assert_file= $MYSQLTEST_VARDIR/log/mysqld.1.err
 --source include/assert_grep.inc
 
-CALL mtr.add_suppression('WSREP:.* certificate verify failed.*');
+CALL mtr.add_suppression('WSREP:.* certificate verify failed');
 
 # Restore original auto_increment_offset values.
 --source include/auto_increment_offset_restore.inc

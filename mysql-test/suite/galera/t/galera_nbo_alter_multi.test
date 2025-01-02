@@ -3,6 +3,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 
 CREATE TABLE t1 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
 
@@ -12,4 +13,6 @@ ALTER TABLE t1 LOCK=SHARED, ADD PRIMARY KEY (f1), ADD COLUMN f2 INTEGER;
 --connection node_2
 SHOW CREATE TABLE t1;
 
+--connection node_1
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;

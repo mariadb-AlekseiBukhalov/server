@@ -4,9 +4,9 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
-
 
 CREATE TABLE t1 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
 SET SESSION wsrep_osu_method=NBO;
@@ -62,8 +62,10 @@ SELECT COUNT(*) = 0 FROM t1;
 SHOW CREATE TABLE t1;
 SELECT COUNT(*) = 0 FROM t1;
 
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;
 
 --connection node_2
 SET DEBUG_SYNC= 'RESET';
+
+--disconnect node_1a

@@ -49,7 +49,11 @@ f1
 3
 4
 5
+connection node_1a;
+SET DEBUG_SYNC = 'RESET';
 connection node_1;
 SET DEBUG_SYNC = 'RESET';
 SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1;
+disconnect node_1a;
+disconnect node_2a;

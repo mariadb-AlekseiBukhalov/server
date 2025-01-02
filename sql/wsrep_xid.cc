@@ -28,6 +28,8 @@
 #include <sstream>   /* std::stringstream */
 #include "log_event.h" /* serialize_xid */
 
+#include <string>    /* std::string */
+#include <sstream>   /* std::stringstream */
 /*
  * WSREPXid
  */

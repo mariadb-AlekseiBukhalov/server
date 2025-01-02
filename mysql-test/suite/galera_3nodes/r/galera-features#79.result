@@ -43,6 +43,6 @@ CALL mtr.add_suppression('Failed to send state UUID: -11 \\(Resource temporarily
 CALL mtr.add_suppression('discarding established');
 CALL mtr.add_suppression('Quorum: No node with complete state');
 connection node_2;
-ERROR HY000: Lost connection to server during query
+Got one of the listed errors
 connection node_2b;
 CALL mtr.add_suppression("WSREP: no corresponding NBO begin found for NBO end source");

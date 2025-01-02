@@ -2827,6 +2827,7 @@ static bool wsrep_can_run_in_nbo(THD *thd, const char *db, const char *table,
   }
   return false;
 }
+
 static int wsrep_create_sp(THD *thd, uchar** buf, size_t* buf_len)
 {
   String log_query;
@@ -3900,6 +3901,7 @@ static void wsrep_abort_granted(THD* request_thd,
   @retval true                 Request thread should wait MDL-lock
   @retval false                Abort request thread
 */
+
 bool wsrep_handle_mdl_conflict(MDL_context *requestor_ctx,
                                const MDL_ticket *ticket,
                                const MDL_key *key)

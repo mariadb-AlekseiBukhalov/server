@@ -362,9 +362,13 @@ static inline int wsrep_before_prepare(THD* thd, bool all)
        in wsrep_before_commit(). wsrep_before_prepare() is
        executed out of order. */
       DBUG_ASSERT(!thd->wsrep_trx().ws_meta().gtid().is_undefined());
+      /* Here we init xid with UUID and wsrep seqno. GTID is
+         set to undefined because commit order is decided later
+         in wsrep_before_commit(). wsrep_before_prepare() is
+         executed out of order. */
       wsrep_xid_init(&thd->wsrep_xid,
                      thd->wsrep_trx().ws_meta().gtid(),
-                     wsrep_gtid_server.gtid());
+                     wsrep_gtid_server.undefined());
     }
   }
 

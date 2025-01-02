@@ -58,8 +58,9 @@ SELECT * FROM t2;
 f1
 1
 2
+SET SESSION wsrep_OSU_method=DEFAULT;
 connection node_1;
-SET SESSION wsrep_OSU_method=TOI;
+SET SESSION wsrep_OSU_method=DEFAULT;
 SELECT * FROM t2;
 f1
 1

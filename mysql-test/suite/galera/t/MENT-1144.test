@@ -17,5 +17,5 @@ SET SESSION wsrep_osu_method=NBO;
 --error ER_NOT_SUPPORTED_YET
 OPTIMIZE TABLE t1, t2;
 
-SET SESSION wsrep_osu_method=TOI;
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1, t2;

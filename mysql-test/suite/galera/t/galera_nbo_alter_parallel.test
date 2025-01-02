@@ -3,17 +3,18 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
 
 --connection node_1
 # Ignore warnings about BF locks because we intentionally try
 # to send concurrent DDL
-call mtr.add_suppression("BF request is not compatible with victim.*");
-call mtr.add_suppression("BF requesting lock:.*");
-call mtr.add_suppression("victim holding lock:.*");
-call mtr.add_suppression("InnoDB: WSREP state:.*");
-call mtr.add_suppression("WSREP: Thread BF trx_id:.*");
+call mtr.add_suppression("BF request is not compatible with victim");
+call mtr.add_suppression("BF requesting lock:");
+call mtr.add_suppression("victim holding lock:");
+call mtr.add_suppression("InnoDB: WSREP state:");
+call mtr.add_suppression("WSREP: Thread BF trx_id:");
 
 CREATE TABLE t1 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
 CREATE TABLE t2 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
@@ -22,11 +23,11 @@ CREATE TABLE t3 (f1 INTEGER NOT NULL) ENGINE=InnoDB;
 --connection node_2
 # Ignore warnings about BF locks because we intentionally try
 # to send concurrent DDL
-call mtr.add_suppression("BF request is not compatible with victim.*");
-call mtr.add_suppression("BF requesting lock:.*");
-call mtr.add_suppression("victim holding lock:.*");
-call mtr.add_suppression("InnoDB: WSREP state:.*");
-call mtr.add_suppression("WSREP: Thread BF trx_id:.*");
+call mtr.add_suppression("BF request is not compatible with victim");
+call mtr.add_suppression("BF requesting lock:");
+call mtr.add_suppression("victim holding lock:");
+call mtr.add_suppression("InnoDB: WSREP state:");
+call mtr.add_suppression("WSREP: Thread BF trx_id:");
 
 SET GLOBAL debug_dbug = 'd,sync.wsrep_alter_locked_tables';
 
@@ -89,4 +90,9 @@ SELECT COUNT(*) AS EXPECT_2 FROM t3;
 
 SET DEBUG_SYNC= 'RESET';
 
+--disconnect node_1a
+--disconnect node_1b
+--connection node_1
+
+SET SESSION wsrep_osu_method=DEFAULT;
 DROP TABLE t1, t2, t3;

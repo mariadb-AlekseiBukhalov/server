@@ -3,6 +3,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 
 #
 # Test A: DDL BF aborts active XA (before XA PREPARE)

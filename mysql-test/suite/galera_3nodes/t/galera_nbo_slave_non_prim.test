@@ -3,6 +3,7 @@
 #
 
 --source include/galera_cluster.inc
+--source include/have_innodb.inc
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
 
@@ -64,12 +65,14 @@ SELECT COUNT(*) = 1 FROM t1;
 --connection node_2
 --source include/wait_until_connected_again.inc
 --source include/galera_wait_ready.inc
+
 SELECT COUNT(*) = 3 FROM mysql.wsrep_cluster_members;
 SHOW CREATE TABLE t1;
 SELECT COUNT(*) = 1 FROM t1;
 
+--disconnect node_1a
 --connection node_1
-SET SESSION wsrep_OSU_method=TOI;
+SET SESSION wsrep_OSU_method=DEFAULT;
 DROP TABLE t1;
 CALL mtr.add_suppression("gcs_caused\\(\\) returned -1");
 
