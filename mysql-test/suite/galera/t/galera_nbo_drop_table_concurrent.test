@@ -72,8 +72,8 @@ DROP TABLE t2;
 # report wait information on debug builds. This happens for NBO as
 # it will not take similar MDL-locks as TOI
 #
-call mtr.add_suppression("WSREP: BF request is not compatible with victim.*");
-call mtr.add_suppression("WSREP: BF requesting lock.*"); 
-call mtr.add_suppression("WSREP: victim holding lock.*"); 
-call mtr.add_suppression("InnoDB: WSREP state:*"); 
-call mtr.add_suppression("WSREP: Thread.*");
+call mtr.add_suppression("WSREP: BF request is not compatible with victim");
+call mtr.add_suppression("WSREP: BF requesting lock");
+call mtr.add_suppression("WSREP: victim holding lock");
+call mtr.add_suppression("InnoDB: WSREP state: ");
+call mtr.add_suppression("WSREP: Thread ");

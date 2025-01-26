@@ -15,6 +15,9 @@ SET SESSION max_error_count=0;
 CREATE TABLE t0 (id GEOMETRY,parent_id GEOMETRY)ENGINE=SEQUENCE;
 
 --connection node_2
+--error ER_NO_SUCH_TABLE
+SHOW CREATE TABLE t0;
+
 --disable_query_log
 --eval SET GLOBAL wsrep_ignore_apply_errors=$restore_wsrep_ignore_apply_errors
 --enable_query_log

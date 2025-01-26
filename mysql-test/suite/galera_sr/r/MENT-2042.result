@@ -21,3 +21,4 @@ formatID	gtrid_length	bqual_length	data
 XA ROLLBACK 'a';
 DROP TABLE t1;
 SET DEBUG_SYNC = 'RESET';
+disconnect node_1a;

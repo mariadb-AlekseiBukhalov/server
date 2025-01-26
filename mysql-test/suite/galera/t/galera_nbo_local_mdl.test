@@ -22,7 +22,6 @@ SHOW CREATE TABLE t2;
 SET SESSION wsrep_OSU_method=NBO;
 --send ALTER TABLE t1 LOCK=SHARED, DROP COLUMN f2;
 
-
 # Confirm that the ALTER is blocked
 --connect node_1b, 127.0.0.1, root, , test, $NODE_MYPORT_1
 --connection node_1b

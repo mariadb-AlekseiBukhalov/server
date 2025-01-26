@@ -9,3 +9,16 @@
 #  Do not use any TAB characters for whitespace.
 #
 ##############################################################################
+
+MENT-2042 : MENT-2214 Test failure on MENT-2042
+MENT-1733 : MENT-2213 Test failure on MENT-1733
+galera_xa_bf_abort_after_prepare : MENT-2212 Assertion `thd->backup_commit_lock == 0' failed
+galera_xa_bf_abort_before_prepare : MENT-2212 Assertion `thd->backup_commit_lock == 0' failed
+galera_xa_bf_abort_certifying_prepare : MENT-2212 Assertion `thd->backup_commit_lock == 0' failed
+galera_xa_replay_before_commit : MENT-2212 Assertion `thd->backup_commit_lock == 0' failed
+galera_xa_replay_commit : MENT-2212 Assertion `thd->backup_commit_lock == 0' failed
+galera_xa_cert_failure : MENT-2212 Assertion `thd->backup_commit_lock == 0' failed
+galera_xa_concurrent : MENT-2212 Assertion `thd->backup_commit_lock == 0' failed
+galera_xa_concurrent_prepare : MENT-2212 Assertion `thd->backup_commit_lock == 0' failed
+galera_xa_ddl_conflict : MENT-2212 Assertion `thd->backup_commit_lock == 0' failed
+galera_xa_ddl_conflict_committing : MENT-2212 Assertion `thd->backup_commit_lock == 0' failed
