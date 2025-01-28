@@ -3375,9 +3375,20 @@ int wsrep_nbo_phase_two_begin(THD *thd)
 
     wsrep::client_state& cs(thd->wsrep_cs());
     thd_proc_info(thd, "acquiring total order isolation for NBO phase two");
+    // The DDL execution is not over yet when phase two starts. It is only
+    // assumed that all the necessary MDL locks have been taken.
+    // There should be some minimum time to wait. The phase two end
+    // communicates over network, and failing a DDL just because there
+    // is a small hickup in network is not nice.
+    // Therefore, NBO second phase two use at least 60 second timeout or
+    // configured timeout that could be stored on saved_lock_wait_timeout:
+    ulong min_wait_timeout= std::min(thd->variables.lock_wait_timeout,
+                                     thd->variables.saved_lock_wait_timeout);
+    if (min_wait_timeout < 60)
+      min_wait_timeout= 60;
     ret= cs.begin_nbo_phase_two(keys,
                                 wsrep::clock::now()
-                                + std::chrono::seconds(thd->variables.lock_wait_timeout));
+                                + std::chrono::seconds(min_wait_timeout));
     thd->wsrep_nbo_ctx.set_phase_two_done();
     if (ret)
     {
