@@ -31,6 +31,7 @@
 #ifdef HAVE_OPENSSL
 #include "ssl_compat.h"
 #endif /* HAVE_OPENSSL */
+#include <openssl/pem.h>
 
 #include "mysql/psi/mysql_socket.h"
 #include "mysql/psi/mysql_thread.h"
