@@ -384,8 +384,7 @@ Wsrep_tls_service::Stream::error_reason_is_short_read(unsigned long sys_error)
 #elif !defined(HAVE_WOLFSSL) && defined(SSL_R_SHORT_READ)
   return ERR_GET_REASON(sys_error) == SSL_R_SHORT_READ;
 #elif defined(HAVE_WOLFSSL)
-  return ERR_GET_REASON(sys_error) == SSL_R_SHORT_READ ||
-         ERR_GET_REASON(sys_error) == -SOCKET_PEER_CLOSED_E;
+  return ERR_GET_REASON(sys_error) == -SOCKET_PEER_CLOSED_E;
 #else
   return false;
 #endif
