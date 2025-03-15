@@ -314,11 +314,12 @@ static int wsrep_wolfssl_send(WOLFSSL* ssl, char* buf, int sz, void*)
 
 static int wsrep_wolfssl_fix_ssl_error(int ssl_error, unsigned long sys_error)
 {
-  /* For some reason wolfssl returns -SOCKET_PEER_CLOSED_E as as a
-     SSL_ERROR_SYSCALL, while it is clearly not a system error.
+  /* For some reason wolfssl returns -SOCKET_PEER_CLOSED_E OR SOCKET_PEER_CLOSED_E
+     as as a SSL_ERROR_SYSCALL, while it is clearly not a system error.
      Fix the ssl_error to SSL_ERROR_SSL.*/
   if (unlikely(ssl_error == SSL_ERROR_SYSCALL &&
-               ERR_GET_REASON(sys_error) == -SOCKET_PEER_CLOSED_E))
+               (ERR_GET_REASON(sys_error) == SOCKET_PEER_CLOSED_E ||
+                ERR_GET_REASON(sys_error) == -SOCKET_PEER_CLOSED_E)))
   {
     return SSL_ERROR_SSL;
   }
@@ -378,13 +379,15 @@ Wsrep_tls_service::Stream::error_reason_is_short_read(unsigned long sys_error)
     - SSL_R_SHORT_READ - OpenSSL < 3.0 and wolfSSL
     - SSL_R_UNEXPECTED_EOF_WHILE_READING - OpenSSL >= 3.0
     - -SOCKET_PEER_CLOSED_E returned by wolfSSL
+    - SOCKET_PEER_CLOSED_E returned by wolfSSL
   */
 #if defined(HAVE_OPENSSL) && OPENSSL_VERSION_MAJOR >= 3
   return ERR_GET_REASON(sys_error) == SSL_R_UNEXPECTED_EOF_WHILE_READING;
 #elif !defined(HAVE_WOLFSSL) && defined(SSL_R_SHORT_READ)
   return ERR_GET_REASON(sys_error) == SSL_R_SHORT_READ;
 #elif defined(HAVE_WOLFSSL)
-  return ERR_GET_REASON(sys_error) == -SOCKET_PEER_CLOSED_E;
+  return ((ERR_GET_REASON(sys_error) == SOCKET_PEER_CLOSED_E) ||
+          (ERR_GET_REASON(sys_error) == -SOCKET_PEER_CLOSED_E));
 #else
   return false;
 #endif
