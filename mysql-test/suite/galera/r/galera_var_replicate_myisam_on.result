@@ -250,4 +250,6 @@ SELECT * FROM t1;
 i
 1
 DROP TABLE t1;
-connection node_1;
+SET GLOBAL wsrep_mode = DEFAULT;
+connection node_2;
+SET GLOBAL wsrep_mode = DEFAULT;
