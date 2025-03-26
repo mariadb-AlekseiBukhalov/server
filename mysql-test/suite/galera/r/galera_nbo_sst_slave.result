@@ -10,7 +10,7 @@ SET SESSION wsrep_osu_method=NBO;
 ALTER TABLE t1 LOCK=SHARED, ADD COLUMN f2 INTEGER;;
 connect node_1a, 127.0.0.1, root, , test, $NODE_MYPORT_1;
 connection node_1a;
-SET SESSION wsrep_sync_wait = 0;
+SET DEBUG_SYNC = 'now WAIT_FOR signal.wsrep_alter_locked_tables_reached';
 connection node_2;
 restart node_2, should fail
 connection node_1a;
@@ -18,7 +18,15 @@ include/assert_grep.inc [Master should report that it can not donate SST]
 include/assert_grep.inc [Slave should report that it could not join]
 SET GLOBAL debug_dbug = '';
 SET DEBUG_SYNC='now SIGNAL signal.wsrep_alter_locked_tables';
+SET DEBUG_SYNC='now WAIT_FOR signal.wsrep_alter_locked_tables_continued';
 connection node_1;
+SHOW CREATE TABLE t1;
+Table	Create Table
+t1	CREATE TABLE `t1` (
+  `f1` int(11) NOT NULL,
+  `f2` int(11) DEFAULT NULL,
+  PRIMARY KEY (`f1`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci
 connection node_2;
 SHOW CREATE TABLE t1;
 Table	Create Table

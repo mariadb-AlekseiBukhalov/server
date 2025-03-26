@@ -22,7 +22,7 @@
 --source include/wait_condition.inc
 
 # Remove grastate.dat from node #2 so that SST is guaranteed
---remove_file $MYSQLD2_DATADIR/grastate.dat
+--remove_file $MYSQLTEST_VARDIR/mysqld.2/data/grastate.dat
 
 # Begin an ALTER and block
 
@@ -33,7 +33,7 @@ SET SESSION wsrep_osu_method=NBO;
 
 --connect node_1a, 127.0.0.1, root, , test, $NODE_MYPORT_1
 --connection node_1a
-SET SESSION wsrep_sync_wait = 0;
+SET DEBUG_SYNC = 'now WAIT_FOR signal.wsrep_alter_locked_tables_reached';
 --let $wait_condition = SELECT 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE INFO = 'ALTER TABLE t1 LOCK=SHARED, ADD COLUMN f2 INTEGER' AND STATE = 'debug sync point: now';
 --source include/wait_condition.inc
 
@@ -60,9 +60,11 @@ SET SESSION wsrep_sync_wait = 0;
 
 SET GLOBAL debug_dbug = '';
 SET DEBUG_SYNC='now SIGNAL signal.wsrep_alter_locked_tables';
+SET DEBUG_SYNC='now WAIT_FOR signal.wsrep_alter_locked_tables_continued';
 
 --connection node_1
 --reap
+SHOW CREATE TABLE t1;
 
 # Restart node_2 again, now with the DDL out of the way
 --connection node_2
