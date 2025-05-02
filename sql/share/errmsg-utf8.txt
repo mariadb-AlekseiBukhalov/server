@@ -12301,6 +12301,40 @@ ER_TEMPORARY_TABLES_PREVENT_SWITCH_GTID_DOMAIN_ID
 	eng "Cannot modify @@session.gtid_domain_id while there are open temporary tables being binlogged"
 ER_TOO_MANY_OPEN_CURSORS
         eng "Too many open cursors; max %u cursors allowed"
+ER_INCOMPATIBLE_EVENT_FLAG
+        eng "Event flag '%s' in the condition expression is not compatible with the trigger event type '%s'"
+ER_NOT_IMPLEMENTED_FOR_GEOGRAPHIC_SRS
+        eng "%s has not been implemented for geographic spatial reference systems."
+ER_LONGITUDE_OUT_OF_RANGE
+        eng "Longitude %f is out of range in function %s. It must be within (-180.000000, 180.000000]."
+ER_LATITUDE_OUT_OF_RANGE
+        eng "Latitude %f is out of range in function %s. It must be within [-90.000000, 90.000000]."
+ER_GIS_DIFFERENT_SRIDS_AGGREGATION
+        eng "Arguments to function %s contains geometries with different SRIDs: %d and %d. All geometries must have the same SRID."
+ER_SEQUENCE_TABLE_HAS_TOO_FEW_ROWS
+        eng "Fewer than one row in the table"
+ER_SEQUENCE_TABLE_HAS_TOO_MANY_ROWS
+        eng "More than one row in the table"
+ER_WARN_OPTIMIZER_HINT_SYNTAX_ERROR
+        eng "Optimizer hint syntax error"
+ER_WARN_CONFLICTING_HINT
+        eng "Hint %s is ignored as conflicting/duplicated"
+ER_WARN_UNKNOWN_QB_NAME
+        eng "Query block name %s is not found for %s hint"
+ER_UNRESOLVED_TABLE_HINT_NAME
+        eng "Unresolved table name %s for %s hint"
+ER_UNRESOLVED_INDEX_HINT_NAME
+        eng "Unresolved index name %s for %s hint"
+ER_HINTS_INSIDE_VIEWS_NOT_SUPPORTED
+        eng "Optimizer hints are not supported inside view definitions"
+ER_WARN_MALFORMED_HINT
+        eng "Hint %s is ignored as malformed"
+ER_WARN_HINTS_ON_INSERT_PART_OF_INSERT_SELECT
+        eng "Optimizer hints at the INSERT part of a INSERT..SELECT statement are not supported"
+ER_INIT_SLAVE_ERROR
+        eng "Slave SQL thread aborted. Can't execute init_slave query due to error code %u: %s"
+ER_ACTIVE_CONNECTIONS_FOR_USER_TO_DROP
+        eng "Dropped users %s have active connections. Use KILL CONNECTION if they should not be used anymore."
 ER_ASSOC_ARRAY_ELEM_NOT_FOUND
         eng "Element not found with key '%s'"
 ER_NULL_FOR_ASSOC_ARRAY_INDEX
