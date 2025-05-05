@@ -283,6 +283,9 @@ FUNCTION(INSTALL_RUNTIME_DEPS)
       ${exclude_libs}
       "clang_rt" # ASAN libraries
       "vcruntime"
+      "icuuc\\.dll" # on some reason, not resolved on Win 10 1809
+      "icuin\\.dll"
+      "gdi"
       POST_EXCLUDE_REGEXES
       ".*system32/.*\\.dll" # Windows stuff
       POST_INCLUDE_REGEXES
