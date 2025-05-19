@@ -9498,7 +9498,8 @@ void refresh_global_status()
 #endif
 
   /* Reset the counters of all key caches (default and named). */
-  process_key_caches(reset_key_cache_counters, 0);
+  process_key_caches(reset_key_cache_counters, 0); // MyISAM page caches
+  aria_reset_pagecache_counters();                 // Aria page cache
   global_status_var.flush_status_time= my_time(0);
   mysql_mutex_unlock(&LOCK_status);
 
