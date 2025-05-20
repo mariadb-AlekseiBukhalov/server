@@ -10799,8 +10799,8 @@ int spider_odbc_handler::get_statistics(
       share->stat.auto_increment_value = 1;
     } else {
       if (cardinality_sz > 0 &&
-          (field= find_field_in_table_sef(table,
-                                Lex_cstring_strlen((char*)column_name))))
+        (field = find_field_in_table_sef(
+          table, {(char *)column_name, (uint) column_name_sz})))
       {
         if ((share->cardinality[field->field_index] =
           (longlong) cardinality) <= 0)
