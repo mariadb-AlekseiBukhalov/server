@@ -1139,10 +1139,10 @@ id	select_type	table	type	possible_keys	key	key_len	ref	rows	Extra
 1	SIMPLE	t2	ALL	NULL	NULL	NULL	NULL	#	Using where; Using temporary; Using filesort
 explain select a1,a2,b,       max(c) from t2 where (c < 'k321') group by a1,a2,b;
 id	select_type	table	type	possible_keys	key	key_len	ref	rows	Extra
-1	SIMPLE	t2	ALL	NULL	NULL	NULL	NULL	#	Using where; Using temporary; Using filesort
+1	SIMPLE	t2	index	NULL	idx_t2_2	578	NULL	#	Using where
 explain select a1,a2,b,min(c),max(c) from t2 where (c < 'k321') group by a1,a2,b;
 id	select_type	table	type	possible_keys	key	key_len	ref	rows	Extra
-1	SIMPLE	t2	ALL	NULL	NULL	NULL	NULL	#	Using where; Using temporary; Using filesort
+1	SIMPLE	t2	index	NULL	idx_t2_2	578	NULL	#	Using where
 explain select a1,a2,b,       max(c) from t2 where (c < 'a0') or (c > 'b1') group by a1,a2,b;
 id	select_type	table	type	possible_keys	key	key_len	ref	rows	Extra
 1	SIMPLE	t2	index	NULL	idx_t2_2	578	NULL	#	Using where
@@ -2227,7 +2227,7 @@ Warnings:
 Note	1003	select `test`.`t1`.`a1` AS `a1`,`test`.`t1`.`a2` AS `a2`,`test`.`t1`.`b` AS `b`,`test`.`t1`.`c` AS `c` from `test`.`t1` where (`test`.`t1`.`a1` = 'b' or `test`.`t1`.`a1` = 'd' or `test`.`t1`.`a1` = 'a' or `test`.`t1`.`a1` = 'c') and `test`.`t1`.`a2` > 'a' and `test`.`t1`.`d` > 'xy2' group by `test`.`t1`.`a1`,`test`.`t1`.`a2`,`test`.`t1`.`b`,`test`.`t1`.`c`
 explain select a1,a2,b,max(c),min(c) from t2 where (a2 = 'a') and (b = 'b') or (b < 'b') group by a1;
 id	select_type	table	type	possible_keys	key	key_len	ref	rows	Extra
-1	SIMPLE	t2	ALL	NULL	NULL	NULL	NULL	164	Using where; Using temporary; Using filesort
+1	SIMPLE	t2	index	NULL	idx_t2_0	257	NULL	164	Using where
 explain select a1,a2,b,max(c),min(c) from t2 where (a2 = 'a') and (b < 'b') group by a1;
 id	select_type	table	type	possible_keys	key	key_len	ref	rows	Extra
 1	SIMPLE	t2	ALL	NULL	NULL	NULL	NULL	164	Using where; Using temporary; Using filesort
@@ -2250,7 +2250,7 @@ a1	a2	min(b)	c
 a	a	a	a111
 explain select a1,a2,b,max(c),min(c) from t2 where (a2 = 'a') and (b = 'b') or (b = 'a') group by a1;
 id	select_type	table	type	possible_keys	key	key_len	ref	rows	Extra
-1	SIMPLE	t2	ALL	NULL	NULL	NULL	NULL	164	Using where; Using temporary; Using filesort
+1	SIMPLE	t2	index	NULL	idx_t2_0	257	NULL	164	Using where
 explain select a1,a2,b,min(c),max(c) from t2
 where (c > 'a000') and (c <= 'd999') and (c like '_8__') group by a1,a2,b;
 id	select_type	table	type	possible_keys	key	key_len	ref	rows	Extra
