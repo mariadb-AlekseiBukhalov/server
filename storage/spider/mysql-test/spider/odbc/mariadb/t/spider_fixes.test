@@ -1,5 +1,6 @@
 # This test tests for Spider's bug fixes
 source include/have_log_bin.inc;
+--source include/test_db_charset_latin1.inc
 --disable_warnings
 --disable_query_log
 --disable_result_log
@@ -838,5 +839,6 @@ if ($USE_CHILD_GROUP2)
 --enable_result_log
 --enable_query_log
 --enable_warnings
+--source include/test_db_charset_restore.inc
 --echo
 --echo end of test
