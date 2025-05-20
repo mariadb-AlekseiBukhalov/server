@@ -6862,6 +6862,7 @@ int spider_db_init(
   ++dbton_id;
 #endif
   DBUG_ASSERT(dbton_id <= SPIDER_DBTON_SIZE);
+  for (roop_count = 0; roop_count < (int) dbton_id; roop_count++)
   {
     if (spider_dbton[roop_count].init &&
         (error_num = spider_dbton[roop_count].init()))
