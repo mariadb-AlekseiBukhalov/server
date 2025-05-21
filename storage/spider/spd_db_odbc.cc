@@ -10711,7 +10711,7 @@ int spider_odbc_handler::get_statistics(
     DBUG_RETURN(spider_unlock_after_query(conn, stored_error));
   }
   ret = SQLStatistics(hstm, NULL, 0, NULL, 0,
-    (SQLCHAR *) tnm->ptr(), (SQLSMALLINT) tnm->length(),
+    (SQLCHAR *) tnm->c_ptr_safe(), (SQLSMALLINT) tnm->length(),
     SQL_INDEX_ALL, SQL_QUICK);
   if (ret != SQL_SUCCESS)
   {
