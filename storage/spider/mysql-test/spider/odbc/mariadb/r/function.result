@@ -19,6 +19,9 @@ spider_direct_sql('CREATE DATABASE auto_test_remote', '', 'srv "s_2_1_test", dri
 1
 spider_direct_sql('USE auto_test_remote', '', 'srv "s_2_1_test", driver "MariaDB ODBC 3.0 Driver"')
 1
+SELECT spider_direct_sql('ALTER DATABASE auto_test_remote CHARACTER SET latin1 COLLATE latin1_swedish_ci', '', 'srv "s_2_1_test", driver "MariaDB ODBC 3.0 Driver"');
+spider_direct_sql('ALTER DATABASE auto_test_remote CHARACTER SET latin1 COLLATE latin1_swedish_ci', '', 'srv "s_2_1_test", driver "MariaDB ODBC 3.0 Driver"')
+1
 SELECT spider_direct_sql('DROP DATABASE IF EXISTS auto_test_remote2', '', 'srv "s_2_2_test", driver "MariaDB ODBC 3.0 Driver"');
 spider_direct_sql('DROP DATABASE IF EXISTS auto_test_remote2', '', 'srv "s_2_2_test", driver "MariaDB ODBC 3.0 Driver"')
 1
@@ -27,6 +30,9 @@ SELECT spider_direct_sql('USE auto_test_remote2', '', 'srv "s_2_2_test", driver 
 spider_direct_sql('CREATE DATABASE auto_test_remote2', '', 'srv "s_2_2_test", driver "MariaDB ODBC 3.0 Driver"')
 1
 spider_direct_sql('USE auto_test_remote2', '', 'srv "s_2_2_test", driver "MariaDB ODBC 3.0 Driver"')
+1
+SELECT spider_direct_sql('ALTER DATABASE auto_test_remote2 CHARACTER SET latin1 COLLATE latin1_swedish_ci', '', 'srv "s_2_2_test", driver "MariaDB ODBC 3.0 Driver"');
+spider_direct_sql('ALTER DATABASE auto_test_remote2 CHARACTER SET latin1 COLLATE latin1_swedish_ci', '', 'srv "s_2_2_test", driver "MariaDB ODBC 3.0 Driver"')
 1
 
 test select 1

@@ -1,6 +1,5 @@
 # This test tests for Spider's bug fixes
 source include/have_log_bin.inc;
---source include/test_db_charset_latin1.inc
 --disable_warnings
 --disable_query_log
 --disable_result_log
@@ -26,8 +25,10 @@ if ($USE_CHILD_GROUP2)
 {
   eval $CHILD2_1_DROP_DATABASE_IFEXISTS;
   eval $CHILD2_1_CREATE_DATABASE;
+  eval $CHILD2_1_ALTER_DATABASE_LATIN1;
   eval $CHILD2_2_DROP_DATABASE_IFEXISTS;
   eval $CHILD2_2_CREATE_DATABASE;
+  eval $CHILD2_2_ALTER_DATABASE_LATIN1;
 }
 --enable_warnings
 
@@ -839,6 +840,5 @@ if ($USE_CHILD_GROUP2)
 --enable_result_log
 --enable_query_log
 --enable_warnings
---source include/test_db_charset_restore.inc
 --echo
 --echo end of test

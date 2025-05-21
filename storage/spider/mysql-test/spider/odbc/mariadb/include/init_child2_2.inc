@@ -7,6 +7,8 @@ let $CHILD2_2_DROP_DATABASE_IFEXISTS=
 let $CHILD2_2_CREATE_DATABASE=
   SELECT spider_direct_sql('CREATE DATABASE auto_test_remote2', '', 'srv "s_2_2_test", driver "MariaDB ODBC 3.0 Driver"') $STR_SEMICOLON
   SELECT spider_direct_sql('USE auto_test_remote2', '', 'srv "s_2_2_test", driver "MariaDB ODBC 3.0 Driver"');
+let $CHILD2_2_ALTER_DATABASE_LATIN1=
+  SELECT spider_direct_sql('ALTER DATABASE auto_test_remote2 CHARACTER SET latin1 COLLATE latin1_swedish_ci', '', 'srv "s_2_2_test", driver "MariaDB ODBC 3.0 Driver"');
 let $CHILD2_2_SELECT1=
   SELECT spider_direct_sql('SELECT 1', '', 'srv "s_2_2", driver "MariaDB ODBC 3.0 Driver"');
 let $CHILD2_2_DROP_TABLES=
