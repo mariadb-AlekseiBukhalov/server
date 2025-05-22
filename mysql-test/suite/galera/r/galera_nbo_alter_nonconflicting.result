@@ -29,7 +29,7 @@ t1	CREATE TABLE `t1` (
   `f2` int(11) NOT NULL,
   PRIMARY KEY (`f1`),
   KEY `f2` (`f2`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci
 connection node_2;
 SHOW CREATE TABLE t1;
 Table	Create Table
@@ -38,7 +38,7 @@ t1	CREATE TABLE `t1` (
   `f2` int(11) NOT NULL,
   PRIMARY KEY (`f1`),
   KEY `f2` (`f2`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci
 SET GLOBAL wsrep_slave_threads=DEFAULT;
 disconnect node_1a;
 connection node_1;

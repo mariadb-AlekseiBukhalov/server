@@ -35,5 +35,4 @@ i	j
 3	node1
 5	node1
 7	node1
-9	node1
 drop table t;
