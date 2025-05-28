@@ -12722,9 +12722,9 @@ copy_data_between_tables(THD *thd, TABLE *from, TABLE *to,
       from->file->stats.records != 1)
   {
     if (from->file->stats.records > 1)
-      my_error(ER_INTERNAL_ERROR, MYF(0), "More than one row in the table");
+      my_error(ER_SEQUENCE_TABLE_HAS_TOO_MANY_ROWS, MYF(0));
     else
-      my_error(ER_INTERNAL_ERROR, MYF(0), "Fewer than one row in the table");
+      my_error(ER_SEQUENCE_TABLE_HAS_TOO_FEW_ROWS, MYF(0));
     goto err;
   }
   for (Field **ptr=to->field ; *ptr ; ptr++)
@@ -12943,7 +12943,7 @@ copy_data_between_tables(THD *thd, TABLE *from, TABLE *to,
       }
       if (to->s->table_type == TABLE_TYPE_SEQUENCE && found_count == 1)
       {
-        my_error(ER_INTERNAL_ERROR, MYF(0), "More than one row in the table");
+        my_error(ER_SEQUENCE_TABLE_HAS_TOO_MANY_ROWS, MYF(0));
         error= 1;
         break;
       }
@@ -13020,10 +13020,9 @@ copy_data_between_tables(THD *thd, TABLE *from, TABLE *to,
 
   if (to->s->table_type == TABLE_TYPE_SEQUENCE && found_count == 0)
   {
-    my_error(ER_INTERNAL_ERROR, MYF(0), "Fewer than one row in the table");
+    my_error(ER_SEQUENCE_TABLE_HAS_TOO_FEW_ROWS, MYF(0));
     error= 1;
   }
-
   THD_STAGE_INFO(thd, stage_enabling_keys);
   thd_progress_next_stage(thd);
 
