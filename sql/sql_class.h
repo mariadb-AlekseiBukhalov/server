@@ -3531,7 +3531,7 @@ public:
   {
     return opt_readonly &&
            !(security_ctx->master_access & PRIV_IGNORE_READ_ONLY) &&
-           !slave_thread;
+           !slave_thread && IF_WSREP(!wsrep_applier, 1);
   }
 
 private:

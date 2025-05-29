@@ -112,13 +112,11 @@ static int
 lock_tables_check(THD *thd, TABLE **tables, uint count, uint flags)
 {
   uint system_count, i;
-  bool ignore_read_only, log_table_write_query;
+  bool log_table_write_query;
 
   DBUG_ENTER("lock_tables_check");
 
   system_count= 0;
-  ignore_read_only=
-    (thd->security_ctx->master_access & PRIV_IGNORE_READ_ONLY) != NO_ACL;
   log_table_write_query= (is_log_table_write_query(thd->lex->sql_command)
                          || ((flags & MYSQL_LOCK_LOG_TABLE) != 0));
 
@@ -183,8 +181,7 @@ lock_tables_check(THD *thd, TABLE **tables, uint count, uint flags)
     */
     if (!(flags & MYSQL_LOCK_IGNORE_GLOBAL_READ_ONLY) && !t->s->tmp_table)
     {
-      if (t->reginfo.lock_type >= TL_FIRST_WRITE &&
-          !ignore_read_only && opt_readonly && !thd->slave_thread)
+      if (t->reginfo.lock_type >= TL_FIRST_WRITE && thd->is_read_only_ctx())
       {
         my_error(ER_OPTION_PREVENTS_STATEMENT, MYF(0), "--read-only");
         DBUG_RETURN(1);

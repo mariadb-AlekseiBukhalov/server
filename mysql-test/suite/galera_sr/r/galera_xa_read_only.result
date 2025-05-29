@@ -1,0 +1,39 @@
+connection node_2;
+connection node_1;
+connection node_2;
+SET GLOBAL read_only=true;
+CREATE USER foo@localhost;
+GRANT ALL ON test.* to foo@localhost;
+connect foo_node_2,127.0.0.1,foo,,test,$NODE_MYPORT_2,;
+connection node_1;
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY);
+XA START 't1';
+INSERT INTO t1 VALUES (1);
+XA END 't1';
+XA PREPARE 't1';
+XA COMMIT 't1';
+XA START 't2';
+INSERT INTO t1 VALUES (2);
+XA END 't2';
+XA PREPARE 't2';
+XA ROLLBACK 't2';
+XA START 't3';
+INSERT INTO t1 VALUES (3);
+XA END 't3';
+XA COMMIT 't3' ONE PHASE;
+connection foo_node_2;
+SELECT * FROM t1;
+f1
+1
+3
+XA START 't4';
+INSERT INTO t1 VALUES (4);
+ERROR HY000: The MariaDB server is running with the --read-only option so it cannot execute this statement
+XA END 't4';
+XA PREPARE 't4';
+XA COMMIT 't4';
+connection node_1;
+DROP TABLE t1;
+connection node_2;
+SET GLOBAL read_only=false;
+DROP USER foo@localhost;

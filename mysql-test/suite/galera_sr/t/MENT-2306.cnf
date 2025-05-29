@@ -1,0 +1,19 @@
+!include ../../galera/galera_2x2nodes.cnf
+
+[mysqld.1]
+wsrep_gtid_mode=0
+server-id=11
+
+[mysqld.2]
+wsrep_gtid_mode=0
+server-id=12
+
+[mysqld.3]
+wsrep_gtid_mode=0
+server-id=21
+read-only=true
+
+[mysqld.4]
+wsrep_gtid_mode=0
+server-id=22
+read-only=true

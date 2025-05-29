@@ -1,0 +1,57 @@
+#
+# Test read_only option with Galera.
+# This test is similar to galera.galera_read_only, extended to cover XA.
+#
+
+--source include/galera_cluster.inc
+
+# Setup read_only node and connection
+--connection node_2
+SET GLOBAL read_only=true;
+
+CREATE USER foo@localhost;
+GRANT ALL ON test.* to foo@localhost;
+
+--connect(foo_node_2,127.0.0.1,foo,,test,$NODE_MYPORT_2,)
+
+# Replicate some transactions from node_1
+# We expect that these are applied node_2, even if node is set read_only
+--connection node_1
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY);
+
+XA START 't1';
+INSERT INTO t1 VALUES (1);
+XA END 't1';
+XA PREPARE 't1';
+XA COMMIT 't1';
+
+XA START 't2';
+INSERT INTO t1 VALUES (2);
+XA END 't2';
+XA PREPARE 't2';
+XA ROLLBACK 't2';
+
+XA START 't3';
+INSERT INTO t1 VALUES (3);
+XA END 't3';
+XA COMMIT 't3' ONE PHASE;
+
+# Check that the changes where applied
+# to node_2
+--connection foo_node_2
+SELECT * FROM t1;
+
+# Make XA transaction is not possible from read_only
+XA START 't4';
+--error ER_OPTION_PREVENTS_STATEMENT
+INSERT INTO t1 VALUES (4);
+XA END 't4';
+XA PREPARE 't4';
+XA COMMIT 't4';
+
+--connection node_1
+DROP TABLE t1;
+
+--connection node_2
+SET GLOBAL read_only=false;
+DROP USER foo@localhost;
