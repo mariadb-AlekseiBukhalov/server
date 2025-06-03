@@ -125,7 +125,7 @@ static void wsrep_cert_report_expiration(SSL *ssl, const ASN1_TIME *not_after)
 
 static void wsrep_warn_peer_certificate_expiration(SSL *ssl)
 {
-  const X509 *cert= SSL_get_peer_certificate(ssl);
+  X509 *cert= SSL_get_peer_certificate(ssl);
   if (cert)
   {
     const ASN1_TIME *not_after= X509_get0_notAfter(cert);
@@ -137,6 +137,7 @@ static void wsrep_warn_peer_certificate_expiration(SSL *ssl)
     {
       wsrep_cert_report_expiration(ssl, not_after);
     }
+    X509_free(cert);
   }
 }
 
