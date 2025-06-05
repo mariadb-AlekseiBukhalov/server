@@ -331,8 +331,8 @@ enum wsrep::provider::status Wsrep_client_service::replay()
   Security_context old_ctx = replayer_thd->main_security_ctx;
   replayer_thd->main_security_ctx = m_thd->main_security_ctx;
   replayer_thd->wsrep_rgi= wsrep_relay_group_init(replayer_thd, "wsrep_relay");
-  replayer_thd->system_thread_info.rpl_sql_info=
-    new rpl_sql_thread_info(replayer_thd->wsrep_rgi->rli->mi->rpl_filter);
+  rpl_sql_thread_info rpl_sti(replayer_thd->wsrep_rgi->rli->mi->rpl_filter);
+  replayer_thd->system_thread_info.rpl_sql_info= &rpl_sti;
   replayer_thd->thread_stack= m_thd->thread_stack;
   replayer_thd->real_id= pthread_self();
   replayer_thd->prior_thr_create_utime=
@@ -356,7 +356,6 @@ enum wsrep::provider::status Wsrep_client_service::replay()
   binlog_reset_cache(m_thd);
 
   replayer_thd->main_security_ctx = old_ctx;
-  delete replayer_thd->system_thread_info.rpl_sql_info;
   delete replayer_thd;
   DBUG_RETURN(ret);
 }
