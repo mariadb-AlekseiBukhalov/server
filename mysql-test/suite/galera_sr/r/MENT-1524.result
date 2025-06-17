@@ -1,0 +1,17 @@
+connection node_2;
+connection node_1;
+SET SESSION wsrep_trx_fragment_size=1;
+CREATE TABLE t1 (c1 VARCHAR(10));
+CREATE TABLE t2 (b INT PRIMARY KEY) ENGINE=InnoDB;
+XA START 'tx1';
+SET GLOBAL wsrep_trx_fragment_size=DEFAULT;
+ERROR 25000: You are not allowed to execute this command in a transaction
+INSERT INTO t2 VALUES (1);
+LOAD INDEX INTO CACHE t1;
+Table	Op	Msg_type	Msg_text
+test.t1	preload_keys	note	The storage engine for the table doesn't support preload_keys
+INSERT INTO t2 VALUES (2);
+XA END 'tx1';
+XA PREPARE 'tx1';
+XA ROLLBACK 'tx1';
+DROP TABLE t1,t2;

@@ -1,0 +1,20 @@
+# MENT-1524 - Assertion `streaming_context_.rolled_back() == false ||
+#  state() == s_must_abort' failed in
+#  int wsrep::transaction::certify_fragment(wsrep::unique_lock<wsrep::mutex>&)
+
+--source include/galera_cluster.inc
+--source include/have_innodb.inc
+
+SET SESSION wsrep_trx_fragment_size=1;
+CREATE TABLE t1 (c1 VARCHAR(10));
+CREATE TABLE t2 (b INT PRIMARY KEY) ENGINE=InnoDB;
+XA START 'tx1';
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
+SET GLOBAL wsrep_trx_fragment_size=DEFAULT;
+INSERT INTO t2 VALUES (1);
+LOAD INDEX INTO CACHE t1;
+INSERT INTO t2 VALUES (2);
+XA END 'tx1';
+XA PREPARE 'tx1';
+XA ROLLBACK 'tx1';
+DROP TABLE t1,t2;

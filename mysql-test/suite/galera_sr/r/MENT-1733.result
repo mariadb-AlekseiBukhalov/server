@@ -2,6 +2,7 @@ connection node_2;
 connection node_1;
 XA START '0';
 SET SESSION wsrep_trx_fragment_size=0;
+ERROR 25000: You are not allowed to execute this command in a transaction
 SET GLOBAL wsrep_forced_binlog_format=STATEMENT;
 SET SESSION TRANSACTION READ ONLY;
 CREATE TEMPORARY TABLE t (i INT KEY) ENGINE=INNODB;

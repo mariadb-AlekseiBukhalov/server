@@ -879,6 +879,12 @@ bool wsrep_desync_update (sys_var *self, THD* thd, enum_var_type type)
 
 bool wsrep_trx_fragment_size_check (sys_var *self, THD* thd, set_var* var)
 {
+  if (thd->transaction->xid_state.is_explicit_XA())
+  {
+    my_error(ER_CANT_DO_THIS_DURING_AN_TRANSACTION, MYF(0));
+    return true;
+  }
+
   if (var->value == NULL) {
     return false;
   }
@@ -926,12 +932,6 @@ bool wsrep_trx_fragment_size_check (sys_var *self, THD* thd, set_var* var)
 		          WSREP_LEX_SCHEMA.str, WSREP_LEX_STREAMING.str);
       return true;
     }
-  }
-
-  if (new_trx_fragment_size > 0 &&
-      thd->transaction->xid_state.is_explicit_XA()) {
-    my_error(ER_CANT_DO_THIS_DURING_AN_TRANSACTION, MYF(0));
-    return true;
   }
 
   return false;

@@ -74,6 +74,12 @@ XA ROLLBACK 't';
 XA START 't';
 --error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
 SET SESSION wsrep_trx_fragment_size = 10;
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
+SET SESSION wsrep_trx_fragment_size = DEFAULT;
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
+SET GLOBAL wsrep_trx_fragment_size = 10;
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
+SET GLOBAL wsrep_trx_fragment_size = DEFAULT;
 XA END 't';
 XA ROLLBACK 't';
 
@@ -86,18 +92,12 @@ XA ROLLBACK 't';
 XA START 't';
 --error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
 SET SESSION wsrep_trx_fragment_unit = 'rows';
-XA END 't';
-XA ROLLBACK 't';
-
-
-#
-# Can't change wsrep_trx_fragment_unit during
-# XA transaction
-#
-
-XA START 't';
 --error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
-SET SESSION wsrep_trx_fragment_unit = 'rows';
+SET SESSION wsrep_trx_fragment_unit = DEFAULT;
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
+SET GLOBAL wsrep_trx_fragment_unit = 'rows';
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
+SET GLOBAL wsrep_trx_fragment_unit = DEFAULT;
 XA END 't';
 XA ROLLBACK 't';
 

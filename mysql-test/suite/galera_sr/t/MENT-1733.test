@@ -6,6 +6,7 @@
 --source include/have_innodb.inc
 
 XA START '0';
+--error ER_CANT_DO_THIS_DURING_AN_TRANSACTION
 SET SESSION wsrep_trx_fragment_size=0;
 SET GLOBAL wsrep_forced_binlog_format=STATEMENT;
 SET SESSION TRANSACTION READ ONLY;
