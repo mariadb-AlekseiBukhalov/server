@@ -112,7 +112,7 @@ evalp CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
   Port $MASTER_1_MYPORT
 );
 create table t2 (c int);
-evalp create table t1 (c int) ENGINE=Spider
+create table t1 (c int) ENGINE=Spider
 COMMENT='WRAPPER "odbc",TABLE "t2", database "test", srv "srv"';
 insert into t1 values (1), (2), (3);
 select * from t1;
@@ -129,7 +129,7 @@ evalp CREATE SERVER srv FOREIGN DATA WRAPPER ODBC OPTIONS
   Port $MASTER_1_MYPORT
 );
 create table t2 (c int);
-evalp create table t1 (c int) ENGINE=Spider
+create table t1 (c int) ENGINE=Spider
 REMOTE_DATABASE=test WRAPPER=odbc REMOTE_SERVER=srv REMOTE_TABLE=t2
 CONNECTION="User=root;Server=127.0.0.1";
 insert into t1 values (1), (2), (3);

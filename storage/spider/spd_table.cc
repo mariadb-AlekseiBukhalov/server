@@ -582,7 +582,12 @@ int spider_get_server(
     DBUG_PRINT("info",("spider tgt_hosts=%s", share->tgt_hosts[link_idx]));
   }
 #ifdef HAVE_SPIDER_UNIXODBC
-  if (!strcasecmp(server->scheme, "odbc"))
+  /*
+    If the wrapper is ODBC, we record the server info, which can
+    consist of arbitrary key-value pairs, in the ODBC connection
+    string instead of mariadb-specific fields.
+  */
+  if (!strcasecmp(share->tgt_wrappers[link_idx], "odbc"))
   {
     Binary_string conn_str;
     conn_str= String();
