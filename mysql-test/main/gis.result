@@ -681,10 +681,12 @@ select object_id, geometrytype(geo), ISSIMPLE(GEO), ASTEXT(centroid(geo)) from
 t1 where object_id=85998;
 object_id	geometrytype(geo)	ISSIMPLE(GEO)	ASTEXT(centroid(geo))
 85998	MULTIPOLYGON	1	POINT(115.2970604672862 -36.23335610879993)
-select object_id, geometrytype(geo), ISSIMPLE(GEO), ASTEXT(centroid(geo)) from
+# Expected result is 36.3310176346905, but some systems return
+# slightly different result due to fused multiply-add instructioqns.
+select object_id, ST_geometrytype(geo), ST_ISSIMPLE(GEO), ST_ASTEXT(ST_centroid(geo)) from
 t1 where object_id=85984;
-object_id	geometrytype(geo)	ISSIMPLE(GEO)	ASTEXT(centroid(geo))
-85984	MULTIPOLYGON	1	POINT(-114.86854472054372 36.34725218253213)
+object_id	ST_geometrytype(geo)	ST_ISSIMPLE(GEO)	ST_ASTEXT(ST_centroid(geo))
+85984	MULTIPOLYGON	1	POINT(-114.8685447 36.3472521)
 drop table t1;
 create table t1 (fl geometry not null);
 insert into t1 values (1);

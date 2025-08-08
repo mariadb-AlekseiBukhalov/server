@@ -375,10 +375,10 @@ insert into t1 values ('85984',GeomFromText('MULTIPOLYGON(((-115.006363
 select object_id, geometrytype(geo), ISSIMPLE(GEO), ASTEXT(centroid(geo)) from
 t1 where object_id=85998;
 
-# Expected result is 36.34725218253213, but IA64 returns 36.34725217627852
-# due to fused multiply-add instructions.
---replace_result 36.34725217627852 36.34725218253213 -114.86854470090232 -114.86854472054372
-select object_id, geometrytype(geo), ISSIMPLE(GEO), ASTEXT(centroid(geo)) from
+--echo # Expected result is 36.3310176346905, but some systems return
+--echo # slightly different result due to fused multiply-add instructioqns.
+--replace_regex /(\.\d{7})\d+/\1/
+select object_id, ST_geometrytype(geo), ST_ISSIMPLE(GEO), ST_ASTEXT(ST_centroid(geo)) from
 t1 where object_id=85984;
 
 drop table t1;
