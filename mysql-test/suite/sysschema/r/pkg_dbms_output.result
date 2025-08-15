@@ -1,0 +1,155 @@
+SET sql_mode=ORACLE;
+#
+# MENT-2268 System package SYS.DBMS_OUTPUT
+#
+# Testing that DBMS_OUTPUT is not enabled by default
+CREATE TABLE t1 (line TEXT CHARACTER SET utf8mb4, status INTEGER);
+DECLARE
+line   VARCHAR2(400);
+status INTEGER;
+BEGIN
+sys.DBMS_OUTPUT.PUT_LINE('line1');
+sys.DBMS_OUTPUT.PUT_LINE('line2');
+sys.DBMS_OUTPUT.GET_LINE(line, status);
+INSERT INTO t1 VALUES (line, status);
+END;
+$$
+SELECT * FROM t1;
+line	status
+NULL	1
+DROP TABLE t1;
+# Testing maximum possible buffer size
+CALL sys.DBMS_OUTPUT.ENABLE;
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',32767));
+ERROR 22001: DBMS_OUTPUT buffer size overflow
+CALL sys.DBMS_OUTPUT.DISABLE;
+CALL sys.DBMS_OUTPUT.ENABLE(20000);
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',32767));
+ERROR 22001: DBMS_OUTPUT buffer size overflow
+CALL sys.DBMS_OUTPUT.DISABLE;
+CALL sys.DBMS_OUTPUT.ENABLE(32767);
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',32767));
+CALL sys.DBMS_OUTPUT.PUT_LINE('a');
+ERROR 22001: DBMS_OUTPUT buffer size overflow
+CALL sys.DBMS_OUTPUT.DISABLE;
+# If the supplied buffer size is NOT NULL and is less than 2000
+# it get's adjusted to 2000
+CALL sys.DBMS_OUTPUT.ENABLE(1000);
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',2000));
+CALL sys.DBMS_OUTPUT.PUT_LINE('a');
+ERROR 22001: DBMS_OUTPUT buffer size overflow
+CALL sys.DBMS_OUTPUT.DISABLE;
+# If the supplied buffer size is NOT NULL and is greater than 1,000,000
+# it get's adjusted to 1,000,000
+CALL sys.DBMS_OUTPUT.ENABLE(1000000+1000000);
+FOR i IN 1..1000 LOOP
+sys.DBMS_OUTPUT.PUT_LINE(RPAD('a',1000,'a'));
+END LOOP;
+/
+CALL sys.DBMS_OUTPUT.PUT_LINE('a');
+ERROR 22001: DBMS_OUTPUT buffer size overflow
+CALL sys.DBMS_OUTPUT.DISABLE;
+# Testing maximum possible string size
+CALL sys.DBMS_OUTPUT.ENABLE(NULL);
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',32767));
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',32768));
+ERROR 22001: Data length is too long for DBMS_OUTPUT.PUT_LINE()
+CALL sys.DBMS_OUTPUT.PUT(REPEAT('b',32767));
+CALL sys.DBMS_OUTPUT.PUT('b');
+ERROR 22001: Data length is too long for DBMS_OUTPUT.PUT_LINE()
+CALL sys.DBMS_OUTPUT.DISABLE;
+# PUT_LINE in combination with PUT and NEW_LINE
+CALL sys.DBMS_OUTPUT.ENABLE;
+DECLARE
+line MEDIUMTEXT;
+status INTEGER:= 0;
+BEGIN
+sys.DBMS_OUTPUT.PUT_LINE('aa');
+sys.DBMS_OUTPUT.PUT('bb');
+sys.DBMS_OUTPUT.PUT('bb');
+sys.DBMS_OUTPUT.NEW_LINE;
+sys.DBMS_OUTPUT.PUT('cc');
+sys.DBMS_OUTPUT.PUT_LINE('cc');
+sys.DBMS_OUTPUT.PUT_LINE('dd');
+sys.DBMS_OUTPUT.PUT_LINE('ee');
+LOOP
+sys.DBMS_OUTPUT.GET_LINE(line, status);
+IF status <> 0 THEN
+EXIT;
+END IF;
+SELECT status, line;
+END LOOP;
+END;
+$$
+status	line
+0	aa
+status	line
+0	bbbb
+status	line
+0	cccc
+status	line
+0	dd
+status	line
+0	ee
+# Fetching lines in a loop
+CREATE TABLE t1 (a VARCHAR(4000));
+DECLARE
+line MEDIUMTEXT;
+status INTEGER:= 0;
+BEGIN
+sys.DBMS_OUTPUT.PUT_LINE('aa');
+sys.DBMS_OUTPUT.PUT_LINE('bb');
+LOOP
+sys.DBMS_OUTPUT.GET_LINE(line, status);
+IF status <> 0 THEN
+EXIT;
+END IF;
+SELECT status, line;
+INSERT INTO t1 VALUES (line);
+END LOOP;
+END;
+$$
+status	line
+0	aa
+status	line
+0	bb
+SELECT * FROM t1;
+a
+aa
+bb
+DROP TABLE t1;
+# DBMS_OUTPUT + TRIGGER
+CREATE TABLE animal_count (animals INT);
+INSERT INTO animal_count (animals) VALUES(0);
+CREATE TABLE animals (
+id MEDIUMINT(9) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+name CHAR(30) NOT NULL
+);
+CREATE TRIGGER increment_animal
+AFTER INSERT ON animals
+FOR EACH ROW
+BEGIN
+sys.DBMS_OUTPUT.PUT_LINE(NEW.name);
+UPDATE animal_count SET animal_count.animals = animal_count.animals+1;
+END;
+$$
+CALL sys.DBMS_OUTPUT.ENABLE;
+INSERT INTO animals (name) VALUES('aardvark');
+INSERT INTO animals (name) VALUES('baboon');
+DECLARE
+line TEXT;
+status INT;
+BEGIN
+LOOP
+sys.DBMS_OUTPUT.GET_LINE(line, status);
+EXIT WHEN status > 0;
+SELECT line;
+END LOOP;
+END;
+$$
+line
+aardvark
+line
+baboon
+DROP TABLE animals;
+DROP TABLE animal_count;

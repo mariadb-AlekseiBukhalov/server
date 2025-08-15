@@ -1,0 +1,170 @@
+-- source include/not_embedded.inc
+
+SET sql_mode=ORACLE;
+
+--echo #
+--echo # MENT-2268 System package SYS.DBMS_OUTPUT
+--echo #
+
+--echo # Testing that DBMS_OUTPUT is not enabled by default
+
+CREATE TABLE t1 (line TEXT CHARACTER SET utf8mb4, status INTEGER);
+DELIMITER $$;
+DECLARE
+  line   VARCHAR2(400);
+  status INTEGER;
+BEGIN
+  sys.DBMS_OUTPUT.PUT_LINE('line1');
+  sys.DBMS_OUTPUT.PUT_LINE('line2');
+  sys.DBMS_OUTPUT.GET_LINE(line, status);
+  INSERT INTO t1 VALUES (line, status);
+END;
+$$
+DELIMITER ;$$
+SELECT * FROM t1;
+DROP TABLE t1;
+
+
+--echo # Testing maximum possible buffer size
+CALL sys.DBMS_OUTPUT.ENABLE;
+--error ER_DATA_TOO_LONG
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',32767));
+CALL sys.DBMS_OUTPUT.DISABLE;
+
+CALL sys.DBMS_OUTPUT.ENABLE(20000);
+--error ER_DATA_TOO_LONG
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',32767));
+CALL sys.DBMS_OUTPUT.DISABLE;
+
+CALL sys.DBMS_OUTPUT.ENABLE(32767);
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',32767));
+--error ER_DATA_TOO_LONG
+CALL sys.DBMS_OUTPUT.PUT_LINE('a');
+CALL sys.DBMS_OUTPUT.DISABLE;
+
+--echo # If the supplied buffer size is NOT NULL and is less than 2000
+--echo # it get's adjusted to 2000
+CALL sys.DBMS_OUTPUT.ENABLE(1000);
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',2000));
+--error ER_DATA_TOO_LONG
+CALL sys.DBMS_OUTPUT.PUT_LINE('a');
+CALL sys.DBMS_OUTPUT.DISABLE;
+
+--echo # If the supplied buffer size is NOT NULL and is greater than 1,000,000
+--echo # it get's adjusted to 1,000,000
+CALL sys.DBMS_OUTPUT.ENABLE(1000000+1000000);
+DELIMITER /;
+FOR i IN 1..1000 LOOP
+  sys.DBMS_OUTPUT.PUT_LINE(RPAD('a',1000,'a'));
+END LOOP;
+/
+DELIMITER ;/
+--error ER_DATA_TOO_LONG
+CALL sys.DBMS_OUTPUT.PUT_LINE('a');
+CALL sys.DBMS_OUTPUT.DISABLE;
+
+--echo # Testing maximum possible string size
+
+CALL sys.DBMS_OUTPUT.ENABLE(NULL);
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',32767));
+--error ER_DATA_TOO_LONG
+CALL sys.DBMS_OUTPUT.PUT_LINE(REPEAT('a',32768));
+CALL sys.DBMS_OUTPUT.PUT(REPEAT('b',32767));
+--error ER_DATA_TOO_LONG
+CALL sys.DBMS_OUTPUT.PUT('b');
+CALL sys.DBMS_OUTPUT.DISABLE;
+
+--echo # PUT_LINE in combination with PUT and NEW_LINE
+
+CALL sys.DBMS_OUTPUT.ENABLE;
+
+DELIMITER $$;
+DECLARE
+  line MEDIUMTEXT;
+  status INTEGER:= 0;
+BEGIN
+  sys.DBMS_OUTPUT.PUT_LINE('aa');
+  sys.DBMS_OUTPUT.PUT('bb');
+  sys.DBMS_OUTPUT.PUT('bb');
+  sys.DBMS_OUTPUT.NEW_LINE;
+  sys.DBMS_OUTPUT.PUT('cc');
+  sys.DBMS_OUTPUT.PUT_LINE('cc');
+  sys.DBMS_OUTPUT.PUT_LINE('dd');
+  sys.DBMS_OUTPUT.PUT_LINE('ee');
+  LOOP
+    sys.DBMS_OUTPUT.GET_LINE(line, status);
+    IF status <> 0 THEN
+      EXIT;
+    END IF;
+    SELECT status, line;
+  END LOOP;
+END;
+$$
+DELIMITER ;$$
+
+
+--echo # Fetching lines in a loop
+CREATE TABLE t1 (a VARCHAR(4000));
+DELIMITER $$;
+DECLARE
+  line MEDIUMTEXT;
+  status INTEGER:= 0;
+BEGIN
+  sys.DBMS_OUTPUT.PUT_LINE('aa');
+  sys.DBMS_OUTPUT.PUT_LINE('bb');
+  LOOP
+    sys.DBMS_OUTPUT.GET_LINE(line, status);
+    IF status <> 0 THEN
+      EXIT;
+    END IF;
+    SELECT status, line;
+    INSERT INTO t1 VALUES (line);
+  END LOOP;
+END;
+$$
+DELIMITER ;$$
+SELECT * FROM t1;
+DROP TABLE t1;
+
+
+--echo # DBMS_OUTPUT + TRIGGER
+
+CREATE TABLE animal_count (animals INT);
+INSERT INTO animal_count (animals) VALUES(0);
+
+CREATE TABLE animals (
+  id MEDIUMINT(9) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name CHAR(30) NOT NULL
+);
+
+DELIMITER $$;
+CREATE TRIGGER increment_animal
+AFTER INSERT ON animals
+FOR EACH ROW
+BEGIN
+  sys.DBMS_OUTPUT.PUT_LINE(NEW.name);
+  UPDATE animal_count SET animal_count.animals = animal_count.animals+1;
+END;
+$$
+DELIMITER ;$$
+
+CALL sys.DBMS_OUTPUT.ENABLE;
+INSERT INTO animals (name) VALUES('aardvark');
+INSERT INTO animals (name) VALUES('baboon');
+
+DELIMITER $$;
+DECLARE
+  line TEXT;
+  status INT;
+BEGIN
+  LOOP
+    sys.DBMS_OUTPUT.GET_LINE(line, status);
+    EXIT WHEN status > 0;
+    SELECT line;
+  END LOOP;
+END;
+$$
+DELIMITER ;$$
+
+DROP TABLE animals;
+DROP TABLE animal_count;
