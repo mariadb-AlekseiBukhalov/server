@@ -13,6 +13,8 @@
 galera_wan : MDEV-35940 Unallowed state transition: donor -> synced in galera_wan
 galera_vote_rejoin_ddl : MDEV-35940 Unallowed state transition: donor -> synced in galera_wan
 galera_vote_rejoin_dml : MDEV-35964 Assertion `ist_seqno >= cc_seqno' failed in galera_vote_rejoin_dml
+MDEV-27276 : MENT-2386 Galera test failure on galera.MDEV-27276
+galera_nbo_sst_slave : MENT-2387 Galera test failure on galera_nbo_sst_slave
 galera_var_notify_cmd : MDEV-37257 WSREP: Notification command failed: 1 (Operation not permitted)
 galera_var_notify_ssl_ipv6 : MDEV-37257 WSREP: Notification command failed: 1 (Operation not permitted)
 MDEV-26266 : cannot work reliably
