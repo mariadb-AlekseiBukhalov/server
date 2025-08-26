@@ -26,8 +26,8 @@ connection node_1a;
 # Signal DDL 1
 SET GLOBAL wsrep_provider_options = 'dbug=';
 SET GLOBAL wsrep_provider_options = 'signal=apply_monitor_slave_enter_sync';
-connection node_2;
 connection node_1;
+connection node_2;
 connection node_2;
 SELECT COUNT(*) AS EXPECT_3 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';
 EXPECT_3
