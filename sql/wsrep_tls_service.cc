@@ -1,4 +1,4 @@
-/* Copyright 2020-2022 Codership Oy <info@codership.com>
+/* Copyright 2020-2025 Codership Oy <info@codership.com>
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -359,6 +359,13 @@ int Wsrep_tls_service::Stream::alloc_and_init_ssl()
 #if defined(SSL_OP_NO_COMPRESSION)
   SSL_set_options(ssl, SSL_OP_NO_COMPRESSION);
 #endif
+  /* Provider messages are enveloped with a header containing length of the
+     message, so they are not vulnerable for truncation attacks. Ignore
+     unexpected eof */
+#if defined(HAVE_OPENSSL) && OPENSSL_VERSION_MAJOR >= 3
+  SSL_set_options(ssl, SSL_OP_IGNORE_UNEXPECTED_EOF);
+#endif
+
 #ifdef HAVE_WOLFSSL
   wolfSSL_SSLSetIORecv(ssl, wsrep_wolfssl_recv);
   wolfSSL_SSLSetIOSend(ssl, wsrep_wolfssl_send);
