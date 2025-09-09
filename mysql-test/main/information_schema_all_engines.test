@@ -11,6 +11,7 @@
 --source include/have_innodb.inc
 --source include/have_perfschema.inc
 --source include/not_staging.inc
+--source include/have_wsrep.inc
 
 use INFORMATION_SCHEMA;
 --replace_result Tables_in_INFORMATION_SCHEMA Tables_in_information_schema

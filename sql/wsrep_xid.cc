@@ -300,3 +300,13 @@ char* Wsrep_xid::serialize()
   }
   return m_serialized;
 }
+
+const wsrep_server_gtid_t wsrep_server_gtid(const XID *xid)
+{
+  wsrep_server_gtid_t gtid= {0,0,0};
+  if (!wsrep_is_xid_gtid_undefined(xid))
+  {
+    memcpy(&gtid, &xid->data[WSREP_XID_RPL_GTID_OFFSET], sizeof(wsrep_server_gtid_t));
+  }
+  return gtid;
+}

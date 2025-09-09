@@ -33,6 +33,7 @@
 #include <array>
 #ifdef WITH_WSREP
 #include "wsrep_mysqld.h"
+#include "wsrep_bf_abort_history.h"
 #endif
 
 static PSI_memory_key key_memory_MDL_context_acquire_locks;
@@ -2456,7 +2457,7 @@ MDL_lock::can_grant_lock(enum_mdl_type type_arg,
             requestor_ctx->get_thd()->wsrep_cs().mode() ==
             wsrep::client_state::m_rsu)
         {
-          if (!wsrep_handle_mdl_conflict(requestor_ctx, &ticket, &key))
+          if (!wsrep_handle_mdl_conflict(requestor_ctx, &ticket, &key, type_arg))
           {
             my_error(ER_LOCK_DEADLOCK, MYF(0));
             break;
@@ -3966,4 +3967,45 @@ void MDL_ticket::wsrep_report(bool debug) const
               get_key()->name(),
               psi_stage->m_name);
 }
+
+void MDL_ticket::wsrep_bf_abort_history(const THD* request_thd,
+                                        const enum_mdl_type requested) const
+{
+  if (!wsrep_bf_abort_history_enabled) return;
+
+  THD *granted_thd= m_ctx->get_thd();
+  DBUG_ASSERT(wsrep_bf_abort_store_func);
+  wsrep_bf_abort_t bf_info;
+  bf_info.victim_trx_id= (uint32_t)(-1);
+  bf_info.victim_thread_id= thd_get_thread_id(granted_thd);
+  bf_info.victim_query_id= thd_query_id(granted_thd);
+  bf_info.victim_seqno= wsrep_thd_trx_seqno(granted_thd);
+  bf_info.victim_client_state= wsrep_thd_client_state_str(granted_thd);
+  bf_info.victim_client_mode= wsrep_thd_client_mode_str(granted_thd);
+  bf_info.victim_trx_state= wsrep_thd_transaction_state_str(granted_thd);
+  bf_info.bf_trx_id= (uint32_t)(-1);
+  bf_info.bf_thread_id= thd_get_thread_id(request_thd);
+  bf_info.bf_query_id= thd_query_id(request_thd);
+  bf_info.bf_seqno= wsrep_thd_trx_seqno(request_thd);
+  bf_info.bf_client_state= wsrep_thd_client_state_str(request_thd);
+  bf_info.bf_client_mode= wsrep_thd_client_mode_str(request_thd);
+  bf_info.bf_trx_state= wsrep_thd_transaction_state_str(request_thd);
+  bf_info.time = my_hrtime();
+  std::string request_lock= get_type_name(requested)->str;
+  const MDL_key *key= m_lock->get_key();
+  std::string granted_lock= wsrep_get_mdl_namespace_name(key->mdl_namespace());
+  granted_lock+= "|";
+  granted_lock+= get_type_name()->str;
+  bf_info.victim_lock= granted_lock;
+  bf_info.bf_lock= request_lock;
+  bf_info.index_name= "";
+  bf_info.table_name= key->db_name();
+  bf_info.table_name+= ".";
+  bf_info.table_name+= key->name();
+  bf_info.space_id= (uint32_t)(-1);
+  bf_info.page_no= (uint32_t)(-1);
+
+  wsrep_bf_abort_store_func(const_cast<THD*>(request_thd), &bf_info);
+}
+
 #endif /* WITH_WSREP */

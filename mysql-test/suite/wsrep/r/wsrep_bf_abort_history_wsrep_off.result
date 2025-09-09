@@ -1,0 +1,34 @@
+SELECT @@wsrep_on;
+@@wsrep_on
+0
+select variable_type, global_value from information_schema.system_variables where variable_name = 'wsrep_provider%';
+variable_type	global_value
+# Table structure is visible
+show create table information_schema.wsrep_bf_abort_history;
+Table	Create Table
+WSREP_BF_ABORT_HISTORY	CREATE TEMPORARY TABLE `WSREP_BF_ABORT_HISTORY` (
+  `TIME` datetime(6) NOT NULL,
+  `VICTIM_TRX_ID` bigint(21) unsigned,
+  `VICTIM_THREAD_ID` bigint(21) unsigned NOT NULL,
+  `VICTIM_QUERY_ID` bigint(21) unsigned NOT NULL,
+  `VICTIM_SEQNO` bigint(21) unsigned,
+  `VICTIM_CLIENT_STATE` varchar(32),
+  `VICTIM_CLIENT_MODE` varchar(32),
+  `VICTIM_TRX_STATE` varchar(32),
+  `VICTIM_LOCK` varchar(128),
+  `BF_TRX_ID` bigint(21) unsigned,
+  `BF_THREAD_ID` bigint(21) unsigned NOT NULL,
+  `BF_QUERY_ID` bigint(21) unsigned NOT NULL,
+  `BF_SEQNO` bigint(21) unsigned,
+  `BF_CLIENT_STATE` varchar(32),
+  `BF_CLIENT_MODE` varchar(32),
+  `BF_TRX_STATE` varchar(32),
+  `BF_LOCK` varchar(128),
+  `SPACE_ID` bigint(21) unsigned,
+  `PAGE_NO` bigint(21) unsigned,
+  `INDEX_NAME` varchar(512),
+  `TABLE_NAME` varchar(512)
+) ENGINE=MEMORY DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci
+# But table is not there
+select * from information_schema.wsrep_bf_abort_history;
+ERROR 42S02: Table 'information_schema.wsrep_bf_abort_history' doesn't exist

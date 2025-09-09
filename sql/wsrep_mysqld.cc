@@ -57,6 +57,7 @@
 #include "sql_connect.h"
 #include "thread_cache.h"
 #include "debug_sync.h"
+#include <wsrep_bf_abort_history.h>
 
 #include <sstream>
 
@@ -274,6 +275,8 @@ static PSI_thread_info wsrep_threads[]=
 #endif /* HAVE_PSI_INTERFACE */
 
 my_bool wsrep_inited= 0; // initialized ?
+my_bool wsrep_bf_abort_history_enabled= 0; // wsrep_bf_abort_history_plugin enabled ?
+
 enum enum_wsrep_startup_state wsrep_startup_state= WSREP_STARTUP_STATE_NONE;
 
 static wsrep_uuid_t node_uuid= WSREP_UUID_UNDEFINED;
@@ -289,6 +292,20 @@ enum WsrepState {
   IN_SHUTDOWN,
 };
 static std::atomic<WsrepState> wsrep_state(NOT_READY);
+
+/** Part of wsrep_info plugin: store wsrep thd info history.
+Function pointer is defined if plugin is loaded.
+
+see plugin/wsrep_info.cc
+*/
+wsrep_thd_info_aggregate_func_t wsrep_thd_info_aggregate_func= nullptr;
+
+/** Part of wsrep_info plugin; store wsrep bf abort info history.
+Function pointer is defined if plugin is loaded.
+
+see plugin/wsrep_info.cc
+*/
+wsrep_bf_abort_store_func_t wsrep_bf_abort_store_func= nullptr;
 
 /*
  * Wsrep status variables. LOCK_status must be locked When modifying
@@ -3095,6 +3112,7 @@ static void wsrep_TOI_end(THD *thd) {
       wsrep_store_error(thd, err, false);
     }
 
+    DEBUG_SYNC(thd, "wsrep_TOI_end");
     int const ret= client_state.leave_toi_local(err);
 
     if (!ret)
@@ -3895,8 +3913,9 @@ static void wsrep_abort_granted(THD* request_thd,
   * If requester is not TOI or applying it must wait for MDL to be released.
 
   @param  requestor_ctx        The MDL context of the requestor
-  @param  ticket               MDL ticket for the requested lock
+  @param  ticket               MDL ticket for the granted tickect
   @param  key                  The key of the object (data) being protected
+  @param  request_type         The requested lock type
 
   @retval true                 Request thread should wait MDL-lock
   @retval false                Abort request thread
@@ -3904,7 +3923,8 @@ static void wsrep_abort_granted(THD* request_thd,
 
 bool wsrep_handle_mdl_conflict(MDL_context *requestor_ctx,
                                const MDL_ticket *ticket,
-                               const MDL_key *key)
+                               const MDL_key *key,
+                               const enum_mdl_type request_type)
 {
   bool wait= true;
   THD *request_thd= requestor_ctx->get_thd();

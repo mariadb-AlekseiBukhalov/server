@@ -169,3 +169,12 @@ void wsrep_thd_set_PA_unsafe(THD*)
 
 uint32 wsrep_get_domain_id()
 { return 0;}
+
+long long wsrep_thd_depends_on(const MYSQL_THD)
+{ return 0;}
+
+void wsrep_thd_gtid_str(const MYSQL_THD, char *)
+{}
+
+void wsrep_store_bf_abort_info(THD*, const struct wsrep_bf_abort *)
+{}

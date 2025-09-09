@@ -1,0 +1,7 @@
+!include ../galera_2nodes.cnf
+
+[mysqld]
+wsrep-gtid-mode=ON
+log-bin
+log-slave-updates
+plugin-load-add=wsrep_info

@@ -38,6 +38,8 @@ typedef struct st_mysql_show_var SHOW_VAR;
 #include "wsrep/streaming_context.hpp"
 #include "wsrep_api.h"
 #include <map>
+#include <deque>
+#include "wsrep_thd_info_history.h"
 
 #define WSREP_UNDEFINED_TRX_ID ULONGLONG_MAX
 
@@ -207,6 +209,14 @@ void wsrep_recover_sr_from_storage(THD *);
 extern my_bool wsrep_inited; // whether wsrep is initialized ?
 extern enum enum_wsrep_startup_state wsrep_startup_state;
 extern bool wsrep_service_started;
+extern my_bool wsrep_bf_abort_history_enabled;
+
+/* Function pointer typedef for aggregating wsrep thd info
+to history table for plugin */
+typedef int (*wsrep_thd_info_aggregate_func_t)(const THD *thd, bool thd_end);
+
+/* Function pointer for aggregating wsrep thd info history */
+extern wsrep_thd_info_aggregate_func_t wsrep_thd_info_aggregate_func;
 
 extern "C" void wsrep_fire_rollbacker(THD *thd);
 extern "C" uint32 wsrep_thd_wsrep_rand(THD *thd);
@@ -665,7 +675,8 @@ int wsrep_append_table_keys(THD* thd,
 extern bool
 wsrep_handle_mdl_conflict(MDL_context *requestor_ctx,
                           const MDL_ticket *ticket,
-                          const MDL_key *key);
+                          const MDL_key *key,
+                          const enum_mdl_type request_type);
 
 enum wsrep_thread_type {
   WSREP_APPLIER_THREAD=1,

@@ -1,0 +1,185 @@
+connection node_2;
+connection node_1;
+connection node_1;
+SELECT PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_STATUS, PLUGIN_TYPE FROM information_schema.plugins WHERE PLUGIN_NAME = 'wsrep_bf_abort_history';
+PLUGIN_NAME	PLUGIN_VERSION	PLUGIN_STATUS	PLUGIN_TYPE
+WSREP_BF_ABORT_HISTORY	1.0	ACTIVE	INFORMATION SCHEMA
+SHOW CREATE TABLE information_schema.wsrep_bf_abort_history;
+Table	Create Table
+WSREP_BF_ABORT_HISTORY	CREATE TEMPORARY TABLE `WSREP_BF_ABORT_HISTORY` (
+  `TIME` datetime(6) NOT NULL,
+  `VICTIM_TRX_ID` bigint(21) unsigned,
+  `VICTIM_THREAD_ID` bigint(21) unsigned NOT NULL,
+  `VICTIM_QUERY_ID` bigint(21) unsigned NOT NULL,
+  `VICTIM_SEQNO` bigint(21) unsigned,
+  `VICTIM_CLIENT_STATE` varchar(32),
+  `VICTIM_CLIENT_MODE` varchar(32),
+  `VICTIM_TRX_STATE` varchar(32),
+  `VICTIM_LOCK` varchar(128),
+  `BF_TRX_ID` bigint(21) unsigned,
+  `BF_THREAD_ID` bigint(21) unsigned NOT NULL,
+  `BF_QUERY_ID` bigint(21) unsigned NOT NULL,
+  `BF_SEQNO` bigint(21) unsigned,
+  `BF_CLIENT_STATE` varchar(32),
+  `BF_CLIENT_MODE` varchar(32),
+  `BF_TRX_STATE` varchar(32),
+  `BF_LOCK` varchar(128),
+  `SPACE_ID` bigint(21) unsigned,
+  `PAGE_NO` bigint(21) unsigned,
+  `INDEX_NAME` varchar(512),
+  `TABLE_NAME` varchar(512)
+) ENGINE=MEMORY DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY, f2 INT) ENGINE=InnoDB;
+INSERT INTO t1 VALUES (1, 10),(2, 20),(3, 30),(4, 40),(5,50);
+connect node_1a, 127.0.0.1, root, , test, $NODE_MYPORT_1;
+connection node_1a;
+BEGIN;
+UPDATE t1 SET f2 = 100 WHERE f1 = 2;
+connect node_1b, 127.0.0.1, root, , test, $NODE_MYPORT_1;
+connection node_1b;
+BEGIN;
+DELETE FROM t1 WHERE f1 = 4;
+connect node_1c, 127.0.0.1, root, , test, $NODE_MYPORT_1;
+connection node_1c;
+BEGIN;
+UPDATE t1 SET F1 = 6, F2 = 60 WHERE f1 = 5;
+connection node_2;
+UPDATE t1 SET f2 = f2 * 100;
+connection node_1a;
+COMMIT;
+ERROR 40001: Deadlock found when trying to get lock; try restarting transaction
+connection node_1b;
+COMMIT;
+ERROR 40001: Deadlock found when trying to get lock; try restarting transaction
+connection node_1c;
+COMMIT;
+ERROR 40001: Deadlock found when trying to get lock; try restarting transaction
+connection node_1;
+#
+# We had 3 conflicting transactions in node_1, all of them should be bf aborted
+#
+SELECT COUNT(*) AS EXPECT_3 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+EXPECT_3
+3
+connection node_2;
+#
+# No conflicts on node_2. thus history should be empty
+#
+SELECT COUNT(*) AS EXPECT_0 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+EXPECT_0
+0
+connection node_1;
+#
+# Cleanup
+#
+SELECT * FROM t1;
+f1	f2
+1	1000
+2	2000
+3	3000
+4	4000
+5	5000
+DROP TABLE t1;
+connection node_2;
+connection node_1;
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY) ENGINE=InnoDB;
+INSERT INTO t1 VALUES (1),(2);
+connection node_2;
+INSERT INTO t1 VALUES (3),(4);
+connection node_1;
+SELECT COUNT(*) = 4 FROM t1;
+COUNT(*) = 4
+1
+connection node_2;
+SELECT COUNT(*) = 4 FROM t1;
+COUNT(*) = 4
+1
+DROP TABLE t1;
+connection node_2;
+CREATE TABLE t1 (f1 INTEGER, KEY (f1)) ENGINE=InnoDB;
+INSERT INTO t1 VALUES (1),(1);
+connection node_1;
+INSERT INTO t1 VALUES (2),(2);
+connection node_2;
+SELECT COUNT(*) = 4 FROM t1;
+COUNT(*) = 4
+1
+connection node_1;
+SELECT COUNT(*) = 4 FROM t1;
+COUNT(*) = 4
+1
+DROP TABLE t1;
+connection node_1;
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY) ENGINE=InnoDB;
+INSERT INTO t1 VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (1);
+ERROR 23000: Duplicate entry '1' for key 'PRIMARY'
+SELECT COUNT(*) = 0 FROM t1;
+COUNT(*) = 0
+1
+connection node_2;
+SELECT COUNT(*) = 0 FROM t1;
+COUNT(*) = 0
+1
+DROP TABLE t1;
+connection node_1;
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY) ENGINE=InnoDB;
+SET AUTOCOMMIT = OFF;
+START TRANSACTION;
+INSERT INTO t1 VALUES (1), (2);
+connection node_2;
+SET AUTOCOMMIT = OFF;
+START TRANSACTION;
+INSERT INTO t1 VALUES (2), (1);
+connection node_1;
+COMMIT;
+connection node_2;
+COMMIT;
+ERROR 40001: Deadlock found when trying to get lock; try restarting transaction
+ROLLBACK;
+INSERT INTO t1 VALUES (1), (2);
+ERROR 23000: Duplicate entry '1' for key 'PRIMARY'
+DROP TABLE t1;
+connection node_1;
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY) ENGINE=InnoDB;
+START TRANSACTION;
+INSERT INTO t1 VALUES (1), (2);
+connection node_2;
+START TRANSACTION;
+INSERT INTO t1 VALUES (2), (1);
+connection node_1;
+ROLLBACK;
+connection node_2;
+COMMIT;
+SELECT COUNT(*) = 2 FROM t1;
+COUNT(*) = 2
+1
+connection node_1;
+SELECT COUNT(*) = 2 FROM t1;
+COUNT(*) = 2
+1
+DROP TABLE t1;
+connection node_1;
+#
+# We still have 3 conflicting transactions in node_1, all of them should be bf aborted
+#
+SELECT COUNT(*) AS EXPECT_3 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+EXPECT_3
+3
+#
+# No MDL-conflicts on this node
+#
+SELECT COUNT(*) AS EXPECT_0 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY WHERE VICTIM_LOCK LIKE '%MDL%';
+EXPECT_0
+0
+connect node_2a, 127.0.0.1, root, , test, $NODE_MYPORT_2;
+connection node_2a;
+#
+# We have conflicting transactions in node_2
+#
+SELECT COUNT(*) >= 1 AS EXPECT_1 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+EXPECT_1
+1
+connection node_1;
+disconnect node_2a;
+disconnect node_2;
+disconnect node_1;

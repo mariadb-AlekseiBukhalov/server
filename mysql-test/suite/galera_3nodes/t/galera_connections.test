@@ -1,0 +1,62 @@
+--source include/galera_cluster.inc
+
+--let $galera_version=26.4.23
+source ../wsrep/include/check_galera_version.inc;
+
+--connect node_3, 127.0.0.1, root, , test, $NODE_MYPORT_3
+--connection node_3
+--let $wait_condition = SELECT VARIABLE_VALUE = 3 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size'
+--source include/wait_condition.inc
+
+--connection node_1
+# Save original auto_increment_offset values.
+--let $node_1=node_1
+--let $node_2=node_2
+--let $node_3=node_3
+--source ../galera/include/auto_increment_offset_save.inc
+
+--connection node_1
+CREATE TABLE t1(a int not null primary key) engine=innodb;
+INSERT INTO t1 VALUES (1),(2),(3),(4);
+
+--connection node_2
+--let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 't1'
+--source include/wait_condition.inc
+--let $wait_condition = SELECT COUNT(*) = 4 FROM test.t1;
+--source include/wait_condition.inc
+SELECT * FROM t1;
+
+--connection node_3
+--let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 't1'
+--source include/wait_condition.inc
+--let $wait_condition = SELECT COUNT(*) = 4 FROM test.t1;
+--source include/wait_condition.inc
+SELECT * from t1;
+
+#
+# Table contents is not deterministic only number of connections is
+#
+--connection node_1
+SHOW CREATE TABLE INFORMATION_SCHEMA.WSREP_CONNECTIONS;
+SELECT @@wsrep_ssl_mode;
+--let $wait_condition = SELECT COUNT(*) = 2 FROM INFORMATION_SCHEMA.WSREP_CONNECTIONS;
+--source include/wait_condition.inc
+SELECT COUNT(*) AS EXPECT_2 FROM INFORMATION_SCHEMA.WSREP_CONNECTIONS;
+SELECT COUNT(*) AS EXPECT_3 FROM mysql.wsrep_cluster_members;
+
+--connection node_2
+SELECT @@wsrep_ssl_mode;
+--let $wait_condition = SELECT COUNT(*) = 2 FROM INFORMATION_SCHEMA.WSREP_CONNECTIONS;
+--source include/wait_condition.inc
+SELECT COUNT(*) AS EXPECT_2 FROM INFORMATION_SCHEMA.WSREP_CONNECTIONS;
+SELECT COUNT(*) AS EXPECT_3 FROM mysql.wsrep_cluster_members;
+
+--connection node_3
+SELECT @@wsrep_ssl_mode;
+--let $wait_condition = SELECT COUNT(*) = 2 FROM INFORMATION_SCHEMA.WSREP_CONNECTIONS;
+--source include/wait_condition.inc
+SELECT COUNT(*) AS EXPECT_2 FROM INFORMATION_SCHEMA.WSREP_CONNECTIONS;
+SELECT COUNT(*) AS EXPECT_3 FROM mysql.wsrep_cluster_members;
+
+--connection node_1
+DROP TABLE t1;

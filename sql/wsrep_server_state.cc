@@ -1,4 +1,4 @@
-/* Copyright 2018-2022 Codership Oy <info@codership.com>
+/* Copyright 2018-2025 Codership Oy <info@codership.com>
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "wsrep_tls_service.h"
 #include "wsrep_binlog.h" /* init/deinit group commit */
 #include "wsrep_plugin.h" /* make/destroy sysvar helpers */
+#include "wsrep_connection_monitor_service.h"
 
 #include "my_stacktrace.h" /* my_safe_printf_stderr() */
 
@@ -154,6 +155,7 @@ bool Wsrep_server_state::init_provider_services()
 {
   m_provider_services.event_service= Wsrep_event_service::instance();
   m_provider_services.allowlist_service= wsrep_allowlist_service_init();
+  m_provider_services.connection_monitor_service= wsrep_connection_monitor_service_init();
 #ifdef HAVE_PSI_THREAD_INTERFACE
   if (pfs_param.m_enabled)
     m_provider_services.thread_service= wsrep_thread_service_init();
@@ -197,6 +199,8 @@ void Wsrep_server_state::deinit_provider_services()
 #endif /* HAVE_PSI_THREAD_INTERFACE */
   if (m_provider_services.allowlist_service)
     wsrep_allowlist_service_deinit();
+  if (m_provider_services.connection_monitor_service)
+    wsrep_connection_monitor_service_deinit();
   m_provider_services = wsrep::provider::services();
 }
 

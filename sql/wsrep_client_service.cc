@@ -1,4 +1,4 @@
-/* Copyright 2018-2023 Codership Oy <info@codership.com>
+/* Copyright 2018-2025 Codership Oy <info@codership.com>
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -520,4 +520,29 @@ int Wsrep_client_service::bf_rollback()
   }
 
   DBUG_RETURN(ret);
+}
+
+void Wsrep_client_service::notify_state_change()
+{
+  DBUG_ENTER("Wsrep_client_service::notify_state_change");
+  // Ignore state change if thd info history plugin is disabled
+  if (wsrep_thd_info_aggregate_func)
+  {
+    my_hrtime_t hrtime= my_hrtime();
+    wsrep_thd_info_history_t item;
+    item.thread_id= m_thd->thread_id;
+    item.os_thread_id= m_thd->real_id;
+    item.state_time= hrtime;
+    item.cs_mode= wsrep::to_c_string(m_client_state.mode());
+    item.cs_state= wsrep::to_c_string(m_client_state.state());
+    item.trx_state= wsrep::to_c_string(m_client_state.transaction().state());
+    item.trx_id= wsrep_thd_transaction_id(m_thd);
+    item.seq_no= wsrep_thd_trx_seqno(m_thd);
+    item.depends_on= wsrep_thd_depends_on(m_thd);
+    char buf[FN_REFLEN];
+    wsrep_thd_gtid_str(m_thd, buf);
+    item.gtid= buf;
+    m_client_state.thd_history_push(item);
+  }
+  DBUG_VOID_RETURN;
 }

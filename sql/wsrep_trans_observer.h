@@ -25,6 +25,7 @@
 #include "wsrep_high_priority_service.h"
 #include "wsrep_server_state.h"
 #include "my_dbug.h"
+#include "debug_sync.h"
 
 class THD;
 
@@ -444,6 +445,18 @@ static inline int wsrep_before_commit(THD* thd, bool all)
       wsrep_xid_init(&thd->wsrep_xid,
                      thd->wsrep_trx().ws_meta().gtid(),
                      wsrep_gtid_server.gtid());
+
+#ifdef ENABLED_DEBUG_SYNC
+      DBUG_EXECUTE_IF("wsrep_after_xid_init",
+      {
+        const char act[]=
+          "now "
+          "SIGNAL wsrep_after_xid_init_reached "
+          "WAIT_FOR wsrep_after_xid_init_continue";
+          DBUG_ASSERT(!debug_sync_set_action(thd,
+                                             STRING_WITH_LEN(act)));
+      };);
+#endif
     }
     wsrep_register_for_group_commit(thd);
   }

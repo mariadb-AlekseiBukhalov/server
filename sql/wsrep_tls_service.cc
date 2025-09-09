@@ -23,6 +23,7 @@
 
 #include "wsrep_tls_service.h"
 #include "wsrep_thread_service.h"
+#include "wsrep_connection_monitor_service.h"
 
 #include "my_global.h"
 #include "wsrep_mysqld.h"
@@ -123,6 +124,46 @@ static void wsrep_cert_report_expiration(SSL *ssl, const ASN1_TIME *not_after)
              wsrep_asn1_print(not_after, time_str_buf, sizeof(time_str_buf)));
 }
 
+static bool wsrep_connection_report(const SSL *ssl)
+{
+  try {
+    MYSQL_SOCKET socket{ SSL_get_fd(ssl), 0, 0, 0, NULL };
+    struct sockaddr_storage addr_storage;
+    struct sockaddr *addr= (struct sockaddr *) &addr_storage;
+    size_socket addr_length= sizeof (addr_storage);
+    char ip[NI_MAXHOST];
+    char port[NI_MAXSERV];
+
+    if (mysql_socket_getpeername(socket, addr, &addr_length) ||
+        vio_getnameinfo(addr, ip, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST))
+    {
+      WSREP_WARN("Could not get socket peername error: %s (%d)",
+                 strerror(socket_errno), socket_errno);
+      return true;
+    }
+
+    std::string peer_addr= std::string(ip) + std::string(":") + std::string(port);
+
+    if (mysql_socket_getsockname(socket, addr, &addr_length) ||
+        vio_getnameinfo(addr, ip, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST))
+    {
+      WSREP_WARN("Could not get socket name error: %s (%d)",
+                 strerror(socket_errno), socket_errno);
+      return true;
+    }
+
+    std::string local= std::string(ip) + std::string(":") + std::string(port);
+    WSREP_DEBUG("wsrep_connection_report: %lu %s %s", (uintptr_t)ssl, local.c_str(), peer_addr.c_str());
+    wsrep_connection_monitor_connect((wsrep_connection_key_t)ssl, "ssl", local, peer_addr);
+  }
+  catch (...)
+  {
+    return true;
+  }
+
+  return false;
+}
+
 static void wsrep_warn_peer_certificate_expiration(SSL *ssl)
 {
   X509 *cert= SSL_get_peer_certificate(ssl);
@@ -138,6 +179,31 @@ static void wsrep_warn_peer_certificate_expiration(SSL *ssl)
       wsrep_cert_report_expiration(ssl, not_after);
     }
     X509_free(cert);
+  }
+}
+
+static void wsrep_ssl_report(SSL* ssl, const struct st_VioSSLFd* vio_ssl)
+{
+  try {
+    std::string cipher;
+    std::string subject;
+    std::string issuer;
+    std::string version;
+    cipher= SSL_get_cipher(ssl);
+    X509 *ssl_cert= SSL_get_peer_certificate(ssl);
+    if (ssl_cert != nullptr)
+    {
+      subject= X509_NAME_oneline(X509_get_subject_name(ssl_cert), 0, 0);
+      issuer= X509_NAME_oneline(X509_get_issuer_name(ssl_cert), 0, 0);
+    }
+    version= SSL_get_version(ssl);
+
+    WSREP_DEBUG("wsrep_ssl_report: %lu %s %s %s %s", (uintptr_t)ssl, cipher.c_str(),
+                subject.c_str(), issuer.c_str(), version.c_str());
+    wsrep_connection_monitor_ssl_info((wsrep_connection_key_t)ssl, cipher, subject, issuer, version);
+  }
+  catch (...)
+  {
   }
 }
 
@@ -165,6 +231,10 @@ class Wsrep_tls_service : public wsrep::tls_service
     }
     ~Stream()
     {
+      if (ssl)
+      {
+        wsrep_connection_monitor_disconnect(ssl);
+      }
       if (ssl) SSL_free(ssl);
       if (vio_ssl)
       {
@@ -460,6 +530,8 @@ Wsrep_tls_service::Stream::client_handshake()
   {
     wsrep_warn_peer_certificate_expiration(ssl);
     handshake_complete= true;
+    if (!wsrep_connection_report(ssl))
+      wsrep_ssl_report(ssl, vio_ssl);
   }
   return ret;
 }
@@ -476,6 +548,8 @@ Wsrep_tls_service::Stream::server_handshake()
   {
     wsrep_warn_peer_certificate_expiration(ssl);
     handshake_complete= true;
+    if (!wsrep_connection_report(ssl))
+      wsrep_ssl_report(ssl, vio_ssl);
   }
   return ret;
 }

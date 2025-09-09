@@ -1,0 +1,23 @@
+SELECT @@wsrep_on;
+@@wsrep_on
+0
+select variable_type, global_value from information_schema.system_variables where variable_name = 'wsrep_provider%';
+variable_type	global_value
+# Table structure is visible
+show create table information_schema.wsrep_thd_info_history;
+Table	Create Table
+WSREP_THD_INFO_HISTORY	CREATE TEMPORARY TABLE `WSREP_THD_INFO_HISTORY` (
+  `ID` int(11) unsigned NOT NULL,
+  `OS_THREAD_ID` bigint(21) unsigned NOT NULL,
+  `TIME` datetime(6) NOT NULL,
+  `MODE` varchar(32),
+  `STATE` varchar(32),
+  `TRANSACTION_ID` bigint(21) unsigned,
+  `TRANSACTION_STATE` varchar(32),
+  `SEQNO` bigint(21) unsigned,
+  `DEPENDS_ON` bigint(21) unsigned,
+  `GTID` varchar(512)
+) ENGINE=MEMORY DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci
+# But table is not there
+select * from information_schema.wsrep_thd_info_history;
+ERROR 42S02: Table 'information_schema.wsrep_thd_info_history' doesn't exist

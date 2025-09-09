@@ -1,0 +1,90 @@
+connection node_2;
+connection node_1;
+connection node_1;
+SELECT PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_STATUS, PLUGIN_TYPE FROM information_schema.plugins WHERE PLUGIN_NAME = 'wsrep_thd_info';
+PLUGIN_NAME	PLUGIN_VERSION	PLUGIN_STATUS	PLUGIN_TYPE
+wsrep_thd_info	1.0	ACTIVE	INFORMATION SCHEMA
+SHOW CREATE TABLE information_schema.wsrep_thd_info;
+Table	Create Table
+wsrep_thd_info	CREATE TEMPORARY TABLE `wsrep_thd_info` (
+  `ID` int(11) unsigned NOT NULL,
+  `OS_THREAD_ID` bigint(21) unsigned NOT NULL,
+  `MODE` varchar(32),
+  `STATE` varchar(32),
+  `TRANSACTION_ID` bigint(21) unsigned,
+  `TRANSACTION_STATE` varchar(32),
+  `SEQNO` bigint(21) unsigned,
+  `DEPENDS_ON` bigint(21) unsigned,
+  `GTID` varchar(512)
+) ENGINE=MEMORY DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci
+# Expect at least one applier
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info WHERE MODE = "high priority";
+expect_1
+1
+# Expect at least local connection
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info WHERE MODE = "local";
+expect_1
+1
+CREATE TABLE t1 (f1 INT PRIMARY KEY) ENGINE=InnoDB;
+INSERT INTO t1 VALUES(1);
+INSERT INTO t1 VALUES(3);
+INSERT INTO t1 VALUES(4);
+INSERT INTO t1 VALUES(5);
+INSERT INTO t1 VALUES(6);
+# Block commit after ::before_commit has called xid_init
+SET GLOBAL DEBUG_DBUG = 'd,wsrep_after_xid_init';
+INSERT INTO t1 VALUES (2);
+# Control connection to wait for debug sync point
+connect node_1_ctrl, 127.0.0.1, root, , test, $NODE_MYPORT_1;
+connection node_1_ctrl;
+SET SESSION wsrep_sync_wait = 0;
+SET SESSION DEBUG_SYNC = "now WAIT_FOR wsrep_after_xid_init_reached";
+# Verify that seqno, depends_on and gtid information is visible for committing transaction
+SELECT COUNT(*) AS expect_1 FROM information_schema.wsrep_thd_info WHERE seqno IS NOT NULL;
+expect_1
+1
+SELECT COUNT(*) AS expect_1 FROM information_schema.wsrep_thd_info WHERE depends_on IS NOT NULL;
+expect_1
+1
+SELECT COUNT(*) AS expect_1 FROM information_schema.wsrep_thd_info WHERE gtid IS NOT NULL;
+expect_1
+1
+SET GLOBAL DEBUG_DBUG = '';
+SET SESSION DEBUG_SYNC = "now SIGNAL wsrep_after_xid_init_continue";
+connection node_1;
+connection node_1_ctrl;
+SET SESSION DEBUG_SYNC = "RESET";
+connection node_1;
+SELECT * FROM t1;
+f1
+1
+2
+3
+4
+5
+6
+DROP TABLE t1;
+#
+# Test TOI
+#
+SET DEBUG_SYNC = "wsrep_TOI_end SIGNAL after_wsrep_TOI_end WAIT_FOR continue_wsrep_TOI_end";
+CREATE TABLE p (f1 INTEGER PRIMARY KEY, f2 INTEGER) ENGINE=INNODB;
+connection node_1_ctrl;
+SET SESSION wsrep_sync_wait=0;
+SET DEBUG_SYNC = "NOW WAIT_FOR after_wsrep_TOI_end";
+SELECT COUNT(*) AS expect_1 FROM information_schema.wsrep_thd_info WHERE seqno IS NOT NULL;
+expect_1
+1
+SELECT COUNT(*) AS expect_1 FROM information_schema.wsrep_thd_info WHERE depends_on IS NOT NULL;
+expect_1
+1
+SELECT COUNT(*) AS expect_1 FROM information_schema.wsrep_thd_info WHERE gtid IS NOT NULL;
+expect_1
+1
+SET DEBUG_SYNC = 'now SIGNAL continue_wsrep_TOI_end';
+connection node_1;
+SELECT * FROM p;
+f1	f2
+SET SESSION DEBUG_SYNC = "RESET";
+DROP TABLE p;
+disconnect node_1_ctrl;

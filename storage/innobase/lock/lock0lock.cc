@@ -55,6 +55,7 @@ Created 5/7/1996 Heikki Tuuri
 
 #ifdef WITH_WSREP
 #include <mysql/service_wsrep.h>
+#include "wsrep_bf_abort_history.h"
 #endif /* WITH_WSREP */
 
 const conflicting_lock_info null_c_lock_info{nullptr, nullptr, ut_d(nullptr)};
@@ -692,7 +693,7 @@ bool wsrep_is_BF_lock_timeout(const trx_t &trx)
 @param lock2                another record lock; NOTE that
                             it is assumed that this has a lock bit
                             set on the same record as in the new
-	                    lock we are setting.
+                            lock we are setting.
 @return TRUE if new lock has to wait for lock2 to be removed */
 
 ATTRIBUTE_NOINLINE ATTRIBUTE_COLD
@@ -739,7 +740,7 @@ bool lock_rec_has_to_wait_wsrep(const trx_t *trx,
     }
 
     /* If two high priority threads have lock conflict, we check if
-	new lock request has to wait for the transaction holding the lock. */
+       new lock request has to wait for the transaction holding the lock. */
     return wsrep_BF_has_to_wait(lock2, trx, false, type_mode);
   }
 
@@ -1088,6 +1089,120 @@ void wsrep_report_error(const lock_t* victim_lock, const trx_t *bf_trx)
 }
 #endif /* WITH_DEBUG */
 
+/** Get a table lock information as a string
+ @param [in] lock   table lock
+*/
+static std::string lock_table_info_get(const lock_t *lock)
+{
+  std::string lock_info="TABLE|";
+
+  switch (lock->mode()) {
+  case LOCK_S:
+    lock_info+= "LOCK_S";
+    break;
+  case LOCK_X:
+    lock_info+= "LOCK_X";
+    break;
+  case LOCK_IS:
+    lock_info+= "LOCK_IS";
+    break;
+  case LOCK_IX:
+    lock_info+= "LOCK_IX";
+    break;
+  case LOCK_AUTO_INC:
+    lock_info+= "LOCK_AUTO_INC";
+    break;
+  default:
+    break;
+  }
+
+  if (lock->is_waiting()) {
+    lock_info+= "|WAITING";
+  }
+
+  return lock_info;
+}
+
+/** Get a record lock information as a string
+ @param [in] lock   record lock
+*/
+static std::string lock_rec_info_get(const lock_t *lock)
+{
+  ut_ad(!lock->is_table());
+  std::string lock_info= "REC|";
+
+  if (lock->mode() == LOCK_S)
+    lock_info+= "LOCK_S";
+  else
+    lock_info+= "LOCK_X";
+
+  if (lock->is_gap())
+    lock_info+= "|GAP";
+  if (lock->is_record_not_gap())
+    lock_info+= "|NOT_GAP";
+  if (lock->is_insert_intention())
+    lock_info+= "|INSERT_INTENTION";
+  if (lock->is_waiting())
+    lock_info+= "|WAITING";
+
+  return lock_info;
+}
+
+/** Gather BF conflict information for BF abort history
+@param trx               bf transaction
+@param bf_lock           lock bf transaction is waiting for
+@param conflict_lock     conflicting lock
+*/
+static void wsrep_bf_abort_history_create(const trx_t* trx,
+                                          const lock_t *bf_lock,
+                                          const lock_t *conflict_lock)
+{
+  if (!wsrep_bf_abort_history_enabled) return;
+
+  wsrep_bf_abort_t bf_info;
+  bf_info.victim_trx_id= (uint32_t)conflict_lock->trx->id;
+  bf_info.victim_thread_id= (uint32_t)thd_get_thread_id(conflict_lock->trx->mysql_thd);
+  bf_info.victim_query_id= (uint32_t)thd_query_id(conflict_lock->trx->mysql_thd);
+  bf_info.victim_seqno= (uint64_t)wsrep_thd_trx_seqno(conflict_lock->trx->mysql_thd);
+  bf_info.victim_client_state= wsrep_thd_client_state_str(conflict_lock->trx->mysql_thd);
+  bf_info.victim_client_mode= wsrep_thd_client_mode_str(conflict_lock->trx->mysql_thd);
+  bf_info.victim_trx_state= wsrep_thd_transaction_state_str(conflict_lock->trx->mysql_thd);
+  bf_info.bf_trx_id= (uint32_t)trx->id;
+  bf_info.bf_thread_id= (uint32_t)thd_get_thread_id(trx->mysql_thd);
+  bf_info.bf_query_id= (uint32_t)thd_query_id(trx->mysql_thd);
+  bf_info.bf_seqno= (uint32_t)wsrep_thd_trx_seqno(trx->mysql_thd);
+  bf_info.bf_client_state= wsrep_thd_client_state_str(trx->mysql_thd);
+  bf_info.bf_client_mode= wsrep_thd_client_mode_str(trx->mysql_thd);
+  bf_info.bf_trx_state= wsrep_thd_transaction_state_str(trx->mysql_thd);
+
+  if (conflict_lock->is_table())
+  {
+    bf_info.victim_lock= lock_table_info_get(conflict_lock).c_str();
+  }
+  else
+  {
+    bf_info.victim_lock= lock_rec_info_get(conflict_lock).c_str();
+    const page_id_t page_id{conflict_lock->un_member.rec_lock.page_id};
+    bf_info.space_id= page_id.space();
+    bf_info.page_no= page_id.page_no();
+  }
+
+  if (bf_lock->is_table())
+  {
+    bf_info.bf_lock= lock_table_info_get(bf_lock).c_str();
+  }
+  else
+  {
+    bf_info.bf_lock= lock_rec_info_get(bf_lock).c_str();
+  }
+
+  bf_info.time = my_hrtime();
+  bf_info.index_name= bf_lock->index->name();
+  bf_info.table_name= ut_get_name(trx, bf_lock->index->table->name.m_name).c_str();
+
+  wsrep_store_bf_abort_info(trx->mysql_thd, &bf_info);
+}
+
 /** Kill the holders of conflicting locks.
 @param trx   brute-force applier transaction running in the current thread */
 ATTRIBUTE_COLD ATTRIBUTE_NOINLINE
@@ -1142,6 +1257,7 @@ func_exit:
       if (lock->trx->mysql_thd && wsrep_will_BF_abort(lock, trx))
       {
         victims.emplace(lock->trx);
+        wsrep_bf_abort_history_create(trx, wait_lock, lock);
       }
     }
   }
@@ -1176,6 +1292,7 @@ func_exit:
                lock_rec_create_low().
             TODO: add debug check here */
           victims.emplace(lock->trx);
+          wsrep_bf_abort_history_create(trx, wait_lock, lock);
         }
       } while ((lock= lock_rec_get_next(heap_no, lock)));
     }

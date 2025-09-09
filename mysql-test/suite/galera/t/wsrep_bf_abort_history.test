@@ -1,0 +1,99 @@
+#
+# Verify that the INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY is visible and contains output.
+#
+--source include/galera_cluster.inc
+
+--connection node_1
+SELECT PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_STATUS, PLUGIN_TYPE FROM information_schema.plugins WHERE PLUGIN_NAME = 'wsrep_bf_abort_history';
+
+SHOW CREATE TABLE information_schema.wsrep_bf_abort_history;
+
+CREATE TABLE t1 (f1 INTEGER PRIMARY KEY, f2 INT) ENGINE=InnoDB;
+INSERT INTO t1 VALUES (1, 10),(2, 20),(3, 30),(4, 40),(5,50);
+
+--connect node_1a, 127.0.0.1, root, , test, $NODE_MYPORT_1
+--connection node_1a
+BEGIN;
+UPDATE t1 SET f2 = 100 WHERE f1 = 2;
+
+--connect node_1b, 127.0.0.1, root, , test, $NODE_MYPORT_1
+--connection node_1b
+BEGIN;
+DELETE FROM t1 WHERE f1 = 4;
+
+--connect node_1c, 127.0.0.1, root, , test, $NODE_MYPORT_1
+--connection node_1c
+BEGIN;
+UPDATE t1 SET F1 = 6, F2 = 60 WHERE f1 = 5;
+
+--connection node_2
+UPDATE t1 SET f2 = f2 * 100;
+
+--connection node_1a
+--error ER_LOCK_DEADLOCK
+COMMIT;
+
+--connection node_1b
+--error ER_LOCK_DEADLOCK
+COMMIT;
+
+--connection node_1c
+--error ER_LOCK_DEADLOCK
+COMMIT;
+
+--connection node_1
+--echo #
+--echo # We had 3 conflicting transactions in node_1, all of them should be bf aborted
+--echo #
+--let $wait_condition = SELECT COUNT(*) = 3 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+--let $wait_condition_on_error_output = SELECT * FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+--source include/wait_condition_with_debug.inc
+SELECT COUNT(*) AS EXPECT_3 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+
+--connection node_2
+--echo #
+--echo # No conflicts on node_2. thus history should be empty
+--echo #
+SELECT COUNT(*) AS EXPECT_0 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+
+--connection node_1
+--echo #
+--echo # Cleanup
+--echo #
+SELECT * FROM t1;
+DROP TABLE t1;
+
+--connection node_2
+--let $wait_condition = SELECT COUNT(*) = 0 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 't1'
+--source include/wait_condition.inc
+
+--source galera_insert_multi.inc
+
+--connection node_1
+--echo #
+--echo # We still have 3 conflicting transactions in node_1, all of them should be bf aborted
+--echo #
+--let $wait_condition = SELECT COUNT(*) = 3 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+--let $wait_condition_on_error_output = SELECT * FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+--source include/wait_condition_with_debug.inc
+SELECT COUNT(*) AS EXPECT_3 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+--echo #
+--echo # No MDL-conflicts on this node
+--echo #
+SELECT COUNT(*) AS EXPECT_0 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY WHERE VICTIM_LOCK LIKE '%MDL%';
+
+--connect node_2a, 127.0.0.1, root, , test, $NODE_MYPORT_2
+--connection node_2a
+--echo #
+--echo # We have conflicting transactions in node_2
+--echo #
+--let $wait_condition = SELECT COUNT(*) >= 1 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+--let $wait_condition_on_error_output = SELECT * FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+--source include/wait_condition_with_debug.inc
+SELECT COUNT(*) >= 1 AS EXPECT_1 FROM INFORMATION_SCHEMA.WSREP_BF_ABORT_HISTORY;
+
+--connection node_1
+--disconnect node_2a
+
+--source include/galera_end.inc
+

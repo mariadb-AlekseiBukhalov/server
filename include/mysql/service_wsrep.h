@@ -14,7 +14,7 @@ enum Wsrep_service_key_type
 #else
 
 /* Copyright (c) 2015, 2020, MariaDB Corporation Ab
-                 2018 Codership Oy <info@codership.com>
+                 2018, 2025, Codership Oy <info@codership.com>
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ enum Wsrep_service_key_type
 struct xid_t;
 struct wsrep_ws_handle;
 struct wsrep_buf;
+struct wsrep_bf_abort;
 
 /* Must match to definition in sql/mysqld.h */
 typedef int64 query_id_t;
@@ -96,6 +97,9 @@ extern struct wsrep_service_st {
   void                        (*wsrep_thd_kill_UNLOCK_func)(const MYSQL_THD thd);
   void                        (*wsrep_thd_set_wsrep_PA_unsafe_func)(MYSQL_THD thd);
   uint32                      (*wsrep_get_domain_id_func)();
+  long long                   (*wsrep_thd_depends_on_func)(const MYSQL_THD thd);
+  void                        (*wsrep_thd_gtid_str_func)(const MYSQL_THD thd, char *buf);
+  void                        (*wsrep_store_bf_abort_info_func)(MYSQL_THD thd, const struct wsrep_bf_abort *bf_info);
 } *wsrep_service;
 
 #define MYSQL_SERVICE_WSREP_INCLUDED
@@ -120,6 +124,7 @@ extern struct wsrep_service_st {
 #define wsrep_thd_retry_counter(T) wsrep_service->wsrep_thd_retry_counter_func(T)
 #define wsrep_thd_ignore_table(T) wsrep_service->wsrep_thd_ignore_table_func(T)
 #define wsrep_thd_trx_seqno(T) wsrep_service->wsrep_thd_trx_seqno_func(T)
+#define wsrep_thd_depends_on(T) wsrep_service->wsrep_thd_depends_on_func(T)
 #define wsrep_set_data_home_dir(A) wsrep_service->wsrep_set_data_home_dir_func(A)
 #define wsrep_thd_is_BF(T,S) wsrep_service->wsrep_thd_is_BF_func(T,S)
 #define wsrep_thd_is_aborting(T) wsrep_service->wsrep_thd_is_aborting_func(T)
@@ -146,6 +151,9 @@ extern struct wsrep_service_st {
 #define wsrep_report_bf_lock_wait(T,I) wsrep_service->wsrep_report_bf_lock_wait(T,I)
 #define wsrep_thd_set_PA_unsafe(T) wsrep_service->wsrep_thd_set_PA_unsafe_func(T)
 #define wsrep_get_domain_id(T) wsrep_service->wsrep_get_domain_id_func(T)
+#define wsrep_thd_depends_on(T) wsrep_service->wsrep_thd_depends_on_func(T)
+#define wsrep_thd_gtid_str(T,B) wsrep_service->wsrep_thd_gtid_str_func(T,B)
+#define wsrep_store_bf_abort_info(T, B) wsrep_store_bf_abort_info_func(T,B)
 #else
 
 #define MYSQL_SERVICE_WSREP_STATIC_INCLUDED
@@ -258,5 +266,12 @@ extern "C" void wsrep_report_bf_lock_wait(const THD *thd,
 /* declare parallel applying unsafety for the THD */
 extern "C" void wsrep_thd_set_PA_unsafe(MYSQL_THD thd);
 extern "C" uint32 wsrep_get_domain_id();
+
+extern "C" long long wsrep_thd_depends_on(const MYSQL_THD thd);
+extern "C" void wsrep_thd_gtid_str(const MYSQL_THD thd, char *buf);
+
+extern my_bool wsrep_bf_abort_history_enabled;
+extern "C" void wsrep_store_bf_abort_info(MYSQL_THD thd, const struct wsrep_bf_abort *bf_info);
+
 #endif
 #endif /* MYSQL_SERVICE_WSREP_INCLUDED */

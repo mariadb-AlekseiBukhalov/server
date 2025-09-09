@@ -1,0 +1,84 @@
+#
+# Verify that the INFORMATION_SCHEMA.WSREP_THD_INFO_HISTORY is visible and contains output.
+#
+--source include/galera_cluster.inc
+
+--connection node_1
+SELECT PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_STATUS, PLUGIN_TYPE FROM information_schema.plugins WHERE PLUGIN_NAME = 'wsrep_thd_info_history';
+SELECT PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_STATUS, PLUGIN_TYPE FROM information_schema.plugins WHERE PLUGIN_NAME = 'wsrep_thd_info';
+
+SHOW CREATE TABLE information_schema.wsrep_thd_info_history;
+--echo # Expect at least one applier
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE MODE = "high priority";
+--echo # Expect at least local connection
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE MODE = "local";
+
+--echo #
+--echo # Do some simple transactions to see their history
+--echo #
+CREATE TABLE t1(a int not null primary key, b int) engine=INNODB;
+INSERT INTO t1 VALUES (1,1),(2,2),(3,3);
+UPDATE t1 set b = 5 where a = 3;
+
+--connection node_2
+--echo #
+--echo # Do some simple transactions from second node to see their history
+--echo #
+--let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 't1'
+--source include/wait_condition.inc
+--let $wait_condition = SELECT COUNT(*) = 3 FROM t1
+--source include/wait_condition.inc
+INSERT INTO t1 VALUES (4,4),(5,5),(6,6);
+ALTER TABLE t1 ADD INDEX b(b);
+
+--connection node_1
+--let $wait_condition = SELECT COUNT(*) = 6 FROM t1
+--source include/wait_condition.inc
+--echo # Expect at least one local
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE MODE = "local";
+--echo # Expect at least one high-priority
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE MODE = "high priority";
+--echo # Expect at least one toi
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE MODE = "toi";
+--echo # Expect at least one exec
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE STATE = "exec";
+--echo # Expect at least one result
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE STATE = "result";
+--echo # Expect at least one idle
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE STATE = "idle";
+--echo # Expect at least one executing
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "executing";
+--echo # Expect at least one certifying
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "certifying";
+--echo # Expect at least one preparing
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "preparing";
+--echo # Expect at least one committing
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "committing";
+--echo # Expect at least one ordered_commit
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "ordered_commit";
+--echo # Expect at least one committed
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "committed";
+--echo # Expect at least one seqno
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE SEQNO IS NOT NULL;
+--echo # Expect at least one depends_on
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE DEPENDS_ON IS NOT NULL;
+--echo # Expect at least one gtid
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE GTID IS NOT NULL;
+
+#SELECT * FROM information_schema.wsrep_thd_info_history;
+
+--echo # Create a user with no-superuser privileges, wsrep_thd_info_history is not selectable
+CREATE USER 'user_wti'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON test.* TO 'user_wti'@'localhost';
+
+--connect user_wti, localhost, user_wti,, test, $NODE_MYPORT_1
+--connection user_wti
+SHOW CREATE TABLE information_schema.wsrep_thd_info_history;
+--error ER_SPECIFIC_ACCESS_DENIED_ERROR
+SELECT * FROM information_schema.wsrep_thd_info_history;
+SHOW WARNINGS;
+
+--connection node_1
+--disconnect user_wti
+DROP USER 'user_wti'@'localhost';
+DROP TABLE t1;

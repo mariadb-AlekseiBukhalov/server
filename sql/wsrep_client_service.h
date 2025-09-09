@@ -1,4 +1,4 @@
-/* Copyright 2018 Codership Oy <info@codership.com>
+/* Copyright 2018-2025 Codership Oy <info@codership.com>
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -59,6 +59,7 @@ public:
   void debug_sync(const char*) override;
   void debug_crash(const char*) override;
   int bf_rollback() override;
+  void notify_state_change() override;
 private:
   friend class Wsrep_server_service;
   THD* m_thd;

@@ -1,0 +1,29 @@
+--- r/galera_connections.result	2025-01-21 14:50:24.771218057 +0200
++++ r/galera_connections.reject	2025-01-21 15:00:26.927796046 +0200
+@@ -38,7 +38,7 @@
+ ) ENGINE=MEMORY DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-PROVIDER
++SERVER
+ SELECT COUNT(*) AS EXPECT_2 FROM INFORMATION_SCHEMA.WSREP_CONNECTIONS;
+ EXPECT_2
+ 2
+@@ -48,7 +48,7 @@
+ connection node_2;
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-PROVIDER
++SERVER
+ SELECT COUNT(*) AS EXPECT_2 FROM INFORMATION_SCHEMA.WSREP_CONNECTIONS;
+ EXPECT_2
+ 2
+@@ -58,7 +58,7 @@
+ connection node_3;
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-PROVIDER
++SERVER
+ SELECT COUNT(*) AS EXPECT_2 FROM INFORMATION_SCHEMA.WSREP_CONNECTIONS;
+ EXPECT_2
+ 2

@@ -48,7 +48,8 @@ create view v1 (c) as
 SELECT table_name FROM information_schema.TABLES
 WHERE table_schema IN ('mysql', 'INFORMATION_SCHEMA', 'test', 'mysqltest') AND
 table_name not like 'innodb_%' AND
-table_name not like 'xtradb_%';
+table_name not like 'xtradb_%' AND
+table_name not like 'wsrep_%';
 select * from v1;
 c
 ALL_PLUGINS
@@ -1427,12 +1428,12 @@ connection default;
 DROP FUNCTION f1;
 DROP PROCEDURE p1;
 DROP USER mysql_bug20230@localhost;
-SELECT MAX(table_name) FROM information_schema.tables WHERE table_schema IN ('mysql', 'INFORMATION_SCHEMA', 'test') and table_name not like 'xtradb%';
+SELECT MAX(table_name) FROM information_schema.tables WHERE table_schema IN ('mysql', 'INFORMATION_SCHEMA', 'test') and table_name not like 'xtradb%' and table_name not like 'wsrep%';
 MAX(table_name)
 VIEWS
 SELECT table_name from information_schema.tables
 WHERE table_name=(SELECT MAX(table_name)
-FROM information_schema.tables WHERE table_schema IN ('mysql', 'INFORMATION_SCHEMA', 'test') and table_name not like 'xtradb%');
+FROM information_schema.tables WHERE table_schema IN ('mysql', 'INFORMATION_SCHEMA', 'test') and table_name not like 'xtradb%' and table_name not like 'wsrep%');
 table_name
 VIEWS
 DROP TABLE IF EXISTS bug23037;

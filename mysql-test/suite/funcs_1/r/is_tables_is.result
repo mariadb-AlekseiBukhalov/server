@@ -11,6 +11,7 @@ FROM information_schema.tables
 WHERE table_schema = 'information_schema'
 AND table_name <> 'profiling' AND table_name not like 'innodb_%'
 AND table_name not like 'xtradb_%'
+AND table_name not like 'wsrep%'
 ORDER BY table_schema,table_name;
 TABLE_CATALOG	def
 TABLE_SCHEMA	information_schema
@@ -1277,6 +1278,7 @@ FROM information_schema.tables
 WHERE table_schema = 'information_schema'
 AND table_name <> 'profiling' AND table_name not like 'innodb_%'
 AND table_name not like 'xtradb_%'
+AND table_name not like 'wsrep%'
 ORDER BY table_schema,table_name;
 TABLE_CATALOG	def
 TABLE_SCHEMA	information_schema

@@ -1,0 +1,20 @@
+-- source include/not_embedded.inc
+-- source include/have_perfschema.inc
+
+# check that CSV engine was compiled in, as the result of the test depends
+# on the presence of the log tables (which are CSV-based).
+--source include/have_csv.inc
+
+# Without aria_used_for_temp_tables some I_S tables will be MyISAM,
+# while the test expects them to be Aria
+-- source include/have_aria_used_for_temp_tables.inc
+
+-- source include/have_innodb.inc
+-- source include/not_windows.inc
+-- source include/have_wsrep.inc
+
+--sorted_result
+SELECT table_name FROM information_schema.TABLES
+  WHERE table_schema IN ('mysql', 'INFORMATION_SCHEMA', 'test', 'mysqltest') AND
+        table_name not like 'innodb_%' AND
+        table_name not like 'xtradb_%';

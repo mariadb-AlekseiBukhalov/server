@@ -1,0 +1,132 @@
+connection node_2;
+connection node_1;
+connection node_1;
+SELECT PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_STATUS, PLUGIN_TYPE FROM information_schema.plugins WHERE PLUGIN_NAME = 'wsrep_thd_info_history';
+PLUGIN_NAME	PLUGIN_VERSION	PLUGIN_STATUS	PLUGIN_TYPE
+WSREP_THD_INFO_HISTORY	1.0	ACTIVE	INFORMATION SCHEMA
+SELECT PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_STATUS, PLUGIN_TYPE FROM information_schema.plugins WHERE PLUGIN_NAME = 'wsrep_thd_info';
+PLUGIN_NAME	PLUGIN_VERSION	PLUGIN_STATUS	PLUGIN_TYPE
+wsrep_thd_info	1.0	ACTIVE	INFORMATION SCHEMA
+SHOW CREATE TABLE information_schema.wsrep_thd_info_history;
+Table	Create Table
+WSREP_THD_INFO_HISTORY	CREATE TEMPORARY TABLE `WSREP_THD_INFO_HISTORY` (
+  `ID` int(11) unsigned NOT NULL,
+  `OS_THREAD_ID` bigint(21) unsigned NOT NULL,
+  `TIME` datetime(6) NOT NULL,
+  `MODE` varchar(32),
+  `STATE` varchar(32),
+  `TRANSACTION_ID` bigint(21) unsigned,
+  `TRANSACTION_STATE` varchar(32),
+  `SEQNO` bigint(21) unsigned,
+  `DEPENDS_ON` bigint(21) unsigned,
+  `GTID` varchar(512)
+) ENGINE=MEMORY DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci
+# Expect at least one applier
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE MODE = "high priority";
+expect_1
+1
+# Expect at least local connection
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE MODE = "local";
+expect_1
+1
+#
+# Do some simple transactions to see their history
+#
+CREATE TABLE t1(a int not null primary key, b int) engine=INNODB;
+INSERT INTO t1 VALUES (1,1),(2,2),(3,3);
+UPDATE t1 set b = 5 where a = 3;
+connection node_2;
+#
+# Do some simple transactions from second node to see their history
+#
+INSERT INTO t1 VALUES (4,4),(5,5),(6,6);
+ALTER TABLE t1 ADD INDEX b(b);
+connection node_1;
+# Expect at least one local
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE MODE = "local";
+expect_1
+1
+# Expect at least one high-priority
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE MODE = "high priority";
+expect_1
+1
+# Expect at least one toi
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE MODE = "toi";
+expect_1
+1
+# Expect at least one exec
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE STATE = "exec";
+expect_1
+1
+# Expect at least one result
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE STATE = "result";
+expect_1
+1
+# Expect at least one idle
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE STATE = "idle";
+expect_1
+1
+# Expect at least one executing
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "executing";
+expect_1
+1
+# Expect at least one certifying
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "certifying";
+expect_1
+1
+# Expect at least one preparing
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "preparing";
+expect_1
+1
+# Expect at least one committing
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "committing";
+expect_1
+1
+# Expect at least one ordered_commit
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "ordered_commit";
+expect_1
+1
+# Expect at least one committed
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE TRANSACTION_STATE = "committed";
+expect_1
+1
+# Expect at least one seqno
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE SEQNO IS NOT NULL;
+expect_1
+1
+# Expect at least one depends_on
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE DEPENDS_ON IS NOT NULL;
+expect_1
+1
+# Expect at least one gtid
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info_history WHERE GTID IS NOT NULL;
+expect_1
+1
+# Create a user with no-superuser privileges, wsrep_thd_info_history is not selectable
+CREATE USER 'user_wti'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON test.* TO 'user_wti'@'localhost';
+connect user_wti, localhost, user_wti,, test, $NODE_MYPORT_1;
+connection user_wti;
+SHOW CREATE TABLE information_schema.wsrep_thd_info_history;
+Table	Create Table
+WSREP_THD_INFO_HISTORY	CREATE TEMPORARY TABLE `WSREP_THD_INFO_HISTORY` (
+  `ID` int(11) unsigned NOT NULL,
+  `OS_THREAD_ID` bigint(21) unsigned NOT NULL,
+  `TIME` datetime(6) NOT NULL,
+  `MODE` varchar(32),
+  `STATE` varchar(32),
+  `TRANSACTION_ID` bigint(21) unsigned,
+  `TRANSACTION_STATE` varchar(32),
+  `SEQNO` bigint(21) unsigned,
+  `DEPENDS_ON` bigint(21) unsigned,
+  `GTID` varchar(512)
+) ENGINE=MEMORY DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci
+SELECT * FROM information_schema.wsrep_thd_info_history;
+ERROR 42000: Access denied; you need (at least one of) the PROCESS privilege(s) for this operation
+SHOW WARNINGS;
+Level	Code	Message
+Error	1227	Access denied; you need (at least one of) the PROCESS privilege(s) for this operation
+connection node_1;
+disconnect user_wti;
+DROP USER 'user_wti'@'localhost';
+DROP TABLE t1;

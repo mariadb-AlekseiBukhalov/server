@@ -731,6 +731,8 @@ public:
 
 #ifdef WITH_WSREP
   void wsrep_report(bool debug) const;
+  void wsrep_bf_abort_history(const THD* request_thd,
+                              const enum_mdl_type requested) const;
 #endif /* WITH_WSREP */
   bool has_pending_conflicting_lock() const;
 

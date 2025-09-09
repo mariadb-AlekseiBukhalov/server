@@ -72,5 +72,7 @@ private:
   char m_serialized[WSREP_XID_SERIALIZED_SIZE];
 };
 
+const wsrep_server_gtid_t wsrep_server_gtid(const XID *xid);
+
 #endif /* WITH_WSREP */
 #endif /* WSREP_UTILS_H */

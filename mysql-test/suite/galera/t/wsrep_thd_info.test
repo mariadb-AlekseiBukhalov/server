@@ -1,0 +1,27 @@
+#
+# Verify that the INFORMATION_SCHEMA.WSREP_THD_INFO is visible and contains output.
+#
+--source include/galera_cluster.inc
+
+--connection node_1
+SELECT PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_STATUS, PLUGIN_TYPE FROM information_schema.plugins WHERE PLUGIN_NAME = 'wsrep_thd_info';
+SHOW CREATE TABLE information_schema.wsrep_thd_info;
+--echo # Expect at least one applier
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info WHERE MODE = "high priority";
+--echo # Expect at least local connection
+SELECT COUNT(*) > 0 AS expect_1 FROM information_schema.wsrep_thd_info WHERE MODE = "local";
+
+--echo # Create a user with no-superuser privileges, wsrep_thd_info is not selectable
+CREATE USER 'user_wti'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON test.* TO 'user_wti'@'localhost';
+
+--connect user_wti, localhost, user_wti,, test, $NODE_MYPORT_1
+--connection user_wti
+SHOW CREATE TABLE information_schema.wsrep_thd_info;
+--error ER_SPECIFIC_ACCESS_DENIED_ERROR
+SELECT * FROM information_schema.wsrep_thd_info;
+SHOW WARNINGS;
+
+--connection node_1
+--disconnect user_wti
+DROP USER 'user_wti'@'localhost';

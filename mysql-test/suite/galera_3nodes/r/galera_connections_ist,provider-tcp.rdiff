@@ -1,0 +1,83 @@
+--- r/galera_connections_ist.result	2025-06-02 08:43:02.955675688 +0300
++++ r/galera_connections_ist.reject	2025-06-02 08:55:43.344192413 +0300
+@@ -34,7 +34,7 @@
+ 2
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-SERVER
++PROVIDER
+ SELECT COUNT(*) AS EXPECT_3 FROM mysql.wsrep_cluster_members;
+ EXPECT_3
+ 3
+@@ -44,7 +44,7 @@
+ 2
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-SERVER
++PROVIDER
+ SELECT COUNT(*) AS EXPECT_3 FROM mysql.wsrep_cluster_members;
+ EXPECT_3
+ 3
+@@ -54,7 +54,7 @@
+ 2
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-SERVER
++PROVIDER
+ SELECT COUNT(*) AS EXPECT_3 FROM mysql.wsrep_cluster_members;
+ EXPECT_3
+ 3
+@@ -71,7 +71,7 @@
+ 1
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-SERVER
++PROVIDER
+ SELECT COUNT(*) AS EXPECT_2 FROM mysql.wsrep_cluster_members;
+ EXPECT_2
+ 2
+@@ -82,7 +82,7 @@
+ 1
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-SERVER
++PROVIDER
+ SELECT COUNT(*) AS EXPECT_2 FROM mysql.wsrep_cluster_members;
+ EXPECT_2
+ 2
+@@ -101,7 +101,7 @@
+ 2
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-SERVER
++PROVIDER
+ SELECT COUNT(*) AS EXPECT_3 FROM mysql.wsrep_cluster_members;
+ EXPECT_3
+ 3
+@@ -124,7 +124,7 @@
+ 2
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-SERVER
++PROVIDER
+ SELECT COUNT(*) AS EXPECT_3 FROM mysql.wsrep_cluster_members;
+ EXPECT_3
+ 3
+@@ -142,7 +142,7 @@
+ 2
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-SERVER
++PROVIDER
+ SELECT COUNT(*) AS EXPECT_3 FROM mysql.wsrep_cluster_members;
+ EXPECT_3
+ 3
+@@ -160,7 +160,7 @@
+ 2
+ SELECT @@wsrep_ssl_mode;
+ @@wsrep_ssl_mode
+-SERVER
++PROVIDER
+ SELECT COUNT(*) AS EXPECT_3 FROM mysql.wsrep_cluster_members;
+ EXPECT_3
+ 3

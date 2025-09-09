@@ -23,6 +23,7 @@
 #include "debug_sync.h"
 #include "log.h"
 #include "wsrep_schema.h" // WSREP_SCHEMA, WSREP_STREAMING_TABLE
+#include "wsrep_bf_abort_history.h"
 
 extern "C" my_bool wsrep_on(const THD *thd)
 {
@@ -115,6 +116,19 @@ extern "C" long long wsrep_thd_trx_seqno(const THD *thd)
     }
   }
   return seqno;
+}
+
+extern "C" long long wsrep_thd_depends_on(const THD *thd)
+{
+  const wsrep::client_state& cs= thd->wsrep_cs();
+  if (cs.mode() == wsrep::client_state::m_toi)
+  {
+    return cs.toi_meta().depends_on().get();
+  }
+  else
+  {
+    return cs.transaction().ws_meta().depends_on().get();
+  }
 }
 
 extern "C" void wsrep_thd_self_abort(THD *thd)
@@ -436,4 +450,28 @@ extern "C" my_bool wsrep_thd_is_local_transaction(const THD *thd)
 {
   return (wsrep_thd_is_local(thd) &&
 	  thd->wsrep_cs().transaction().active());
+}
+
+extern "C" void wsrep_thd_gtid_str(const THD *thd, char* buf)
+{
+  buf[0]='\0';
+  if (wsrep_thd_is_local_toi(thd))
+  {
+    const wsrep_server_gtid_t gtid= wsrep_gtid_server.gtid();
+    sprintf(buf, "%u-%u-%llu", gtid.domain_id, gtid.server_id, gtid.seqno);
+  }
+  else if (wsrep_is_wsrep_xid((const void *)&thd->wsrep_xid))
+  {
+    const wsrep_server_gtid_t gtid= wsrep_server_gtid(&thd->wsrep_xid);
+    sprintf(buf, "%u-%u-%llu", gtid.domain_id, gtid.server_id, gtid.seqno);
+  }
+}
+
+extern "C" void wsrep_store_bf_abort_info(THD* thd, const wsrep_bf_abort_t* bf_info)
+{
+  if (wsrep_bf_abort_history_enabled)
+  {
+    DBUG_ASSERT(wsrep_bf_abort_store_func);
+    wsrep_bf_abort_store_func(thd, bf_info);
+  }
 }

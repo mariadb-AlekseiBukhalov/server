@@ -73,6 +73,8 @@ USERS
 USER_PRIVILEGES
 USER_STATISTICS
 VIEWS
+wsrep_connections
+wsrep_thd_info
 SELECT t.table_name, c1.column_name
 FROM information_schema.tables t
 INNER JOIN
@@ -160,6 +162,8 @@ USERS	USER
 USER_PRIVILEGES	GRANTEE
 USER_STATISTICS	USER
 VIEWS	TABLE_SCHEMA
+wsrep_connections	connection_id
+wsrep_thd_info	ID
 SELECT t.table_name, c1.column_name
 FROM information_schema.tables t
 INNER JOIN
@@ -247,6 +251,8 @@ USERS	USER
 USER_PRIVILEGES	GRANTEE
 USER_STATISTICS	USER
 VIEWS	TABLE_SCHEMA
+wsrep_connections	connection_id
+wsrep_thd_info	ID
 select 1 as "must be 1" from information_schema.tables  where "ACCOUNTS"=
 (select cast(table_name as char)  from information_schema.tables
 order by table_name limit 1) limit 1;
@@ -333,6 +339,8 @@ USERS	information_schema.USERS	1
 USER_PRIVILEGES	information_schema.USER_PRIVILEGES	1
 USER_STATISTICS	information_schema.USER_STATISTICS	1
 VIEWS	information_schema.VIEWS	1
+wsrep_connections	information_schema.wsrep_connections	1
+wsrep_thd_info	information_schema.wsrep_thd_info	1
 +---------------------------------------+
 +---------------------------------------+
 +---------------------------------------+
@@ -410,6 +418,8 @@ Database: information_schema
 | USER_PRIVILEGES                       |
 | USER_STATISTICS                       |
 | VIEWS                                 |
+| wsrep_connections                     |
+| wsrep_thd_info                        |
 +---------------------------------------+
 +---------------------------------------+
 +---------------------------------------+
@@ -487,6 +497,8 @@ Database: INFORMATION_SCHEMA
 | USER_PRIVILEGES                       |
 | USER_STATISTICS                       |
 | VIEWS                                 |
+| wsrep_connections                     |
+| wsrep_thd_info                        |
 +--------------------+
 +--------------------+
 +--------------------+
@@ -495,5 +507,5 @@ Wildcard: inf_rmation_schema
 | information_schema |
 SELECT table_schema, count(*) FROM information_schema.TABLES WHERE table_schema IN ('mysql', 'INFORMATION_SCHEMA', 'test', 'mysqltest') GROUP BY TABLE_SCHEMA;
 table_schema	count(*)
-information_schema	72
+information_schema	74
 mysql	33
