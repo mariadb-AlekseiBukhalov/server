@@ -1244,13 +1244,6 @@ static int spider_build_odbc_conn_string(Binary_string *conn_str, SPIDER_CONN *c
     driver-specific and should be used depending on the driver (e.g.
     spider_db_odbc::dbms_name).
   */
-  /* additional connect parameter for ODBC */
-  if (conn->tgt_ssl_ca)
-  {
-    if (conn_str->append(conn->tgt_ssl_ca, conn->tgt_ssl_ca_length))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-  }
-
   if (conn->tgt_filedsn)
   {
     DBUG_PRINT("info",("spider filedsn:%s", conn->tgt_filedsn));
@@ -1275,13 +1268,6 @@ static int spider_build_odbc_conn_string(Binary_string *conn_str, SPIDER_CONN *c
     {
       DBUG_RETURN(HA_ERR_OUT_OF_MEM);
     }
-  }
-
-  /* additional connect parameter for ODBC */
-  if (conn->tgt_ssl_capath)
-  {
-    if (conn_str->append(conn->tgt_ssl_capath, conn->tgt_ssl_capath_length))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
   }
 
   if (conn->tgt_driver)
@@ -1363,13 +1349,6 @@ static int spider_build_odbc_conn_string(Binary_string *conn_str, SPIDER_CONN *c
     }
   }
 
-  /* additional connect parameter for ODBC */
-  if (conn->tgt_ssl_cert)
-  {
-    if (conn_str->append(conn->tgt_ssl_cert, conn->tgt_ssl_cert_length))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
-  }
-
   if (conn->tgt_db)
   {
     DBUG_PRINT("info",("spider db:%s", conn->tgt_db));
@@ -1385,13 +1364,6 @@ static int spider_build_odbc_conn_string(Binary_string *conn_str, SPIDER_CONN *c
     {
       DBUG_RETURN(HA_ERR_OUT_OF_MEM);
     }
-  }
-
-  /* additional connect parameter for ODBC */
-  if (conn->tgt_ssl_cipher)
-  {
-    if (conn_str->append(conn->tgt_ssl_cipher, conn->tgt_ssl_cipher_length))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
   }
 
   if (conn->tgt_username)
@@ -1422,13 +1394,6 @@ static int spider_build_odbc_conn_string(Binary_string *conn_str, SPIDER_CONN *c
     {
       DBUG_RETURN(HA_ERR_OUT_OF_MEM);
     }
-  }
-
-  /* additional connect parameter for ODBC */
-  if (conn->tgt_ssl_key)
-  {
-    if (conn_str->append(conn->tgt_ssl_key, conn->tgt_ssl_key_length))
-      DBUG_RETURN(HA_ERR_OUT_OF_MEM);
   }
   DBUG_RETURN(0);
 }
