@@ -24,11 +24,13 @@ INSERT INTO child VALUES (1,1);
 SET AUTOCOMMIT = OFF;
 START TRANSACTION;
 DELETE FROM parent WHERE id = 2;
+--source include/wsrep_cert_keys_info.inc
 
 --connection node_2
 SET AUTOCOMMIT = OFF;
 START TRANSACTION;
 INSERT INTO child VALUES (2, 2);
+--source include/wsrep_cert_keys_info.inc
 
 --connection node_1
 COMMIT;

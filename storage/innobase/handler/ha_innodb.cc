@@ -120,6 +120,8 @@ extern my_bool opt_readonly;
 #include <limits>
 #include <myisamchk.h>                          // TT_FOR_UPGRADE
 #include "sql_type_vector.h"
+#include "sql_time.h"
+#include "tztime.h"                      // struct Time_zone
 
 #define thd_get_query_id(thd) uint64_t((thd)->query_id)
 #define thd_in_lock_tables(thd) (thd)->in_lock_tables
@@ -6887,6 +6889,14 @@ wsrep_store_key_val_for_row(
 					true_len   = buff_space;
 				}
 				memcpy(buff, normalized, true_len);
+
+			} else if (mysql_type == MYSQL_TYPE_TIMESTAMP) {
+				MYSQL_TIME mysql_time;
+				ulong sec_part;
+				my_time_t ts= field->get_timestamp(&sec_part);
+				thd_gmt_sec_to_TIME(thd, &mysql_time, ts);
+				mysql_time.second_part = 0;
+				true_len= my_datetime_to_str(&mysql_time, buff, 0);
 			} else {
 				/* Copy only if there is data */
 				if (true_len) {

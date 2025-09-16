@@ -19,6 +19,7 @@
 #include "my_global.h"
 #include "mysql/service_wsrep.h"
 #include "wsrep_applier.h" /* wsrep_apply_error */
+#include "wsrep_cert_key_history.h"
 #include "wsrep_xid.h"
 #include "wsrep_thd.h"
 #include "wsrep_binlog.h" /* register/deregister group commit */
@@ -586,6 +587,11 @@ static inline
 int wsrep_after_statement(THD* thd)
 {
   DBUG_ENTER("wsrep_after_statement");
+  if (!wsrep_is_active(thd))
+  {
+    delete thd->wsrep_cert_key_history;
+    thd->wsrep_cert_key_history = nullptr;
+  }
   int ret= ((thd->wsrep_cs().state() != wsrep::client_state::s_none &&
                thd->wsrep_cs().mode() == Wsrep_client_state::m_local) &&
               !thd->internal_transaction() ?

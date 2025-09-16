@@ -39,7 +39,10 @@ SET GLOBAL DEBUG_DBUG = "d,sync.wsrep_apply_cb";
 # delete on parent
 #
 --connection node_2
+START TRANSACTION;
 --eval $mw_369_child_query
+--source include/wsrep_cert_keys_info.inc
+COMMIT;
 
 #
 # Wait until $mw_369_child_query from node_2 reaches the sync point and
@@ -50,6 +53,7 @@ SET SESSION DEBUG_SYNC = "now WAIT_FOR sync.wsrep_apply_cb_reached";
 
 --connection node_1
 SET SESSION DEBUG_SYNC = "wsrep_before_certification SIGNAL before_certification_reached WAIT_FOR continue_before_certification";
+--source include/wsrep_cert_keys_info.inc
 --send COMMIT
 
 #

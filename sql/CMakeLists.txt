@@ -46,6 +46,7 @@ IF(WITH_WSREP AND NOT EMBEDDED_LIBRARY)
     wsrep_plugin.cc
     service_wsrep.cc
     wsrep_thd_info_plugin.cc
+    wsrep_cert_key_history.cc
     )
   MYSQL_ADD_PLUGIN(wsrep_provider ${WSREP_SOURCES} DEFAULT NOT_EMBEDDED LINK_LIBRARIES wsrep-lib wsrep_api_v26)
   MYSQL_ADD_PLUGIN(wsrep ${WSREP_SOURCES} MANDATORY NOT_EMBEDDED LINK_LIBRARIES wsrep-lib wsrep_api_v26)

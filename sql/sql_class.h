@@ -89,6 +89,8 @@ enum wsrep_consistency_check_mode {
     CONSISTENCY_CHECK_DECLARED,
     CONSISTENCY_CHECK_RUNNING,
 };
+
+struct Wsrep_cert_key_history;
 #endif /* WITH_WSREP */
 
 class Reprepare_observer;
@@ -5959,6 +5961,9 @@ public:
   bool                      wsrep_delayed_BF_abort;
   // true if this transaction is CREATE TABLE AS SELECT (CTAS)
   bool                      wsrep_ctas;
+  /* Collected keys history for the transaction */
+  Wsrep_cert_key_history*   wsrep_cert_key_history{nullptr};
+
   /*
     Transaction id:
     * m_wsrep_next_trx_id is assigned on the first query after

@@ -33,6 +33,8 @@
 #include <deque>
 #include <mutex>
 
+#include "wsrep_cert_key_history.h"
+
 /* WSREP_MEMBERSHIP table fields */
 
 /* Node index */
@@ -506,6 +508,204 @@ static int wsrep_bf_abort_history_plugin_deinit(void *p)
   return 0;
 }
 
+/*
+   WSREP_CERT_KEYS
+*/
+static struct st_mysql_information_schema wsrep_cert_keys_view = {
+    MYSQL_INFORMATION_SCHEMA_INTERFACE_VERSION};
+
+enum cert_keys_columns {
+  CERT_KEYS_COLUMN_THD_ID = 0,
+  CERT_KEYS_COLUMN_KEY_STRING,
+  CERT_KEYS_COLUMN_KEY_TYPE
+};
+
+namespace Show {
+static ST_FIELD_INFO wsrep_cert_keys_view_fields[] =
+{
+  Column("THD_ID", ULonglong(20), NOT_NULL, "Thread ID"),
+  Column("KEY_STRING", Varchar(256), NOT_NULL, "Certification Key"),
+  Column("KEY_TYPE", Varchar(64), NOT_NULL, "Certification Key Type"),
+  CEnd()
+};
+} // namespace Show
+
+static const char *wsrep_service_key_type_str(Wsrep_service_key_type key_type) {
+  switch (key_type) {
+    case WSREP_SERVICE_KEY_SHARED:
+      return "shared";
+    case WSREP_SERVICE_KEY_REFERENCE:
+      return "reference";
+    case WSREP_SERVICE_KEY_UPDATE:
+      return "update";
+    case WSREP_SERVICE_KEY_EXCLUSIVE:
+      return "exclusive";
+  }
+  return "unknown";
+}
+
+struct wsrep_cert_keys_fill_func {
+  void operator()(THD *thd) {
+    if (!WSREP(thd)) {
+      return;
+    }
+    struct call_ctx {
+      THD *thd;
+      TABLE *table;
+    };
+    call_ctx ctx = {thd, m_table};
+    wsrep_cert_key_history_foreach(
+        thd,
+        [](void *ctx, my_thread_id thd_id, const char *key_string,
+           Wsrep_service_key_type key_type) {
+          call_ctx *c = (call_ctx *)ctx;
+          c->table->field[CERT_KEYS_COLUMN_THD_ID]->store(thd_id, true);
+          c->table->field[CERT_KEYS_COLUMN_KEY_STRING]->store(
+              key_string, strlen(key_string), system_charset_info);
+          c->table->field[CERT_KEYS_COLUMN_KEY_TYPE]->store(
+              wsrep_service_key_type_str(key_type),
+              strlen(wsrep_service_key_type_str(key_type)),
+              system_charset_info);
+          schema_table_store_record(c->thd, c->table);
+          return true;
+        },
+        &ctx);
+  }
+
+  wsrep_cert_keys_fill_func(THD *caller_thd, TABLE *table)
+      : m_caller_thd(caller_thd), m_table(table) {
+  }
+
+  THD *m_caller_thd;
+  TABLE *m_table;
+};
+
+
+  static my_bool call_ctx_operator(THD *in_thd, wsrep_cert_keys_fill_func *arg) {
+    if (!WSREP(in_thd)) {
+      return true;
+    }
+    struct call_ctx {
+      THD *thd;
+      TABLE *table;
+    };
+    call_ctx ctx = {arg->m_caller_thd, arg->m_table};
+    wsrep_cert_key_history_foreach(
+        in_thd,
+        [](void *ctx, my_thread_id thd_id, const char *key_string,
+           Wsrep_service_key_type key_type) {
+          call_ctx *c = (call_ctx *)ctx;
+          c->table->field[CERT_KEYS_COLUMN_THD_ID]->store(thd_id, true);
+          c->table->field[CERT_KEYS_COLUMN_KEY_STRING]->store(
+              key_string, strlen(key_string), system_charset_info);
+          c->table->field[CERT_KEYS_COLUMN_KEY_TYPE]->store(
+              wsrep_service_key_type_str(key_type),
+              strlen(wsrep_service_key_type_str(key_type)),
+              system_charset_info);
+          schema_table_store_record(c->thd, c->table);
+          return true;
+        },
+        &ctx);
+      return false;
+  }
+
+static int wsrep_cert_keys_fill_view(THD *thd, TABLE_LIST* tables, Item *) {
+  TABLE *table = tables->table;
+  wsrep_cert_keys_fill_func f(thd, table);
+  server_threads.iterate(call_ctx_operator, &f);
+  return 0;
+}
+
+static int wsrep_cert_keys_init(void *ptr) {
+  ST_SCHEMA_TABLE *schema_table = static_cast<ST_SCHEMA_TABLE *>(ptr);
+  schema_table->fields_info = Show::wsrep_cert_keys_view_fields;
+  schema_table->fill_table = wsrep_cert_keys_fill_view;
+  wsrep_cert_key_history_init();
+  return 0;
+}
+
+static int wsrep_cert_keys_deinit(void *) {
+  wsrep_cert_key_history_deinit();
+  return 0;
+}
+
+/*
+   WSREP_CERT_KEYS_HISTORY
+*/
+static struct st_mysql_information_schema wsrep_cert_keys_history_view = {
+    MYSQL_INFORMATION_SCHEMA_INTERFACE_VERSION};
+
+enum cert_keys_history_columns {
+  CERT_KEYS_HISTORY_COLUMN_THD_ID = 0,
+  CERT_KEYS_HISTORY_COLUMN_KEY_STRING,
+  CERT_KEYS_HISTORY_COLUMN_KEY_TYPE
+};
+
+namespace Show {
+static ST_FIELD_INFO wsrep_cert_keys_history_view_fields[] =
+{
+  Column("THD_ID", ULonglong(20), NOT_NULL, "Thread ID"),
+  Column("KEY_STRING", Varchar(256), NOT_NULL, "Certification Key"),
+  Column("KEY_TYPE", Varchar(64), NOT_NULL, "Certification Key Type"),
+  CEnd()
+};
+} // namespace Show
+
+struct wsrep_cert_keys_history_fill_func {
+  void operator()(THD *thd) {
+    if (!WSREP(thd)) {
+      return;
+    }
+    struct call_ctx {
+      THD *thd;
+      TABLE *table;
+    };
+    call_ctx ctx = {thd, m_table};
+    wsrep_cert_key_history_foreach_history(
+        [](void *ctx, my_thread_id thd_id, const char *key_string,
+           Wsrep_service_key_type key_type) {
+          call_ctx *c = (call_ctx *)ctx;
+          c->table->field[CERT_KEYS_HISTORY_COLUMN_THD_ID]->store(thd_id, true);
+          c->table->field[CERT_KEYS_HISTORY_COLUMN_KEY_STRING]->store(
+              key_string, strlen(key_string), system_charset_info);
+          c->table->field[CERT_KEYS_HISTORY_COLUMN_KEY_TYPE]->store(
+              wsrep_service_key_type_str(key_type),
+              strlen(wsrep_service_key_type_str(key_type)),
+              system_charset_info);
+          schema_table_store_record(c->thd, c->table);
+          return true;
+        },
+        &ctx);
+  }
+
+  wsrep_cert_keys_history_fill_func(THD *caller_thd, TABLE *table)
+      : m_caller_thd(caller_thd), m_table(table) {}
+
+  THD *m_caller_thd;
+  TABLE *m_table;
+};
+
+static int wsrep_cert_keys_history_fill_view(THD *thd, TABLE_LIST *tables,
+                                             Item *) {
+  TABLE *table = tables->table;
+  wsrep_cert_keys_history_fill_func f(thd, table);
+  f(thd);
+  return 0;
+}
+
+static int wsrep_cert_keys_history_init(void *ptr) {
+  ST_SCHEMA_TABLE *schema_table = static_cast<ST_SCHEMA_TABLE *>(ptr);
+  schema_table->fields_info = Show::wsrep_cert_keys_history_view_fields;
+  schema_table->fill_table = wsrep_cert_keys_history_fill_view;
+  wsrep_cert_key_history_init();
+  return 0;
+}
+
+static int wsrep_cert_keys_history_deinit(void *) {
+  wsrep_cert_key_history_deinit();
+  return 0;
+}
+
 maria_declare_plugin(wsrep_info)
 {
   MYSQL_INFORMATION_SCHEMA_PLUGIN,
@@ -566,6 +766,36 @@ maria_declare_plugin(wsrep_info)
   nullptr,                                      /* System variables   */
   PACKAGE_VERSION,                              /* Version (string)   */
   MariaDB_PLUGIN_MATURITY_STABLE                /* Maturity           */
+},
+{
+  MYSQL_INFORMATION_SCHEMA_PLUGIN,
+  &wsrep_cert_keys_view,
+  "WSREP_CERT_KEYS",                            /* Plugin name        */
+  "Codership Oy",                               /* Plugin author      */
+  "Wsrep certification keys information",       /* Plugin description */
+  PLUGIN_LICENSE_GPL,                           /* License            */
+  wsrep_cert_keys_init,                         /* Plugin Init        */
+  wsrep_cert_keys_deinit,                       /* Plugin Deinit      */
+  0x0100,                                       /* Version (hex)      */
+  NULL,                                         /* Status variables   */
+  NULL,                                         /* System variables   */
+  "1.0",                                        /* Version (string)   */
+  MariaDB_PLUGIN_MATURITY_STABLE                /* Maturity           */
+},
+{
+  MYSQL_INFORMATION_SCHEMA_PLUGIN,
+  &wsrep_cert_keys_history_view,
+  "WSREP_CERT_KEYS_HISTORY",                      /* Plugin name        */
+  "Codership Oy",                                 /* Plugin author      */
+  "Wsrep certification keys history information", /* Plugin description */
+  PLUGIN_LICENSE_GPL,                             /* License            */
+  wsrep_cert_keys_history_init,                   /* Plugin Init        */
+  wsrep_cert_keys_history_deinit,                 /* Plugin Deinit      */
+  0x0100,                                         /* Version (hex)      */
+  NULL,                                           /* Status variables   */
+  NULL,                                           /* System variables   */
+  "1.0",                                          /* Version (string)   */
+  MariaDB_PLUGIN_MATURITY_STABLE                  /* Maturity           */
 }
 maria_declare_plugin_end;
 

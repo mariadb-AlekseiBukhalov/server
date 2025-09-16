@@ -2997,6 +2997,12 @@ static int wsrep_TOI_begin(THD *thd, const char *db, const char *table,
   wsrep::key_array key_array=
     wsrep_prepare_keys_for_toi(db, table, table_list, alter_info, fk_tables);
 
+  if (wsrep_cert_key_history_is_initialized()) {
+    for (const auto &key : key_array) {
+      wsrep_cert_key_history_append(thd, key);
+    }
+  }
+
   if (thd->has_read_only_protection())
   {
     /* non replicated DDL, affecting temporary tables only */

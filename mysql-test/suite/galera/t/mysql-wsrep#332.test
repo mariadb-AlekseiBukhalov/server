@@ -46,7 +46,10 @@ SET SESSION wsrep_sync_wait = 0;
 # delete on parent
 #
 --connection node_2
+START TRANSACTION;
 --eval $mw_369_child_query
+--source include/wsrep_cert_keys_info.inc
+COMMIT;
 
 #
 # Wait until $mw_369_child_query from node_2 reaches the sync point and
@@ -57,6 +60,7 @@ SET SESSION wsrep_sync_wait = 0;
 --source include/galera_clear_sync_point.inc
 
 --connection node_1
+--source include/wsrep_cert_keys_info.inc
 --send COMMIT
 
 --connection node_1a

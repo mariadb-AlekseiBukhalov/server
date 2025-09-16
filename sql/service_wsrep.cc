@@ -357,6 +357,10 @@ extern "C" int wsrep_thd_append_key(THD *thd,
     {
       wsrep_key.append_key_part(key[i].key_parts[kp].ptr, key[i].key_parts[kp].len);
     }
+    if (wsrep_cert_key_history_is_initialized())
+    {
+      wsrep_cert_key_history_append(thd, wsrep_key);
+    }
     ret= client_state.append_key(wsrep_key);
   }
   /*
