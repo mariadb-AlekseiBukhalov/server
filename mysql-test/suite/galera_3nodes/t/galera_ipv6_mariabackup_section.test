@@ -51,7 +51,12 @@ DROP TABLE t1;
 # There will be 3 ISTs donated from node_1 in Galera 4.
 # Two first happen at the initial startup to populate the certification
 # index. The third one is from the IST which happens during the actual test.
---let $assert_count = 3
+if ($galera_have_grp) {
+    --let $assert_count = 0
+}
+if (!$galera_have_grp) {
+    --let $assert_count = 3
+}
 --let $assert_text = async IST sender starting to serve tcp://\[::1\]:
 --let $assert_select = async IST sender starting to serve tcp://\[::1\]:
 --source include/assert_grep.inc
@@ -62,13 +67,23 @@ DROP TABLE t1;
 
 # There are two ISTs on joiner, the first at the initial startup, the second
 # during the actual test.
---let $assert_count = 2
+if ($galera_have_grp) {
+    --let $assert_count = 0
+}
+if (!$galera_have_grp) {
+    --let $assert_count = 2
+}
 --let $assert_text = IST receiver addr using tcp://\[::1\]
 --let $assert_select = IST receiver addr using tcp://\[::1\]
 --source include/assert_grep.inc
 
 # The receiver expects IST
---let $assert_count = 2
+if ($galera_have_grp) {
+    --let $assert_count = 0
+}
+if (!$galera_have_grp) {
+    --let $assert_count = 2
+}
 --let $assert_text = , listening at: tcp://\[::1\]
 --let $assert_select = , listening at: tcp://\[::1\]
 --source include/assert_grep.inc

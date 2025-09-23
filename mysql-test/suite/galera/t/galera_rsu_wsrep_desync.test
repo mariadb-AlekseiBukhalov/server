@@ -6,6 +6,9 @@
 --source include/have_innodb.inc
 --source include/have_debug_sync.inc
 
+--let $grp_skip_reason = GRP allows wsrep_desync on another connection with RSU in progress
+--source include/not_galera_plugin.inc
+
 # First, test wsrep_desync 1 > 0 during DDL
 
 --connection node_1

@@ -6451,7 +6451,7 @@ static Sys_var_charptr Sys_wsrep_sst_donor(
        GLOBAL_VAR(wsrep_sst_donor),CMD_LINE(REQUIRED_ARG),
        DEFAULT(""), NO_MUTEX_GUARD, NOT_IN_BINLOG,
        ON_CHECK(wsrep_sst_donor_check),
-       ON_UPDATE(wsrep_sst_donor_update)); 
+       ON_UPDATE(wsrep_sst_donor_update));
 
 static Sys_var_mybool Sys_wsrep_sst_donor_rejects_queries(
        "wsrep_sst_donor_rejects_queries", "Reject client queries "
@@ -6527,6 +6527,17 @@ static Sys_var_uint Sys_wsrep_sync_wait(
        VALID_RANGE(WSREP_SYNC_WAIT_NONE, WSREP_SYNC_WAIT_MAX),
        DEFAULT(WSREP_SYNC_WAIT_NONE), BLOCK_SIZE(1),
        NO_MUTEX_GUARD, NOT_IN_BINLOG);
+
+static Sys_var_double Sys_wsrep_sync_wait_timeout(
+       "wsrep_sync_wait_timeout",
+       "Timeout for wsrep_sync_wait oprerations in seconds. "
+       "The allowed range is from 0 to 31536000 seconds. "
+       "Default is 30 seconds",
+       SESSION_VAR(wsrep_sync_wait_timeout),
+       CMD_LINE(REQUIRED_ARG),
+       VALID_RANGE(0, LONG_TIMEOUT), DEFAULT(30), NO_MUTEX_GUARD,
+       NOT_IN_BINLOG, ON_CHECK(0),
+       ON_UPDATE(wsrep_sync_wait_timeout_update));
 
 static const char *wsrep_mode_names[]=
 {

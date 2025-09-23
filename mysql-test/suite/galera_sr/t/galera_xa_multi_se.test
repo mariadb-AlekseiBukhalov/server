@@ -10,6 +10,8 @@
 --source include/have_innodb.inc
 --source include/have_rocksdb.inc
 --source include/have_sequence.inc
+--let $grp_skip_reason = XA not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 --connection node_1
 CREATE TABLE t1 (f1 INTEGER PRIMARY KEY) ENGINE = INNODB;

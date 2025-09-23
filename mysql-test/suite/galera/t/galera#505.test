@@ -1,6 +1,7 @@
 # galera#505 - Change of pc.weight wsrep param will be correctly stored in wsrep_provider_options variable
 
 --source include/galera_cluster.inc
+--source include/not_galera_plugin.inc
 
 --connection node_1
 

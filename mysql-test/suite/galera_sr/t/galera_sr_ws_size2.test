@@ -1,6 +1,9 @@
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 
+--let $grp_skip_reason = No repl.max_ws_size
+--source include/not_galera_plugin.inc
+
 #
 # Test that if wsrep_trx_fragment_size > repl.max_ws_size, no SR takes place and
 # the transaction is properly aborted.

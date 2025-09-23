@@ -65,6 +65,7 @@ SET DEBUG_SYNC = "RESET";
 --connection node_2
 --error ER_LOCK_DEADLOCK
 --reap
+SET SESSION wsrep_sync_wait = 15;
 select * from t1;
 
 DROP TABLE t1;

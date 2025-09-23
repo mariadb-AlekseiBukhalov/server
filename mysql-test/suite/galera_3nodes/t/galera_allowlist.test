@@ -1,6 +1,9 @@
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 
+--let $grp_skip_reason = Galera Plugin does not support allowlist yet
+--source include/not_galera_plugin.inc
+
 # Check that `wsrep_allowlist` variable is loaded
 SELECT COUNT(*) = 3 FROM mysql.wsrep_allowlist;
 
@@ -38,18 +41,38 @@ SELECT COUNT(*) = 2 FROM mysql.wsrep_allowlist;
 SELECT COUNT(*) = 2 FROM mysql.wsrep_allowlist;
 
 --connection node_3
-# Reconnect node 2 to the PC:
-SET GLOBAL wsrep_provider_options = 'gmcast.isolate=0';
 
-# We should reach Primary with cluster size = 1 because of `pc.ignore_quorum=TRUE and pc.wait_prim=FALSE` used in configuration
---let $wait_condition = SELECT VARIABLE_VALUE = 1 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
---source include/wait_condition.inc
+if (!$galera_have_grp) {
+    --disable_query_log
 
-# Resync should pass:
-SET @@global.wsrep_desync = 0;
+    # Reconnect node 2 to the PC:
+    SET GLOBAL wsrep_provider_options = 'gmcast.isolate=0';
 
-# Shutdown node
---source include/shutdown_mysqld.inc
+    # We should reach Primary with cluster size = 1 because of `pc.ignore_quorum=TRUE and pc.wait_prim=FALSE` used in configuration
+    --let $wait_condition = SELECT VARIABLE_VALUE = 1 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
+    --source include/wait_condition.inc
+
+    --disable_query_log
+
+    # Resync should pass:
+    SET @@global.wsrep_desync = 0;
+
+    # Shutdown node
+    --source include/shutdown_mysqld.inc
+
+    --enable_query_log
+}
+if ($galera_have_grp) {
+    --disable_query_log
+
+    # Restart node and expect it to fail
+    --source include/shutdown_mysqld.inc
+
+    --error 1
+    --exec $MYSQLD --defaults-group-suffix=.3 --defaults-file=$MYSQLTEST_VARDIR/my.cnf --innodb --wsrep-provider='grp' --connect-timeout=10
+
+    --enable_query_log
+}
 
 --connection node_1
 # Allow node 3 could be reconnected to cluster
@@ -63,13 +86,40 @@ INSERT INTO mysql.wsrep_allowlist(ip) VALUES ('127.0.0.3');
 --let $wait_condition = SELECT VARIABLE_VALUE = 3 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
 --source include/wait_condition.inc
 
-CALL mtr.add_suppression('WSREP: Connection not allowed');
+if (!$galera_have_grp) {
+    --disable_query_log
 
---connection node_2
-CALL mtr.add_suppression('WSREP: Connection not allowed');
+    --connection node_1
+    CALL mtr.add_suppression('WSREP: Connection not allowed');
 
---connection node_3
-CALL mtr.add_suppression('WSREP: Ignoring lack of quorum');
+    --connection node_2
+    CALL mtr.add_suppression('WSREP: Connection not allowed');
+
+    --connection node_3
+    CALL mtr.add_suppression('WSREP: Ignoring lack of quorum');
+
+    --enable_query_log
+}
+if ($galera_have_grp) {
+    --disable_query_log
+
+    --connection node_1
+    CALL mtr.add_suppression('GRP: Accept rejected');
+    CALL mtr.add_suppression('GRP: Connect rejected');
+
+    --connection node_2
+    CALL mtr.add_suppression('GRP: Accept rejected');
+    CALL mtr.add_suppression('GRP: Connect rejected');
+
+    --connection node_3
+    CALL mtr.add_suppression('GRP: No known servers to broadcast leader request to');
+    CALL mtr.add_suppression('WSREP: Process completed with error');
+    CALL mtr.add_suppression('WSREP: Grpsst returned error');
+    CALL mtr.add_suppression('WSREP: Offline SST failed');
+    CALL mtr.add_suppression('Aborting');
+
+    --enable_query_log
+}
 
 # Restore original auto_increment_offset values.
 --source ../galera/include/auto_increment_offset_restore.inc

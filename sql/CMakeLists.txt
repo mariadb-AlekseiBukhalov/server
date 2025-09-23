@@ -44,6 +44,8 @@ IF(WITH_WSREP AND NOT EMBEDDED_LIBRARY)
     wsrep_thd.cc
     wsrep_schema.cc
     wsrep_plugin.cc
+    wsrep_galera_replication.cc
+    wsrep_provider_grp.cc
     service_wsrep.cc
     wsrep_thd_info_plugin.cc
     wsrep_cert_key_history.cc

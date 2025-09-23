@@ -6,6 +6,9 @@
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 
+--let $grp_skip_reason = No auto eviction
+--source include/not_galera_plugin.inc
+
 # Make sure that Galera library has node eviction event reporting.
 --let $galera_version=26.4.14
 --source suite/wsrep/include/check_galera_version.inc

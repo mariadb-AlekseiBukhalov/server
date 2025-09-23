@@ -52,6 +52,11 @@ class Wsrep_schema
   int init();
 
   /*
+   Clear membership and streaming tables for bootstrap
+  */
+  int clear_on_bootstrap();
+
+  /*
     Store wsrep view info into wsrep schema.
   */
   int store_view(THD*, const Wsrep_view& view);

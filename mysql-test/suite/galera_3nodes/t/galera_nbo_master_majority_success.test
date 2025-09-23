@@ -5,6 +5,8 @@
 
 --source include/galera_cluster.inc
 --source include/big_test.inc
+--let $grp_skip_reason = NBO not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 --let $galera_connection_name = node_3
 --let $galera_server_number = 3

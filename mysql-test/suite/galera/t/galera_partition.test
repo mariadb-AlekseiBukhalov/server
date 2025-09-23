@@ -10,7 +10,7 @@ call mtr.add_suppression("WSREP: RSU failed due to pending transactions, schema:
 call mtr.add_suppression("WSREP: ALTER TABLE isolation failure");
 
 --connection node_1
---let $wait_condition = SELECT VARIABLE_VALUE = 2 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
+--let $wait_condition = SELECT VARIABLE_VALUE = 4 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
 --source include/wait_condition.inc
 
 CREATE TABLE t1(

@@ -54,6 +54,10 @@ SET SESSION wsrep_sync_wait = DEFAULT;
 # reconnect node 2
 SET GLOBAL wsrep_provider_options = 'gmcast.isolate = 0';
 --source include/galera_wait_ready.inc
+# With Galera plugin nodes rejoin the cluster one-by-one, so we need to
+# wait for the cluster size to be 2 to have deterministic test.
+--let $wait_condition = SELECT VARIABLE_VALUE = 2 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size'
+--source include/wait_condition.inc
 SHOW STATUS LIKE 'wsrep_cluster_size';
 
 --connection node_1a

@@ -5,6 +5,11 @@
 --source include/galera_cluster.inc
 --source include/have_debug.inc
 
+--let $grp_skip_reason = No wsrep_schema for streaming log
+# So the codepath where the debug instrumentation emulates
+# the failure does not get executed.
+--source include/not_galera_plugin.inc
+
 --let $node_1=node_1
 --let $node_2=node_2
 --source suite/galera/include/auto_increment_offset_save.inc

@@ -396,6 +396,7 @@ bool wsrep_SST_before_SE()
   return (wsrep_provider
           && *wsrep_provider
           && strcmp (wsrep_provider,   WSREP_NONE)
+          && strcmp (wsrep_provider,   WSREP_PROVIDER_GALERA_REPLICATION)
           && strcmp (wsrep_sst_method, WSREP_SST_SKIP)
           && strcmp (wsrep_sst_method, WSREP_SST_MYSQLDUMP));
 }
@@ -480,8 +481,8 @@ bool wsrep_sst_received (THD*                thd,
 
     if (!wsrep_SST_before_SE()) {
       wsrep_set_SE_checkpoint(wsrep::gtid::undefined(),
-                              wsrep_gtid_server.undefined());
-      wsrep_set_SE_checkpoint(sst_gtid, wsrep_gtid_server.gtid());
+                              wsrep_gtid_server.undefined(), 0);
+      wsrep_set_SE_checkpoint(sst_gtid, wsrep_gtid_server.gtid(), 0);
     }
     wsrep_verify_SE_checkpoint(uuid, seqno);
 
@@ -1376,19 +1377,9 @@ static ssize_t sst_prepare_mysqldump (const char*  addr_in,
   return ret;
 }
 
-std::string wsrep_sst_prepare()
+static const char*
+get_receive_address(char* ip_buf, const ssize_t ip_max)
 {
-  const ssize_t ip_max= 256;
-  char ip_buf[ip_max];
-  const char* addr_in=  NULL;
-  const char* addr_out= NULL;
-  const char* method;
-
-  if (!strcmp(wsrep_sst_method, WSREP_SST_SKIP))
-  {
-    return WSREP_STATE_TRANSFER_TRIVIAL;
-  }
-
   /*
     Figure out SST receive address. Common for all SST methods.
   */
@@ -1447,7 +1438,7 @@ std::string wsrep_sst_prepare()
   bool is_ipv6= addr_in_parser->is_ipv6();
   const char* address= addr_in_parser->get_address();
 
-  if (len > (is_ipv6 ? ip_max - 2 : ip_max))
+  if (len > size_t(is_ipv6 ? ip_max - 2 : ip_max))
   {
     WSREP_ERROR("Address to accept state transfer is too long: '%s'",
                 address);
@@ -1484,7 +1475,23 @@ std::string wsrep_sst_prepare()
   }
 
   delete addr_in_parser;
-  addr_in = ip_buf;
+  return ip_buf;
+}
+
+std::string wsrep_sst_prepare()
+{
+  const ssize_t ip_max= 256;
+  char ip_buf[ip_max];
+  const char* addr_in=  NULL;
+  const char* addr_out= NULL;
+  const char* method;
+
+  if (!strcmp(wsrep_sst_method, WSREP_SST_SKIP))
+  {
+    return WSREP_STATE_TRANSFER_TRIVIAL;
+  }
+
+  addr_in= get_receive_address(ip_buf, ip_max);
 
   ssize_t addr_len= -ENOSYS;
   method = wsrep_sst_method;
@@ -2069,10 +2076,6 @@ static void* sst_donor_thread (void* a)
   const size_t out_len= 128;
   char         out_buf[out_len];
 
-  wsrep_uuid_t  ret_uuid= WSREP_UUID_UNDEFINED;
-  // seqno of complete SST
-  wsrep_seqno_t ret_seqno= WSREP_SEQNO_UNDEFINED;
-
   wsp::process proc(arg->cmd, "rw", arg->env);
   err= -proc.error();
 
@@ -2119,6 +2122,7 @@ static void* sst_donor_thread (void* a)
     }
   } cleanup_sst_user_guard(user);
 
+  wsrep::gtid gtid;
   if (proc.from() && !err)
   {
     long long total= 0;
@@ -2199,8 +2203,10 @@ wait_signal:
       }
       else if (!strncasecmp (out, magic_done, done_len))
       {
-        err= sst_scan_uuid_seqno (out + strlen(magic_done) + 1,
-                                  &ret_uuid, &ret_seqno);
+        err= wsrep::scan_from_c_str(out + strlen(magic_done) + 1,
+                                    ::strlen(out + strlen(magic_done) + 1),
+                                    gtid);
+        err = err > 0 ? 0 : -err;
       }
       else
       {
@@ -2233,10 +2239,6 @@ wait_signal:
     }
     thd.ptr->global_read_lock.unlock_global_read_lock(thd.ptr);
   }
-
-  wsrep::gtid gtid(wsrep::id(ret_uuid.data, sizeof(ret_uuid.data)),
-                   wsrep::seqno(err ? wsrep::seqno::undefined() :
-                                wsrep::seqno(ret_seqno)));
 
 #ifdef ENABLED_DEBUG_SYNC
   DBUG_EXECUTE_IF("sync.wsrep_sst_donor_after_donation", {
@@ -2450,4 +2452,324 @@ int wsrep_sst_donate(const std::string& msg,
   ret= sst_donate_other(method, addr, current_gtid, bypass, auth, env());
 
   return (ret >= 0 ? WSREP_CB_SUCCESS : WSREP_CB_FAILURE);
+}
+
+#include "wsrep_provider_grp.h"
+
+/* Scan Galera coordinates from buffer buf. The buf must
+   contain the last line of SST script output.
+
+   If out variables ret_uuid and ret_seqno are given, the coordinates are read
+   to them. Otherwise only domain ID is scanned.
+
+   Note that the function may alter the contents of buf.
+ */
+static int scan_galera_coords(char *buf, wsrep_uuid_t *ret_uuid,
+                              wsrep_seqno_t *ret_seqno)
+{
+  int err= 0;
+  // Read state ID (UUID:SEQNO) followed by wsrep_gtid_domain_id (if any).
+  const char *pos= strchr(buf, ' ');
+
+  if (!pos)
+  {
+
+    if (wsrep_gtid_mode)
+    {
+      // There is no wsrep_gtid_domain_id (some older version SST script?).
+      WSREP_WARN("Did not find domain ID from SST script output '%s'. "
+                 "Domain ID must be set manually to keep binlog consistent",
+                 buf);
+    }
+    if (ret_uuid && ret_seqno)
+    {
+      err= sst_scan_uuid_seqno(buf, ret_uuid, ret_seqno);
+    }
+  }
+  else
+  {
+    // Scan state ID first followed by wsrep_gtid_domain_id.
+    unsigned long int domain_id;
+
+    // Null-terminate the state-id.
+    buf[pos - buf]= 0;
+    if (ret_uuid && ret_seqno)
+    {
+      err= sst_scan_uuid_seqno(buf, ret_uuid, ret_seqno);
+    }
+    if (err)
+    {
+      return err;
+    }
+    else if (wsrep_gtid_mode)
+    {
+      errno= 0; /* Reset the errno */
+      domain_id= strtoul(pos + 1, NULL, 10);
+      err= errno;
+
+      /* Check if we received a valid gtid_domain_id. */
+      if (err == EINVAL || err == ERANGE)
+      {
+        WSREP_ERROR("Failed to get donor wsrep_gtid_domain_id.");
+        err= EINVAL;
+        return err;
+      }
+      else
+      {
+        WSREP_INFO("Setting domain id to %lu", domain_id);
+        wsrep_gtid_server.domain_id= (uint32) domain_id;
+        wsrep_gtid_domain_id= (uint32) domain_id;
+      }
+    }
+  }
+  return err;
+}
+
+// Structure to hold parsed SSL options
+struct grp_ssl_opts_t {
+  std::string have_ssl;
+  std::string ssl_key;
+  std::string ssl_cert;
+  std::string ssl_ca;
+  std::string ssl_capath;
+  std::string ssl_cipher;
+  std::string ssl_crl;
+  std::string ssl_crlpath;
+  std::string tls_version;
+  std::string ssl_ciphersuites;
+};
+
+static my_bool grp_ssl_get_one_option(const struct my_option *opt,
+                                       const char *argument,
+                                       const char *filename)
+{
+  grp_ssl_opts_t *ssl_opts= (grp_ssl_opts_t*)opt->app_type;
+
+  if (!ssl_opts || !argument)
+    return 0;
+
+  if (strcmp(opt->name, "galera-replication-have-ssl") == 0)
+    ssl_opts->have_ssl= argument;
+  else if (strcmp(opt->name, "galera-replication-ssl-key") == 0)
+    ssl_opts->ssl_key= argument;
+  else if (strcmp(opt->name, "galera-replication-ssl-cert") == 0)
+    ssl_opts->ssl_cert= argument;
+  else if (strcmp(opt->name, "galera-replication-ssl-ca") == 0)
+    ssl_opts->ssl_ca= argument;
+  else if (strcmp(opt->name, "galera-replication-ssl-capath") == 0)
+    ssl_opts->ssl_capath= argument;
+  else if (strcmp(opt->name, "galera-replication-ssl-cipher") == 0)
+    ssl_opts->ssl_cipher= argument;
+  else if (strcmp(opt->name, "galera-replication-ssl-crl") == 0)
+    ssl_opts->ssl_crl= argument;
+  else if (strcmp(opt->name, "galera-replication-ssl-crlpath") == 0)
+    ssl_opts->ssl_crlpath= argument;
+  else if (strcmp(opt->name, "galera-replication-tls-version") == 0)
+    ssl_opts->tls_version= argument;
+  else if (strcmp(opt->name, "galera-replication-ssl-ciphersuites") == 0)
+    ssl_opts->ssl_ciphersuites= argument;
+
+  return 0;
+}
+
+static int scan_grp_ssl_opts(int *argc, char ***argv,
+                       std::string &cmd)
+{
+  // Structure to hold parsed SSL options
+  grp_ssl_opts_t ssl_opts;
+
+  // Define options for galera-replication SSL parameters. Note that we
+  // use the galera_replication plugin configuration.
+  struct my_option grp_ssl_options[]= {
+      {"galera-replication-have-ssl", 0, "SSL mode for galera replication", 0,
+       0, 0, GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, &ssl_opts},
+      {"galera-replication-ssl-key", 0, "SSL key file for galera replication",
+       0, 0, 0, GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, &ssl_opts},
+      {"galera-replication-ssl-cert", 0,
+       "SSL certificate file for galera replication", 0, 0, 0, GET_STR,
+       REQUIRED_ARG, 0, 0, 0, 0, 0, &ssl_opts},
+      {"galera-replication-ssl-ca", 0, "SSL CA file for galera replication", 0,
+       0, 0, GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, &ssl_opts},
+      {"galera-replication-ssl-capath", 0,
+       "SSL CA path for galera replication", 0, 0, 0, GET_STR, REQUIRED_ARG, 0,
+       0, 0, 0, 0, &ssl_opts},
+      {"galera-replication-ssl-cipher", 0, "SSL cipher for galera replication",
+       0, 0, 0, GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, &ssl_opts},
+      {"galera-replication-ssl-crl", 0, "SSL CRL file for galera replication",
+       0, 0, 0, GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, &ssl_opts},
+      {"galera-replication-ssl-crlpath", 0,
+       "SSL CRL path for galera replication", 0, 0, 0, GET_STR, REQUIRED_ARG,
+       0, 0, 0, 0, 0, &ssl_opts},
+      {"galera-replication-tls-version", 0,
+       "TLS version for galera replication", 0, 0, 0, GET_STR, REQUIRED_ARG, 0,
+       0, 0, 0, 0, &ssl_opts},
+      {"galera-replication-ssl-ciphersuites", 0,
+       "SSL ciphersuites for galera replication", 0, 0, 0, GET_STR,
+       REQUIRED_ARG, 0, 0, 0, 0, 0, &ssl_opts},
+      {0, 0, 0, 0, 0, 0, GET_NO_ARG, NO_ARG, 0, 0, 0, 0, 0, 0}};
+
+  if (*argc > 0)
+  {
+    // Save current getopt settings
+    my_bool old_skip_unknown= my_getopt_skip_unknown;
+    my_getopt_skip_unknown= TRUE;
+
+    // Make copy of argv, handle_options mutatates it
+    int argc_copy= *argc;
+    char **argv_copy_ptr= new char*[argc_copy + 1];
+    memcpy(argv_copy_ptr, *argv, argc_copy * sizeof(char*));
+    argv_copy_ptr[argc_copy]= nullptr;
+    char **argv_copy= argv_copy_ptr;
+    // Parse the options with callback
+    int err= handle_options(&argc_copy, &argv_copy, grp_ssl_options, grp_ssl_get_one_option);
+    // Restore getopt settings
+    my_getopt_skip_unknown= old_skip_unknown;
+    delete[] argv_copy_ptr;
+    if (err)
+      return err;
+  }
+
+  // Build command string from parsed values
+  if (!ssl_opts.have_ssl.empty())
+  {
+    cmd+= "--have-ssl ";
+    cmd+= ssl_opts.have_ssl;
+    cmd+= " ";
+  }
+  if (!ssl_opts.ssl_key.empty())
+  {
+    cmd+= "--ssl-key ";
+    cmd+= ssl_opts.ssl_key;
+    cmd+= " ";
+  }
+  if (!ssl_opts.ssl_cert.empty())
+  {
+    cmd+= "--ssl-cert ";
+    cmd+= ssl_opts.ssl_cert;
+    cmd+= " ";
+  }
+  if (!ssl_opts.ssl_ca.empty())
+  {
+    cmd+= "--ssl-ca ";
+    cmd+= ssl_opts.ssl_ca;
+    cmd+= " ";
+  }
+  if (!ssl_opts.ssl_capath.empty())
+  {
+    cmd+= "--ssl-capath ";
+    cmd+= ssl_opts.ssl_capath;
+    cmd+= " ";
+  }
+  if (!ssl_opts.ssl_cipher.empty())
+  {
+    cmd+= "--ssl-cipher ";
+    cmd+= ssl_opts.ssl_cipher;
+    cmd+= " ";
+  }
+  if (!ssl_opts.ssl_crl.empty())
+  {
+    cmd+= "--ssl-crl ";
+    cmd+= ssl_opts.ssl_crl;
+    cmd+= " ";
+  }
+  if (!ssl_opts.ssl_crlpath.empty())
+  {
+    cmd+= "--ssl-crlpath ";
+    cmd+= ssl_opts.ssl_crlpath;
+    cmd+= " ";
+  }
+  if (!ssl_opts.tls_version.empty())
+  {
+    cmd+= "--tls-version '";
+    cmd+= ssl_opts.tls_version;
+    cmd+= "' ";
+  }
+  if (!ssl_opts.ssl_ciphersuites.empty())
+  {
+    cmd+= "--ssl-ciphersuites ";
+    cmd+= ssl_opts.ssl_ciphersuites;
+    cmd+= " ";
+  }
+  return 0;
+}
+
+int wsrep_grp_sst(int *argc, char ***argv)
+{
+  if (!wsrep_new_cluster && (strlen(wsrep_cluster_address) == 8) &&
+      !strncmp(wsrep_cluster_address, "gcomm://", 8))
+  {
+    wsrep_new_cluster= true;
+  }
+
+  bool const bootstrap(TRUE == wsrep_new_cluster);
+  if (bootstrap)
+  {
+    return 0;
+  }
+
+  if (std::string{wsrep_sst_method} == WSREP_SST_MYSQLDUMP)
+  {
+    WSREP_ERROR("mysqldump SST method not supported by Galera Plugin");
+    return 1;
+  }
+
+  std::string cmd{"galera-sst "};
+  make_wsrep_defaults_file();
+  cmd+= wsrep_defaults_file;
+  cmd+= " --method ";
+  cmd+= wsrep_sst_method;
+  cmd+= " --datadir ";
+  cmd+= mysql_real_data_home;
+  cmd+= " --cluster-address ";
+  cmd+= make_grp_cluster_address(wsrep_cluster_address);
+  cmd+= " --receive-address ";
+  constexpr ssize_t ip_max= 256;
+  char ip_buf[ip_max];
+  std::string receive_address= get_receive_address(ip_buf, ip_max);
+  WSREP_INFO("get_receive_address: %s", receive_address.c_str());
+  cmd+= receive_address;
+  cmd+= " --echo-stderr 1 ";
+
+  if (scan_grp_ssl_opts(argc, argv, cmd))
+    return 1;
+  // From sst_prepare_other()
+  bool use_extra_args;
+  size_t const extra_cmd_len= estimate_cmd_len(&use_extra_args);
+  if (use_extra_args)
+  {
+    wsp::string extra_args_str(extra_cmd_len);
+    copy_orig_argv(extra_args_str());
+    cmd+= "--extra-args '";
+    cmd+= extra_args_str();
+    cmd+= "'";
+  }
+
+  WSREP_INFO("SST command: %s", cmd.c_str());
+  wsp::process child(cmd.c_str(), "r", nullptr);
+
+  constexpr size_t in_len= 1024;
+  char in_buf[in_len]= {'\0'};
+  char last_in_buf[in_len]= {'\0'};
+  char *in= nullptr;
+  while (!child.error() && (in = my_fgets(in_buf, in_len, child.from())))
+  {
+    WSREP_INFO("Read %s", in);
+    strcpy(last_in_buf, in_buf);
+  }
+  child.wait();
+  int err= child.error();
+  if (err)
+  {
+    WSREP_ERROR("galera-sst returned error: %d", child.error());
+  }
+  else
+  {
+    /* The last read line should contain Galera coordinates and domain_id.
+       With GRP we are interested only on domain_id, so pass out params as
+       null. */
+    if (last_in_buf[0] != '\0') {
+      err= scan_galera_coords(last_in_buf, nullptr, nullptr);
+    }
+  }
+  return err;
 }

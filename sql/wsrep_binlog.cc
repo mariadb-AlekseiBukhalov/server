@@ -356,25 +356,16 @@ bool wsrep_commit_will_write_binlog(THD *thd)
 */
 static wait_for_commit *commit_order_tail= NULL;
 
-void wsrep_register_for_group_commit(THD *thd)
+static void wsrep_do_register_for_group_commit(wait_for_commit *wfc)
 {
   DBUG_ENTER("wsrep_register_for_group_commit");
-  if (wsrep_emulate_bin_log)
-  {
-    /* Binlog is off, no need to maintain group commit queue */
-    DBUG_VOID_RETURN;
-  }
-
-  DBUG_ASSERT(thd->wsrep_trx().ordered());
-
-  wait_for_commit *wfc= thd->wait_for_commit_ptr= &thd->wsrep_wfc;
 
   mysql_mutex_lock(&LOCK_wsrep_group_commit);
   if (commit_order_tail)
   {
     wfc->register_wait_for_prior_commit(commit_order_tail);
   }
-  commit_order_tail= thd->wait_for_commit_ptr;
+  commit_order_tail= wfc;
   mysql_mutex_unlock(&LOCK_wsrep_group_commit);
 
   /*
@@ -386,9 +377,34 @@ void wsrep_register_for_group_commit(THD *thd)
   DBUG_VOID_RETURN;
 }
 
-void wsrep_unregister_from_group_commit(THD *thd)
+void wsrep_register_for_group_commit(THD *thd)
 {
+  if (wsrep_emulate_bin_log)
+  {
+    /* Binlog is off, no need to maintain group commit queue */
+    return;
+  }
+
+  if (thd->wait_for_commit_ptr == &thd->wsrep_wfc ||
+      (thd->wait_for_commit_ptr &&
+       thd->wsrep_cs().mode() == wsrep::client_state::m_high_priority))
+  {
+    /* Has already registered, no need to do it twice.  */
+    return;
+  }
+
   DBUG_ASSERT(thd->wsrep_trx().ordered());
+  thd->wait_for_commit_ptr= &thd->wsrep_wfc;
+  wsrep_do_register_for_group_commit(&thd->wsrep_wfc);
+}
+
+void wsrep_grp_register_for_group_commit(wait_for_commit *wfc)
+{
+  wsrep_do_register_for_group_commit(wfc);
+}
+
+static void wsrep_do_unregister_from_group_commit(THD *thd)
+{
   wait_for_commit *wfc= thd->wait_for_commit_ptr;
 
   if (wfc)
@@ -404,4 +420,38 @@ void wsrep_unregister_from_group_commit(THD *thd)
     mysql_mutex_unlock(&LOCK_wsrep_group_commit);
     thd->wait_for_commit_ptr= NULL;
   }
+}
+
+void wsrep_unregister_from_group_commit(THD *thd)
+{
+  DBUG_ASSERT(thd->wsrep_trx().ordered());
+  wsrep_do_unregister_from_group_commit(thd);
+}
+
+void wsrep_grp_unregister_from_group_commit(THD *thd)
+{
+  wsrep_do_unregister_from_group_commit(thd);
+}
+
+void wsrep_grp_bf_abort_group_commit(THD *victim_thd)
+{
+  /* Grab mutex to avoid victim_thd->wsrep_wfc being modified. Note
+  * that THD::wsrep_wfc is always registered/unregistered under
+  * LOCK_wsrep_group_commit protection, so we don't have to
+  * worry about locking wait_for_commit internal mutexes for
+  * reading the next_subsequent_commit */
+  mysql_mutex_lock(&LOCK_wsrep_group_commit);
+
+  wait_for_commit *wfc= &victim_thd->wsrep_wfc;
+  WSREP_DEBUG("grp BF abort group commit %lld is registered %d",
+              victim_thd->wsrep_trx().ws_meta().gtid().seqno().get(),
+              wfc->waitee.load(std::memory_order_relaxed) ||
+                  wfc->next_subsequent_commit);
+  if (wfc->waitee.load(std::memory_order_relaxed) ||
+      wfc->next_subsequent_commit)
+  {
+    wfc->wakeup(1);
+  }
+
+  mysql_mutex_unlock(&LOCK_wsrep_group_commit);
 }

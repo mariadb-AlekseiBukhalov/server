@@ -29,6 +29,12 @@ wsrep_node_address='127.0.0.1:@mysqld.1.#galera_port'
 wsrep_node_incoming_address=127.0.0.1:@mysqld.1.port
 wsrep_sst_receive_address='127.0.0.1:@mysqld.1.#sst_port'
 
+server-id=1
+
+loose-galera-replication-node-id=node1
+loose-galera-replication-listen-port=@mysqld.1.#galera_port
+loose-galera-replication-sst-listen-port=@mysqld.1.#ist_port
+
 [mysqld.2]
 wsrep-on=1
 server-id=2
@@ -41,6 +47,12 @@ wsrep_provider_options='repl.causal_read_timeout=PT90S;base_port=@mysqld.2.#gale
 wsrep_node_address='127.0.0.1:@mysqld.2.#galera_port'
 wsrep_node_incoming_address=127.0.0.1:@mysqld.2.port
 wsrep_sst_receive_address='127.0.0.1:@mysqld.2.#sst_port'
+
+server-id=2
+
+loose-galera-replication-node-id=node2
+loose-galera-replication-listen-port=@mysqld.2.#galera_port
+loose-galera-replication-sst-listen-port=@mysqld.2.#ist_port
 
 [mysqld.3]
 wsrep-on=OFF

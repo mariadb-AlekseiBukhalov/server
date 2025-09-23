@@ -10,9 +10,6 @@
 --source include/auto_increment_offset_save.inc
 
 --connection node_1
-# Set higher weight for node_1 to keep it in primary
-# while node_2 is isolated.
-SET GLOBAL wsrep_provider_options = 'pc.weight=2';
 
 --connection node_2
 # Isolate node_2 from the group and wait until wsrep_ready becomes OFF.
@@ -37,6 +34,4 @@ SHOW STATUS LIKE 'wsrep_cluster_status';
 --source include/wait_condition.inc
 
 # Restore original settings.
-SET GLOBAL wsrep_provider_options = 'pc.weight = 1';
-
 --source include/auto_increment_offset_restore.inc

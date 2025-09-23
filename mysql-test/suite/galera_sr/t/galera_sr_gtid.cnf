@@ -1,0 +1,3 @@
+!include ../my.cnf
+[sst]
+sst-max-binlogs=1

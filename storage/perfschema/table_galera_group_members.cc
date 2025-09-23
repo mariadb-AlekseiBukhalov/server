@@ -81,8 +81,15 @@ static wsrep_ps_fetch_cluster_info_t init_once()
   if (auto f= fetch_cluster_info.load(std::memory_order_acquire))
     return f;
 
-  auto dlh= static_cast<wsrep_t*>
-    (Wsrep_server_state::instance().get_provider().native())->dlh;
+  auto *wsrep= static_cast<wsrep_t *>(
+      Wsrep_server_state::instance().get_provider().native());
+  if (!wsrep)
+  {
+    WSREP_WARN("Performance Schema for Galera: Incompatible version of Galera "
+               "library");
+    return nullptr;
+  }
+  auto dlh= wsrep->dlh;
 
   union
   {

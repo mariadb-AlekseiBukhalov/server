@@ -1,5 +1,9 @@
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
+--source include/big_test.inc
+
+--let $grp_skip_reason = No gcache
+--source include/not_galera_plugin.inc
 
 #
 # A simple test with a very low value for gcache.size - 16K

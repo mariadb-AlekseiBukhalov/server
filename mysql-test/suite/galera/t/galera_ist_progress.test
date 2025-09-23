@@ -4,6 +4,9 @@
 
 --source include/galera_cluster.inc
 
+--let $grp_skip_reason = No IST
+--source include/not_galera_plugin.inc
+
 # Isolate node #2 
 --connection node_2
 --let $wait_condition = SELECT VARIABLE_VALUE = 2 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';

@@ -2,6 +2,12 @@
 
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
+# This test currently relies heavily in Galera capability to
+# tolerate split brain. Check if it would be possible to rewrite the
+# test so that it would use node weights instead so that it would work
+# for both Galera and GRP.
+--let $grp_skip_reason = "GRP cannot ignore split brain"
+--source include/not_galera_plugin.inc
 
 # Make node 1 tolerate split-brain
 SET GLOBAL wsrep_provider_options = 'pc.ignore_sb=true';

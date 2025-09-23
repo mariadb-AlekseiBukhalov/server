@@ -3,6 +3,9 @@
 --source include/have_debug.inc
 --source include/galera_have_debug_sync.inc
 
+--let $grp_skip_reason = Galera Plugin does not support connection tables yet
+--source include/not_galera_plugin.inc
+
 --let $galera_version=26.4.23
 source ../wsrep/include/check_galera_version.inc;
 

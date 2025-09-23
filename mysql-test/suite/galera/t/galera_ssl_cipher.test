@@ -6,7 +6,8 @@
 --source include/have_ssl_communication.inc
 --source include/have_openssl.inc
 --source include/force_restart.inc
-
+--let $grp_skip_reason = Galera plugin does not support wsrep_provider_options
+--source include/not_galera_plugin.inc
 #
 # Lowest supported Galera library version
 #

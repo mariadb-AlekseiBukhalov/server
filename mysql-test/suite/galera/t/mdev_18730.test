@@ -12,6 +12,7 @@
 # server each time if the bug is present, but will work with fix.
 #
 
+--source include/galera_have_streaming_replication.inc
 --source include/galera_cluster.inc
 --source include/have_log_bin.inc
 --source include/have_debug_sync.inc

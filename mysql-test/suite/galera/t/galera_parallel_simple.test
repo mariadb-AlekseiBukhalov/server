@@ -51,7 +51,7 @@ SET SESSION wsrep_sync_wait = 0;
 --let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE USER = 'system user' AND (STATE LIKE 'Waiting for table metadata lock%' OR STATE LIKE 'Waiting to execute in isolation%');
 --source include/wait_condition.inc
 
---let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE USER = 'system user' AND (STATE LIKE '%committing%' OR STATE LIKE 'Commit' OR STATE LIKE 'Waiting for certification');
+--let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE USER = 'system user' AND (STATE LIKE '%committing%' OR STATE LIKE 'Commit' OR STATE LIKE 'Waiting for certification' OR STATE = 'Waiting for prior transaction to commit');
 --source include/wait_condition.inc
 
 UNLOCK TABLES;

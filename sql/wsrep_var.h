@@ -48,6 +48,7 @@ bool wsrep_refresh_provider_options();
 
 extern bool wsrep_on_check                   CHECK_ARGS;
 extern bool wsrep_on_update                  UPDATE_ARGS;
+extern bool wsrep_sync_wait_timeout_update   UPDATE_ARGS;
 extern bool wsrep_start_position_check       CHECK_ARGS;
 extern bool wsrep_start_position_update      UPDATE_ARGS;
 extern bool wsrep_start_position_init        INIT_ARGS;

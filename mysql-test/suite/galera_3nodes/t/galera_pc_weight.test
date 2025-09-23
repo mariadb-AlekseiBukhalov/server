@@ -6,6 +6,7 @@
 
 --source include/big_test.inc
 --source include/galera_cluster.inc
+--source include/not_galera_plugin.inc
 
 --connection node_1
 SELECT VARIABLE_VALUE = 3 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_weight';

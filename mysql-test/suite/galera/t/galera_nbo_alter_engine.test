@@ -4,6 +4,8 @@
 
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
+--let $grp_skip_reason = NBO not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 --connection node_1
 SET GLOBAL wsrep_mode = REPLICATE_MYISAM;

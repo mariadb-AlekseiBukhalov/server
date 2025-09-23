@@ -4,6 +4,8 @@
 
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
+--let $grp_skip_reason = XA not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 CREATE TABLE t1 (c INT) ENGINE=INNODB;
 SET SESSION TRANSACTION ISOLATION LEVEL SERIALIZABLE;

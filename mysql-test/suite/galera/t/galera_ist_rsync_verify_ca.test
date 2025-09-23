@@ -2,6 +2,9 @@
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 
+--let $grp_skip_reason = No IST
+--source include/not_galera_plugin.inc
+
 --let $node_1=node_1
 --let $node_2=node_2
 --source include/auto_increment_offset_save.inc

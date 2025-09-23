@@ -2,6 +2,8 @@
 --source include/galera_cluster.inc
 --source include/check_ipv6.inc
 --source include/force_restart.inc
+# mysqldump SST method not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 call mtr.add_suppression("WSREP: wsrep_sst_method is set to 'mysqldump' yet mysqld bind_address is set to '127\\.0\\.0\\.1'");
 call mtr.add_suppression("Failed to load slave replication state from table mysql\\.gtid_slave_pos");

@@ -6,6 +6,8 @@
 --source include/have_innodb.inc
 --source include/galera_cluster.inc
 --source include/big_test.inc
+# Galera plugin cannot yet recover from complete crash
+--source include/not_galera_plugin.inc
 
 # Save galera ports
 --connection node_1

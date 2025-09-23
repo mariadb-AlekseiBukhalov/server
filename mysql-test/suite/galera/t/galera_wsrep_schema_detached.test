@@ -1,4 +1,6 @@
 --source include/galera_cluster.inc
+--let $grp_skip_reason = Test ignores split brain which not supported by GRP
+--source include/not_galera_plugin.inc
 
 # Save original auto_increment_offset values.
 --let $node_1=node_1

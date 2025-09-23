@@ -35,6 +35,34 @@ sub check_garbd_support() {
   $ENV{MTR_GARBD_EXE}= $garbd_exe if $garbd_exe;
 }
 
+sub check_galera_sst_support() {
+  $grpsst_exe= ::mtr_file_exists(
+      "$::bindir/plugin/galera_replication/craft/galera/server/src/galera-sst",
+      "$::path_client_bindir/galera-sst",
+      "/usr/bin/galera-sst");
+  if ($grpsst_exe) {
+    $ENV{MTR_GRPSST_EXE} = $grpsst_exe;
+    $ENV{PATH} = dirname($grpsst_exe) . ":$ENV{PATH}";
+    mtr_report(" - galera-sst found: $grpsst_exe");
+  } else {
+    mtr_error("Galera Plugin GRP enabled but galera-sst not found");
+  }
+}
+
+sub check_galera_server_support() {
+  $galera_server_exe= ::mtr_file_exists(
+      "$::bindir/plugin/galera_replication/craft/galera/server/src/galera-server",
+      "$::path_client_bindir/galera-server",
+      "/usr/bin/galera-server");
+  if ($galera_server_exe) {
+    $ENV{MTR_GALERA_SERVER_EXE} = $galera_server_exe;
+    $ENV{PATH} = dirname($galera_server_exe) . ":$ENV{PATH}";
+    mtr_report(" - galera-server found: $galera_server_exe");
+  } else {
+    mtr_error("Galera Plugin GRP enabled but galera-server not found");
+  }
+}
+
 sub check_wsrep_support() {
   mtr_report(" - binaries built with wsrep patch");
 
@@ -73,7 +101,9 @@ sub check_wsrep_support() {
   $ENV{PATH}=dirname($ENV{XTRABACKUP}).":$ENV{PATH}" if $ENV{XTRABACKUP};
 
   # Check whether WSREP_PROVIDER environment variable is set.
-  if (defined $ENV{'WSREP_PROVIDER'}) {
+  if (defined $ENV{'WSREP_PROVIDER'} && $ENV{'WSREP_PROVIDER'} eq "grp") {
+    $file_wsrep_provider= "grp";
+  } elsif (defined $ENV{'WSREP_PROVIDER'}) {
     $file_wsrep_provider= "";
     if ($ENV{'WSREP_PROVIDER'} ne "none") {
       if (::mtr_file_exists($ENV{'WSREP_PROVIDER'}) ne "") {
@@ -103,14 +133,22 @@ sub check_wsrep_support() {
       $ENV{'WSREP_PROVIDER'}= "none";
     }
   }
+
+  if ($file_wsrep_provider eq "grp") {
+    check_galera_sst_support();
+    check_galera_server_support();
+  }
 }
 
 sub wsrep_not_ok() {
   return "Not run for embedded server" if $::opt_embedded_server;
   return "WSREP is not compiled in" if not $::mysqld_variables{'wsrep-on'};
   check_wsrep_support();
-  return "No wsrep provider library" unless $file_wsrep_provider;
-  return wrong_wsrep_version() if wrong_wsrep_version();
+
+  if ($file_wsrep_provider ne "grp") {
+    return "No wsrep provider library" unless $file_wsrep_provider;
+    return wrong_wsrep_version() if wrong_wsrep_version();
+  }
   undef;
 }
 

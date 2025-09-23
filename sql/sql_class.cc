@@ -786,7 +786,8 @@ THD::THD(my_thread_id id, bool is_wsrep_applier)
                         m_wsrep_client_service,
                         wsrep::client_id(thread_id)),
    wsrep_applier_service(NULL),
-   wsrep_wfc()
+   wsrep_wfc(),
+   wsrep_grp_log_position(0)
 #endif /*WITH_WSREP */
 {
   bzero(&variables, sizeof(variables));

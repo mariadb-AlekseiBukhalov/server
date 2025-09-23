@@ -1,3 +1,4 @@
+--source include/galera_have_streaming_replication.inc
 --source include/galera_cluster.inc
 
 SET SESSION wsrep_trx_fragment_size=DEFAULT;

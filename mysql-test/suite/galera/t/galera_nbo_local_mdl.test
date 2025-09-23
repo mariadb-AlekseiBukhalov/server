@@ -6,6 +6,8 @@
 
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
+--let $grp_skip_reason = NBO not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 --connection node_1
 CREATE TABLE t1 (f1 INTEGER NOT NULL PRIMARY KEY, f2 INTEGER) ENGINE=INNODB;

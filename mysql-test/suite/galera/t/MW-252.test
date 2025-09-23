@@ -12,6 +12,7 @@ CREATE TABLE t1 (f1 INTEGER) ENGINE=InnoDB;
 FLUSH TABLES WITH READ LOCK;
 
 # Node #1 is now desynced
+SET SESSION wsrep_sync_wait=0;
 --let $wait_condition = SELECT VARIABLE_VALUE = 'Donor/Desynced' FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_local_state_comment'
 --source include/wait_condition.inc
 

@@ -41,6 +41,8 @@ typedef struct st_mysql_show_var SHOW_VAR;
 #include <deque>
 #include "wsrep_thd_info_history.h"
 
+#define WSREP_PROVIDER_GALERA_REPLICATION "grp"
+
 #define WSREP_UNDEFINED_TRX_ID ULONGLONG_MAX
 
 class THD;
@@ -243,8 +245,6 @@ extern bool wsrep_check_mode_before_cmd_execute (THD *thd);
 extern bool wsrep_must_sync_wait (THD* thd, uint mask= WSREP_SYNC_WAIT_BEFORE_READ);
 extern bool wsrep_sync_wait (THD* thd, uint mask= WSREP_SYNC_WAIT_BEFORE_READ);
 extern bool wsrep_sync_wait (THD* thd, enum enum_sql_command command);
-extern enum wsrep::provider::status
-wsrep_sync_wait_upto (THD* thd, wsrep_gtid_t* upto, int timeout);
 extern int  wsrep_check_opts();
 extern void wsrep_prepend_PATH (const char* path);
 extern bool wsrep_append_fk_parent_table(THD* thd, TABLE_LIST* table, wsrep::key_array* keys);

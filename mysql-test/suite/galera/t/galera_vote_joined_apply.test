@@ -2,6 +2,8 @@
 # Test a case where a vote happens in JOINED state after SST on a writeset
 # that should be applied.
 #
+--let $grp_skip_reason = Test does not yet work with Galera Plugin
+--source include/not_galera_plugin.inc
 
 --source galera_vote_joined_begin.inc
 #

@@ -1,6 +1,8 @@
 --source include/galera_cluster.inc
 --source include/not_windows.inc
 --source include/have_ssl_communication.inc
+--let $grp_skip_reason = Galera plugin does not support wsrep-ssl-mode
+--source include/not_galera_plugin.inc
 
 # Save original auto_increment_offset values.
 --let $node_1=node_1

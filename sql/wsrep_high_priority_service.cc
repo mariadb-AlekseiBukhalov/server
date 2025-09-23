@@ -20,6 +20,7 @@
 #include "wsrep_xid.h"
 #include "wsrep_trans_observer.h"
 #include "wsrep_server_state.h"
+#include "wsrep_provider_grp.h"
 
 #include "sql_class.h" /* THD */
 #include "transaction.h"
@@ -128,6 +129,7 @@ Wsrep_high_priority_service::Wsrep_high_priority_service(THD* thd)
   : wsrep::high_priority_service(Wsrep_server_state::instance())
   , wsrep::high_priority_context(thd->wsrep_cs())
   , m_thd(thd)
+  , m_applier_thd(nullptr)
   , m_rli()
 {
   LEX_CSTRING db_str= { NULL, 0 };
@@ -288,8 +290,10 @@ int Wsrep_high_priority_service::append_fragment_and_commit(
 
   if (!ret)
   {
-    ret= m_thd->wsrep_cs().prepare_for_ordering(ws_handle,
-                                                ws_meta, true);
+    ret= m_thd->wsrep_cs().prepare_for_ordering(ws_handle, ws_meta, true);
+    Wsrep_server_state::instance().provider().wait_for_gtid(
+        wsrep::gtid{ws_meta.gtid().id(), ws_meta.gtid().seqno().prev()},
+        std::numeric_limits<int>::max());
   }
 
   ret= ret || trans_commit(m_thd);
@@ -324,6 +328,15 @@ int Wsrep_high_priority_service::commit(const wsrep::ws_handle& ws_handle,
   int ret= 0;
 
   const bool is_ordered= !ws_meta.seqno().is_undefined();
+
+  /* Steal GRP related context from applier thread which handled GRP
+     write set event. */
+  if (m_applier_thd)
+  {
+      m_thd->wait_for_commit_ptr= m_applier_thd->wait_for_commit_ptr;
+      m_thd->wsrep_grp_log_position= m_applier_thd->wsrep_grp_log_position;
+      m_applier_thd->wait_for_commit_ptr= nullptr;
+  }
 
   if (m_thd->wsrep_trx().is_xa())
   {
@@ -471,7 +484,9 @@ int Wsrep_high_priority_service::apply_toi(const wsrep::ws_meta& ws_meta,
   thd->lex->sql_command= SQLCOM_END;
 
   wsrep_gtid_server.signal_waiters(thd->wsrep_current_gtid_seqno, false);
-  wsrep_set_SE_checkpoint(client_state.toi_meta().gtid(), wsrep_gtid_server.gtid());
+  wsrep_set_SE_checkpoint(client_state.toi_meta().gtid(),
+                          wsrep_gtid_server.gtid(),
+                          m_thd->wsrep_grp_log_position);
 
   must_exit_= check_exit_status();
 
@@ -489,12 +504,14 @@ void Wsrep_high_priority_service::reset_globals()
   wsrep_reset_threadvars(m_thd);
 }
 
-void Wsrep_high_priority_service::switch_execution_context(wsrep::high_priority_service& orig_high_priority_service)
+void Wsrep_high_priority_service::switch_execution_context(
+    wsrep::high_priority_service &orig_high_priority_service)
 {
   DBUG_ENTER("Wsrep_high_priority_service::switch_execution_context");
-  Wsrep_high_priority_service&
-    orig_hps= static_cast<Wsrep_high_priority_service&>(orig_high_priority_service);
+  Wsrep_high_priority_service &orig_hps=
+      static_cast<Wsrep_high_priority_service &>(orig_high_priority_service);
   m_thd->thread_stack= orig_hps.m_thd->thread_stack;
+  m_applier_thd= orig_hps.m_thd;
   DBUG_VOID_RETURN;
 }
 
@@ -535,7 +552,7 @@ int Wsrep_high_priority_service::log_dummy_write_set(const wsrep::ws_handle& ws_
       cs.after_rollback();
     }
 
-    if (!WSREP_EMULATE_BINLOG(m_thd))
+    if (!WSREP_EMULATE_BINLOG(m_thd) && !get_provider_grp())
     {
       wsrep_register_for_group_commit(m_thd);
       /* wait_for_prior_commit() ensures that all preceding transactions
@@ -544,14 +561,17 @@ int Wsrep_high_priority_service::log_dummy_write_set(const wsrep::ws_handle& ws_
          avoid following transactions to sync seqno before
          wsrep_set_SE_checkpoint() below returns. This effectively pauses
          group commit for the checkpoint operation, but is the only way to
-         ensure proper ordering. */
+         ensure proper ordering. Note that GRP provider hooks directly to
+         group commit mechanishm, so this is necessary only for Galera
+         library.*/
       m_thd->wait_for_prior_commit();
     }
 
     WSREP_DEBUG("checkpointing dummy write set %lld", ws_meta.seqno().get());
-    wsrep_set_SE_checkpoint(ws_meta.gtid(), wsrep_gtid_server.gtid());
+    wsrep_set_SE_checkpoint(ws_meta.gtid(), wsrep_gtid_server.gtid(),
+                            m_thd->wsrep_grp_log_position);
 
-    if (!WSREP_EMULATE_BINLOG(m_thd))
+    if (!WSREP_EMULATE_BINLOG(m_thd) && !get_provider_grp())
     {
       wsrep_unregister_from_group_commit(m_thd);
     }
@@ -790,7 +810,8 @@ int Wsrep_applier_service::apply_nbo_begin(const wsrep::ws_meta& ws_meta,
   {
     if (!ws_meta.gtid().is_undefined())
     {
-      wsrep_set_SE_checkpoint(ws_meta.gtid(),wsrep_gtid_server.gtid());
+      wsrep_set_SE_checkpoint(ws_meta.gtid(),wsrep_gtid_server.gtid(),
+                              m_thd->wsrep_grp_log_position);
     }
     must_exit_= check_exit_status();
     DBUG_RETURN(0);
@@ -824,7 +845,8 @@ int Wsrep_applier_service::apply_nbo_begin(const wsrep::ws_meta& ws_meta,
 
   if (!ws_meta.gtid().is_undefined())
   {
-    wsrep_set_SE_checkpoint(ws_meta.gtid(), wsrep_gtid_server.gtid());
+    wsrep_set_SE_checkpoint(ws_meta.gtid(), wsrep_gtid_server.gtid(),
+                            m_thd->wsrep_grp_log_position);
   }
   must_exit_= check_exit_status();
 

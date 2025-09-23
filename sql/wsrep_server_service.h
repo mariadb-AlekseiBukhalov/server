@@ -18,7 +18,6 @@
 
 /* wsrep-lib */
 #include "wsrep/server_service.hpp"
-#include "wsrep/exception.hpp" // not_impemented_error(), remove when finished
 #include "wsrep/storage_service.hpp"
 #include "handler.h" // XID
 
@@ -97,8 +96,7 @@ wsrep_create_streaming_applier(THD *orig_thd, const char *ctx, XID *xid= NULL);
    @param orig_thd Original thd context to copy operation context from.
    @param ctx Context string for debug logging.
 */
-class Wsrep_storage_service;
-Wsrep_storage_service*
+wsrep::storage_service*
 wsrep_create_storage_service(THD *orig_thd, const char *ctx);
 
 /**

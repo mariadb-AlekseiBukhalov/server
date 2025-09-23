@@ -45,6 +45,7 @@
 #define WSREP_XID_GTRID_LEN_V_1_2 (WSREP_XID_SEQNO_OFFSET + sizeof(wsrep_seqno_t))
 #define WSREP_XID_RPL_GTID_OFFSET (WSREP_XID_SEQNO_OFFSET + sizeof(wsrep_seqno_t))
 #define WSREP_XID_GTRID_LEN_V_3 (WSREP_XID_RPL_GTID_OFFSET + sizeof(wsrep_server_gtid_t))
+#define WSREP_XID_PROVIDER_POSITION_OFFSET (WSREP_XID_GTRID_LEN_V_3)
 
 void inline wsrep_xid_init(XID *xid)
 {
@@ -54,7 +55,8 @@ void inline wsrep_xid_init(XID *xid)
   memset(xid->data, 0, sizeof(xid->data));
 }
 
-void wsrep_xid_init(XID* xid, const wsrep::gtid& wsgtid, const wsrep_server_gtid_t& gtid)
+void wsrep_xid_init(XID* xid, const wsrep::gtid& wsgtid,
+                    const wsrep_server_gtid_t& gtid, long long provider_position)
 {
   xid->formatID= 1;
   xid->gtrid_length= WSREP_XID_GTRID_LEN_V_3;
@@ -65,6 +67,11 @@ void wsrep_xid_init(XID* xid, const wsrep::gtid& wsgtid, const wsrep_server_gtid
   memcpy(xid->data + WSREP_XID_UUID_OFFSET,  wsgtid.id().data(),sizeof(wsrep::id));
   int8store(xid->data + WSREP_XID_SEQNO_OFFSET, wsgtid.seqno().get());
   memcpy(xid->data + WSREP_XID_RPL_GTID_OFFSET, &gtid, sizeof(wsrep_server_gtid_t));
+  if (provider_position) {
+    int8store(xid->data + WSREP_XID_PROVIDER_POSITION_OFFSET,
+              provider_position);
+    xid->gtrid_length += 8;
+  }
 }
 
 extern "C"
@@ -79,7 +86,7 @@ int wsrep_is_wsrep_xid(const void* xid_ptr)
              xid->data[WSREP_XID_VERSION_OFFSET] == WSREP_XID_VERSION_2)  &&
             xid->gtrid_length  == WSREP_XID_GTRID_LEN_V_1_2)              ||
            (xid->data[WSREP_XID_VERSION_OFFSET] == WSREP_XID_VERSION_3    &&
-            xid->gtrid_length  == WSREP_XID_GTRID_LEN_V_3)));
+            xid->gtrid_length  >= long(WSREP_XID_GTRID_LEN_V_3))));
 }
 
 const unsigned char* wsrep_xid_uuid(const xid_t* xid)
@@ -126,6 +133,32 @@ wsrep::seqno wsrep_xid_seqno(const XID& xid)
   return wsrep::seqno(wsrep_xid_seqno(&xid));
 }
 
+long long wsrep_xid_provider_position(const xid_t* xid)
+{
+  DBUG_ASSERT(xid);
+  int64_t ret= 0;
+  if (wsrep_is_wsrep_xid(xid))
+  {
+    switch (xid->data[WSREP_XID_VERSION_OFFSET])
+    {
+    case WSREP_XID_VERSION_3:
+      if (xid->gtrid_length >= long(WSREP_XID_PROVIDER_POSITION_OFFSET + 8))
+      {
+        ret= sint8korr(xid->data + WSREP_XID_PROVIDER_POSITION_OFFSET);
+      }
+      break;
+    default:
+      break;
+    }
+  }
+  return ret;
+}
+
+int64_t wsrep_xid_provider_position(const XID& xid)
+{
+    return wsrep_xid_provider_position(&xid);
+}
+
 static my_bool set_SE_checkpoint(THD* unused, plugin_ref plugin, void* arg)
 {
   XID* xid= static_cast<XID*>(arg);
@@ -145,10 +178,12 @@ bool wsrep_set_SE_checkpoint(XID& xid)
                         &xid);
 }
 
-bool wsrep_set_SE_checkpoint(const wsrep::gtid& wsgtid, const wsrep_server_gtid_t& gtid)
+bool wsrep_set_SE_checkpoint(const wsrep::gtid &wsgtid,
+                             const wsrep_server_gtid_t &gtid,
+                             long long position)
 {
   XID xid;
-  wsrep_xid_init(&xid, wsgtid, gtid);
+  wsrep_xid_init(&xid, wsgtid, gtid, position);
   return wsrep_set_SE_checkpoint(xid);
 }
 
@@ -226,6 +261,16 @@ wsrep_server_gtid_t wsrep_get_SE_checkpoint()
   return gtid;
 }
 
+int64_t wsrep_get_SE_checkpoint_provider_position()
+{
+  XID xid;
+  if (!wsrep_get_SE_checkpoint_common(xid))
+  {
+    return 0;
+  }
+  return int64_t(wsrep_xid_provider_position(&xid));
+}
+
 /*
   Sort order for XIDs. Wsrep XIDs are sorted according to
   seqno in ascending order. Non-wsrep XIDs are considered
@@ -267,7 +312,8 @@ std::string wsrep_xid_print(const XID *xid)
   wsrep_server_gtid_t gtid= {0,0,0};
   memcpy(&gtid, &xid->data[WSREP_XID_RPL_GTID_OFFSET], sizeof(wsrep_server_gtid_t));
   ss << uuid_str << ":" << wsrep_xid_seqno(xid) << " " << gtid.domain_id << "-"
-     << gtid.server_id << "-" << gtid.seqno;
+     << gtid.server_id << "-" << gtid.seqno << ":"
+     << wsrep_xid_provider_position(xid);
   return ss.str();
 }
 

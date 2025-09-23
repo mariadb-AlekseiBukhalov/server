@@ -2,10 +2,32 @@ connection node_2;
 connection node_1;
 connection node_1;
 connection node_2;
-SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%';
+connection node_1;
+CREATE TABLE t1(a int not null primary key) engine=InnoDB;
+INSERT INTO t1 VALUES (1);
+SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%' OR EVENT_NAME LIKE '%grp%';
 COUNT(*) > 0
 1
 connection node_2;
+INSERT INTO t1 VALUES (2);
+# Shutdown node_2
 connection node_1;
+# waiting to above command to fail
+connection node_2;
+# Restart node_2
+connection node_1;
+connection node_2;
+INSERT INTO t1 VALUES (3);
+connection node_1;
+INSERT INTO t1 VALUES (4);
+SELECT * FROM t1;
+a
+1
+2
+3
+4
+connection node_2;
+INSERT INTO t1 VALUES (5);
+DROP TABLE t1;
 include/assert_grep.inc [certificate verify failed]
 CALL mtr.add_suppression('WSREP:.* certificate verify failed');

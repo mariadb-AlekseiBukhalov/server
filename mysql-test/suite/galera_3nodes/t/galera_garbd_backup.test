@@ -3,12 +3,17 @@
 # As MTR does not allow multiple servers to be down at the same time, we are limited as to what we can test.
 #
 
+# Galera plugin is not compatible with garbd
+--source include/not_galera_plugin.inc
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 --source include/have_garbd.inc
 --source include/big_test.inc
 --source include/have_debug.inc
 --source include/have_debug_sync.inc
+
+--let $grp_skip_reason = No arbitrator based backup
+--source include/not_galera_plugin.inc
 
 # Save galera ports
 --source suite/galera/include/galera_base_port.inc

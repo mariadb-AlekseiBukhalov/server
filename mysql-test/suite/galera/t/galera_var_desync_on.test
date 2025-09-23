@@ -6,6 +6,9 @@
 # commit transactions.
 #
 
+--let $grp_skip_reason = Different flow control
+--source include/not_galera_plugin.inc
+
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 

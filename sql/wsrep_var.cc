@@ -219,6 +219,22 @@ bool wsrep_on_check(sys_var *self, THD* thd, set_var* var)
   return false;
 }
 
+bool wsrep_sync_wait_timeout_update(sys_var *self, THD *thd,
+                                    enum_var_type var_type)
+{
+  bool ret= false;
+  /* Backwards compatibility with Galera. */
+  if (var_type == OPT_GLOBAL &&
+      ::strcmp(wsrep_provider, WSREP_PROVIDER_GALERA_REPLICATION))
+  {
+    std::ostringstream oss;
+    oss << "repl.causal_read_timeout=PT"
+        << global_system_variables.wsrep_sync_wait_timeout << "S";
+    ret= Wsrep_server_state::instance().provider().options(oss.str());
+  }
+  return ret;
+}
+
 template<typename T>
 static T parse_value(char** startptr, char** endptr)
 {

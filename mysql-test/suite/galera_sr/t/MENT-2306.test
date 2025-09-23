@@ -7,6 +7,8 @@
 # cluster (node 1 and 2) through async replication.
 #
 --source include/galera_cluster.inc
+--let $grp_skip_reason = XA not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 --connect node_3, 127.0.0.1, root, , test, $NODE_MYPORT_3
 --connect node_4, 127.0.0.1, root, , test, $NODE_MYPORT_4

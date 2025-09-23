@@ -146,7 +146,7 @@ bool wsrep_create_appliers(long threads, bool mutex_protected)
 static void wsrep_remove_streaming_fragments(THD* thd, const char* ctx)
 {
   wsrep::transaction_id transaction_id(thd->wsrep_trx().id());
-  Wsrep_storage_service* storage_service= wsrep_create_storage_service(thd, ctx);
+  auto* storage_service= wsrep_create_storage_service(thd, ctx);
   storage_service->store_globals();
   storage_service->adopt_transaction(thd->wsrep_trx());
   storage_service->remove_fragments();
@@ -381,14 +381,13 @@ static bool wsrep_bf_abort_low(THD *bf_thd, THD *victim_thd)
                   };);
 #endif
 
-  wsrep::seqno bf_seqno(bf_thd->wsrep_trx().ws_meta().seqno());
+  wsrep::seqno bf_seqno(wsrep_thd_trx_seqno(bf_thd));
   bool ret;
 
   {
     /* Adopt the lock, it is being held by the caller. */
     Wsrep_mutex wsm{&victim_thd->LOCK_thd_data};
     wsrep::unique_lock<wsrep::mutex> lock{wsm, std::adopt_lock};
-
     if (wsrep_thd_is_toi(bf_thd))
     {
       ret= victim_thd->wsrep_cs().total_order_bf_abort(lock, bf_seqno);

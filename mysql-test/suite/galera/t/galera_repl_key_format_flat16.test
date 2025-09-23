@@ -3,6 +3,9 @@
 # we simply verify that the option is settable and that replication works.
 #
 
+--let $grp_skip_reason = No FLAT16 keys
+--source include/not_galera_plugin.inc
+
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 

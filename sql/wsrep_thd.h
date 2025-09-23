@@ -20,6 +20,7 @@
 
 #include "mysql/service_wsrep.h"
 #include "wsrep/client_state.hpp"
+
 #include "sql_class.h"
 #include "wsrep_utils.h"
 #include <deque>

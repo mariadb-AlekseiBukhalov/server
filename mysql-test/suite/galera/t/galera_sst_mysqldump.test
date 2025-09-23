@@ -1,5 +1,8 @@
 --source include/big_test.inc
 --source include/galera_cluster.inc
+# mysqldump SST method not supported by Galera Plugin
+--source include/not_galera_plugin.inc
+
 --source suite/galera/include/galera_sst_set_mysqldump.inc
 
 --let $node_1=node_1

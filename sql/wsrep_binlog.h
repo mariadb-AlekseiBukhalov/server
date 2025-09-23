@@ -94,6 +94,12 @@ bool wsrep_commit_will_write_binlog(THD *thd);
 void wsrep_register_for_group_commit(THD *thd);
 
 /**
+   The same as wsrep_register_for_group_commit(), except that it doesn't
+   check for binlog on/off state.
+ */
+void wsrep_grp_register_for_group_commit(wait_for_commit *wfc);
+
+/**
    Deregister THD from group commit. The wsrep_trx must be in committing state,
    as for wsrep_register_for_group_commit() above.
 
@@ -102,4 +108,18 @@ void wsrep_register_for_group_commit(THD *thd);
 */
 void wsrep_unregister_from_group_commit(THD *thd);
 
+/**
+   The same as wsrep_unregister_from_group_commit(), except that it doesn't
+   check for active WSREP transaction.
+*/
+void wsrep_grp_unregister_from_group_commit(THD *thd);
+
+/**
+   BF abort victim_thd if it is registered
+   for group commit. Note that with GRP the thd->wait_for_commit_ptr
+   may be null during fragment storage operations and the thd->wsrep_wfc
+   has been assigned to storage thread, so the BF abort happens
+   via thd->wsrep_wfc.
+*/
+void wsrep_grp_bf_abort_group_commit(THD *victim_thd);
 #endif /* WSREP_BINLOG_H */

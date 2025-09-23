@@ -1,5 +1,7 @@
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
+--let $grp_skip_reason = GRP does not have repl.max_ws_size
+--source include/not_galera_plugin.inc
 
 #
 # Test that SR transaction is cumulatively allowed to grow beyond repl.max_ws_size

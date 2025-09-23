@@ -24,17 +24,45 @@
 --let $node_2=node_2
 --source include/auto_increment_offset_save.inc
 
-SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%';
+--connection node_1
+CREATE TABLE t1(a int not null primary key) engine=InnoDB;
+INSERT INTO t1 VALUES (1);
+SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%' OR EVENT_NAME LIKE '%grp%';
 
 --connection node_2
+INSERT INTO t1 VALUES (2);
+--echo # Shutdown node_2
 --source include/shutdown_mysqld.inc
 
---error 1
---exec $MYSQLD --defaults-group-suffix=.2 --defaults-file=$MYSQLTEST_VARDIR/my.cnf --loose-ssl-key=$MYSQL_TEST_DIR/std_data/galera-key.pem --loose-ssl-cert=$MYSQL_TEST_DIR/std_data/galera-cert.pem --log-error=$MYSQL_TMP_DIR/galera_ssl_mode_server_x509.log
+--connection node_1
+--let $wait_condition = SELECT VARIABLE_VALUE = 1 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size'
+--source include/wait_condition.inc
 
+--error 1
+--exec $MYSQLD --defaults-group-suffix=.2 --defaults-file=$MYSQLTEST_VARDIR/my.cnf --loose-innodb --loose-ssl-key=$MYSQL_TEST_DIR/std_data/galera-key.pem --loose-ssl-cert=$MYSQL_TEST_DIR/std_data/galera-cert.pem --log-error=$MYSQL_TMP_DIR/galera_ssl_mode_server_x509.log --loose-galera-replication-ssl-key=$MYSQL_TEST_DIR/std_data/galera-key.pem --loose-galera-replication-ssl-cert=$MYSQL_TEST_DIR/std_data/galera-cert.pem --loose-galera-replication-have-ssl=VERIFY_PEER
+
+--echo # waiting to above command to fail
+--sleep 5
+
+--connection node_2
+--echo # Restart node_2
 --source include/start_mysqld.inc
+--source include/wait_until_connected_again.inc
 
 --connection node_1
+--let $wait_condition = SELECT VARIABLE_VALUE = 2 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size'
+--source include/wait_condition.inc
+
+--connection node_2
+INSERT INTO t1 VALUES (3);
+
+--connection node_1
+INSERT INTO t1 VALUES (4);
+SELECT * FROM t1;
+
+--connection node_2
+INSERT INTO t1 VALUES (5);
+DROP TABLE t1;
 
 --let $assert_text= certificate verify failed
 --let $assert_select= certificate verify failed

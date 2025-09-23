@@ -5,6 +5,8 @@
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 --source include/force_restart.inc
+--let $grp_skip_reason = Gcache not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 # Save original auto_increment_offset values.
 --let $node_1=node_1

@@ -10,6 +10,9 @@
 --source include/have_innodb.inc
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
+--let $grp_skip_reason = NBO not supported by Galera Plugin
+--source include/not_galera_plugin.inc
+
 
 --connect node_1a, 127.0.0.1, root, , test, $NODE_MYPORT_1
 --connect node_2a, 127.0.0.1, root, , test, $NODE_MYPORT_2

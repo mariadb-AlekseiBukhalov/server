@@ -1,0 +1,11 @@
+--- mysql-test/suite/galera/r/galera_var_cluster_address.result	2022-09-13 14:24:47.795456682 +0300
++++ /home/teemu/work/git/mariadb-server-features/mysql-test/suite/galera/r/galera_var_cluster_address.reject	2025-06-26 09:53:05.832674053 +0300
+@@ -21,7 +21,7 @@
+ wsrep_local_state	0
+ SHOW STATUS LIKE 'wsrep_local_state_comment';
+ Variable_name	Value
+-wsrep_local_state_comment	Initialized
++wsrep_local_state_comment	Disconnected
+ connection node_1;
+ SELECT VARIABLE_VALUE = 1 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
+ VARIABLE_VALUE = 1

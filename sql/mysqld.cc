@@ -1922,15 +1922,18 @@ extern "C" void unireg_abort(int exit_code)
   // WSREP(thd)
 
   if (WSREP_ON &&
-      Wsrep_server_state::is_inited() &&
-      Wsrep_server_state::instance().state() != wsrep::server_state::s_disconnected)
+      Wsrep_server_state::is_inited())
   {
     /*
       This is an abort situation, we cannot expect to gracefully close all
       wsrep threads here, we can only diconnect from service
     */
     wsrep_close_client_connections(FALSE);
-    Wsrep_server_state::instance().disconnect();
+    if (Wsrep_server_state::instance().is_provider_loaded() &&
+        Wsrep_server_state::instance().state() != wsrep::server_state::s_disconnected)
+    {
+        Wsrep_server_state::instance().disconnect();
+    }
     WSREP_INFO("Service disconnected.");
     wsrep_close_threads(NULL); /* this won't close all threads */
     sleep(1); /* so give some time to exit for those which can */
@@ -5294,6 +5297,16 @@ static int init_server_components()
         WSREP_ERROR("Could not append %s/bin to PATH", mysql_home);
       }
       my_afree(tmp_path);
+
+      /* Galera plugin needs SST before joining the group */
+      if (::strcmp(wsrep_provider, WSREP_PROVIDER_GALERA_REPLICATION) == 0)
+      {
+        if (wsrep_grp_sst(&remaining_argc, &remaining_argv))
+        {
+          WSREP_ERROR("Galera Plugin SST failed");
+          unireg_abort(1);
+        }
+      }
 
       if (wsrep_SST_before_SE())
       {
@@ -9992,6 +10005,7 @@ PSI_stage_info *all_server_stages[]=
 
 PSI_socket_key key_socket_tcpip, key_socket_unix, key_socket_client_connection;
 extern PSI_socket_key key_socket_wsrep;
+PSI_socket_key key_socket_grp;
 
 static PSI_socket_info all_server_sockets[]=
 {
@@ -10000,7 +10014,8 @@ static PSI_socket_info all_server_sockets[]=
   { &key_socket_client_connection, "client_connection", 0}
 #ifdef WITH_WSREP
   ,
-  { &key_socket_wsrep, "wsrep_connection", 0}
+  { &key_socket_wsrep, "wsrep_connection", 0},
+  { &key_socket_grp, "grp_connection", 0},
 #endif // WITH_WSREP
 };
 

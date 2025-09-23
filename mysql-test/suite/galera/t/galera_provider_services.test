@@ -7,6 +7,8 @@
 #
 --source include/galera_cluster.inc
 --source include/have_perfschema.inc
+--let $grp_skip_reason = Wsrep services supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%';
 SELECT COUNT(*) > 0 FROM performance_schema.threads WHERE NAME LIKE '%wsrep_provider%';

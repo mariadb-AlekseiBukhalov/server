@@ -28,6 +28,7 @@
 #include "wsrep_server_service.h"
 #include "wsrep_mutex.h"
 #include "wsrep_condition_variable.h"
+#include "wsrep_mysqld.h"
 
 class Wsrep_server_state : public wsrep::server_state
 {

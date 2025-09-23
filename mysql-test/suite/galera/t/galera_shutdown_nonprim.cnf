@@ -1,0 +1,5 @@
+!include ../galera_2nodes.cnf
+
+[mysqld.1]
+wsrep_provider_options = 'pc.weight = 2'
+loose-galera-replication-node-weight = 2

@@ -15,6 +15,7 @@
 
 #include "my_global.h"
 #include "wsrep_api.h"
+#include "wsrep_provider_grp.h"
 #include "wsrep_server_state.h"
 #include "wsrep_allowlist_service.h"
 #include "wsrep_event_service.h"
@@ -65,7 +66,26 @@ Wsrep_server_state::Wsrep_server_state(const std::string& name,
   , m_cond(&COND_wsrep_server_state)
   , m_service(*this)
   , m_encryption_service(Wsrep_encryption_service())
-{ }
+{
+    set_provider_factory([&](
+        wsrep::server_state& server_state,
+        const std::string& provider_spec,
+        const std::string& provider_options,
+        const wsrep::provider::services& services)
+    {
+        if (provider_spec == WSREP_PROVIDER_GALERA_REPLICATION)
+        {
+            return Wsrep_provider_grp::make_provider(*this, services);
+        }
+
+        /* Load Galera library if not GRP. */
+        return wsrep::provider::make_provider(
+                server_state,
+                provider_spec,
+                provider_options,
+                services);
+    });
+}
 
 Wsrep_server_state::~Wsrep_server_state() = default;
 

@@ -1,6 +1,8 @@
 --source include/galera_cluster.inc
 --source include/have_debug.inc
 --source include/have_debug_sync.inc
+--let $grp_skip_reason = NBO not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 SET SESSION wsrep_osu_method=NBO;
 SET GLOBAL debug_dbug='d,sync.wsrep_alter_locked_tables';

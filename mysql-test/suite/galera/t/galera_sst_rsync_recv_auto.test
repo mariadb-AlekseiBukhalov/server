@@ -1,6 +1,12 @@
 --source include/big_test.inc
 --source include/galera_cluster.inc
 --source include/check_ipv6.inc
+# The test configuration file contains wsrep_sst_receive_address=AUTO
+# which assigns a default port to SST receive address. If there are
+# two instances of this test running concurrently, a port collision
+# will occur. Run this test with Galera library, but not with plugin.
+--let $grp_skip_reason = Cannot run in parallel with Galera Library
+--source include/not_galera_plugin.inc
 
 --let $node_1=node_1
 --let $node_2=node_2

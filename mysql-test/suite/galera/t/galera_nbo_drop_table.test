@@ -1,4 +1,6 @@
 --source include/galera_cluster.inc
+--let $grp_skip_reason = NBO not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 #
 # Test DROP TABLE with NBO

@@ -17,7 +17,7 @@ SET DEBUG_SYNC = 'alter_table_before_open_tables WAIT_FOR continue';
 
 --connect node_1a, 127.0.0.1, root, , test, $NODE_MYPORT_1
 --connection node_1a
-
+SET SESSION wsrep_sync_wait = 0;
 --let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE STATE = 'debug sync point: alter_table_before_open_tables'
 --source include/wait_condition.inc
 

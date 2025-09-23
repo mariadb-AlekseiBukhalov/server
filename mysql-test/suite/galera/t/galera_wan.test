@@ -10,6 +10,10 @@
 --source include/have_innodb.inc
 --source include/force_restart.inc
 
+--let $grp_skip_reason = GRP requires a separate segmentation test
+--source include/not_galera_plugin.inc
+
+
 CALL mtr.add_suppression("WSREP: Stray state UUID msg: ");
 CALL mtr.add_suppression("WSREP: .*Sending JOIN failed: ");
 CALL mtr.add_suppression("WSREP: .*sending install message failed: (Transport endpoint|Socket) is not connected");

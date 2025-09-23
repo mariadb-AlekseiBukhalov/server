@@ -5,6 +5,7 @@
 --source include/galera_cluster.inc
 --source include/big_test.inc
 --source include/force_restart.inc
+--source include/not_galera_plugin.inc
 
 CREATE TABLE t1 (f1 INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,B INTEGER) ENGINE=InnoDB;
 INSERT INTO t1 VALUES (1,1);

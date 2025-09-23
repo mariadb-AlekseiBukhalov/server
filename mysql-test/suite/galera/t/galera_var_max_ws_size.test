@@ -2,6 +2,9 @@
 # This test sets wsrep_max_ws_size to a very low value and checks that the transaction is rejected
 #
 
+--let $grp_skip_reason = No repl.max_ws_size
+--source include/not_galera_plugin.inc
+
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 

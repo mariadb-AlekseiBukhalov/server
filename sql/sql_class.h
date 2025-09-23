@@ -954,6 +954,7 @@ typedef struct system_variables
   ulong   wsrep_trx_fragment_unit;
   ulong   wsrep_OSU_method;
   uint    wsrep_sync_wait;
+  double  wsrep_sync_wait_timeout;
 
   vers_asof_timestamp_t vers_asof_timestamp;
   my_bool binlog_alter_two_phase;
@@ -6006,7 +6007,6 @@ private:
   Wsrep_condition_variable m_wsrep_cond;
   Wsrep_client_service m_wsrep_client_service;
   Wsrep_client_state m_wsrep_client_state;
-
 public:
   Wsrep_client_state& wsrep_cs() { return m_wsrep_client_state; }
   const Wsrep_client_state& wsrep_cs() const { return m_wsrep_client_state; }
@@ -6020,6 +6020,8 @@ public:
   Wsrep_applier_service* wsrep_applier_service;
   /* wait_for_commit struct for binlog group commit */
   wait_for_commit wsrep_wfc;
+  /* Galera plugin log position for committing transaction. */
+  long long wsrep_grp_log_position;
 #endif /* WITH_WSREP */
 
   /* Handling of timeouts for commands */

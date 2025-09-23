@@ -17,7 +17,7 @@ source ../wsrep/include/check_galera_version.inc;
 --let $node_4=node_4
 --source ../include/auto_increment_offset_save.inc
 
-# create table t1 and procedure p1 to generate wirtesets
+# create table t1 and procedure p1 to generate writesets
 --connection node_1
 CREATE TABLE t1(pk INT AUTO_INCREMENT PRIMARY KEY);
 

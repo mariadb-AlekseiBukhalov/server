@@ -60,13 +60,20 @@ SELECT * FROM t1;
 #
 SET SESSION wsrep_trx_fragment_size = 10000;
 
-START TRANSACTION;
+# Start transaction with consistent snapshot to avoid
+# seeing the insert from node_1a below. Now that
+# streaming log is I_S table, reading from it does not
+# establish read view.
+START TRANSACTION WITH CONSISTENT SNAPSHOT;
 INSERT INTO t1 VALUE (10, 'node1');
+SELECT * FROM mysql.wsrep_streaming_log;
 
 --connection node_1a
 INSERT INTO t1 VALUES(15, 'node2');
 
 --connection node_1
+# Transaction with consistent snapshot will not see
+# the insert above from other connection.
 SELECT * FROM t1;
 # This time, only the statement is rolled back and we expect ER_DUP_ENTRY.
 --error ER_DUP_ENTRY

@@ -57,3 +57,5 @@ CALL mtr.add_suppression("WSREP: Inconsistency detected: Inconsistent by consens
 CALL mtr.add_suppression("Plugin 'InnoDB' will be forced to shutdown");
 CALL mtr.add_suppression("WSREP: Cert position .* less than last committed");
 CALL mtr.add_suppression("WSREP: Sending JOIN failed: ");
+CALL mtr.add_suppression("GRP: Inconsistent with group. My vote is: ");
+CALL mtr.add_suppression("WSREP: Applying error");

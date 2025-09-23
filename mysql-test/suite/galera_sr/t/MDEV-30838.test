@@ -4,6 +4,12 @@
 #
 --source include/galera_cluster.inc
 --source include/have_debug_sync.inc
+
+--let $grp_skip_reason = No wsrep_schema for streaming log
+# So the codepath where the debug instrumentation is does not
+# get executed.
+--source include/not_galera_plugin.inc
+
 CREATE TABLE t1 (f1 INTEGER PRIMARY KEY);
 SET SESSION wsrep_trx_fragment_size=1;
 START TRANSACTION;

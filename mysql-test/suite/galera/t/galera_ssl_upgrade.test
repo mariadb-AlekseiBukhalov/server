@@ -4,6 +4,7 @@
 # 1. The starting state with the old key and cert is is described in galera_ssl_upgrade.cnf
 #
 
+--source include/not_galera_plugin.inc
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 --source include/have_ssl_communication.inc

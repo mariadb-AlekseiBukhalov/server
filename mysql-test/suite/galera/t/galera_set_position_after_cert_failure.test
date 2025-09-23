@@ -3,6 +3,9 @@
 # a local certification failure.
 #
 
+--let $grp_skip_reason = No seqno for write sets which fail certification
+--source include/not_galera_plugin.inc
+
 --source include/galera_cluster.inc
 --source include/have_debug_sync.inc
 

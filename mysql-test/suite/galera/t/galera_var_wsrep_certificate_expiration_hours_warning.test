@@ -7,6 +7,8 @@
 --source include/big_test.inc
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
+--let $grp_skip_reason = Wsrep TLS hooks supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 SELECT COUNT(*) > 0 FROM performance_schema.socket_instances WHERE EVENT_NAME LIKE '%wsrep%';
 

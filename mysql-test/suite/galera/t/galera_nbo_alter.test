@@ -1,5 +1,7 @@
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
+--let $grp_skip_reason = NBO not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 call mtr.add_suppression("WSREP: ALTER TABLE isolation failure");
 

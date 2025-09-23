@@ -9,11 +9,16 @@
 [mysqld]
 wsrep-ssl-mode=SERVER
 ssl-ca=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.root.crt
+loose-galera-replication-ssl-ca=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.root.crt
 
 [mysqld.1]
 ssl-key=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.1.key
 ssl-cert=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.1.crt
+loose-galera-replication-ssl-key=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.1.key
+loose-galera-replication-ssl-cert=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.1.crt
 
 [mysqld.2]
 ssl-key=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.2.key
 ssl-cert=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.2.crt
+loose-galera-replication-ssl-key=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.2.key
+loose-galera-replication-ssl-cert=@ENV.MYSQL_TEST_DIR/std_data/galera_certs/galera.2.crt

@@ -17,6 +17,11 @@
 --source include/have_debug_sync.inc
 --source include/galera_have_debug_sync.inc
 
+--let $grp_skip_reason = Transactions that failed certification don't get a seqno
+# Thus they don't enter commit monitor to mark position in InnoDB, and the
+# commit_monitor_master_enter_sync sync point is never executed for them.
+--source include/not_galera_plugin.inc
+
 #
 # binlog size is limited to 4096 bytes, we will create enough events to
 # cause binlog rotation

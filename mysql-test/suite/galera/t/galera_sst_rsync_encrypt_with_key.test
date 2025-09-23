@@ -18,7 +18,12 @@
 # Confirm that transfer was SSL-encrypted
 --let $assert_text = Using stunnel for SSL encryption
 --let $assert_select = Using stunnel for SSL encryption
---let $assert_count = 5
+if ($galera_have_grp) {
+    --let $assert_count = 2
+}
+if (!$galera_have_grp) {
+    --let $assert_count = 5
+}
 --let $assert_file = $MYSQLTEST_VARDIR/log/mysqld.1.err
 --let $assert_only_after = CURRENT_TEST
 --source include/assert_grep.inc

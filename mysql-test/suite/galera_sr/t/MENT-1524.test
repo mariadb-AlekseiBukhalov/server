@@ -4,6 +4,8 @@
 
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
+--let $grp_skip_reason = XA not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 SET SESSION wsrep_trx_fragment_size=1;
 CREATE TABLE t1 (c1 VARCHAR(10));

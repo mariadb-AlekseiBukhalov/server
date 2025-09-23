@@ -3,6 +3,9 @@
 #
 
 --source include/galera_cluster.inc
+# GRP loses quorum in this test and it cannot yet recover
+# from it.
+--source include/not_galera_plugin.inc
 
 # Save original auto_increment_offset values.
 --let $node_1=node_1

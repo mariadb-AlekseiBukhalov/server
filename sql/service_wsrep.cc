@@ -133,7 +133,11 @@ extern "C" long long wsrep_thd_depends_on(const THD *thd)
 
 extern "C" void wsrep_thd_self_abort(THD *thd)
 {
-  thd->wsrep_cs().bf_abort(wsrep::seqno(0));
+  mysql_mutex_assert_owner(&thd->LOCK_thd_data);
+  Wsrep_mutex wsm{&thd->LOCK_thd_data};
+  wsrep::unique_lock<wsrep::mutex> lock{wsm, std::adopt_lock};
+  thd->wsrep_cs().bf_abort(lock, wsrep::seqno(0));
+  lock.release();
 }
 
 extern "C" const char* wsrep_get_sr_table_name()
@@ -236,9 +240,27 @@ extern "C" void wsrep_handle_SR_rollback(THD *bf_thd __attribute__((unused)),
               victim_thd->wsrep_sr().fragments_certified(),
               wsrep_thd_transaction_state_str(victim_thd));
 
-  DEBUG_SYNC(victim_thd, "wsrep_before_SR_rollback");
-
-  wsrep_thd_self_abort(victim_thd);
+  /* Note: do not store/reset globals before wsrep_bf_abort() call
+     to avoid losing BF thd context. */
+  mysql_mutex_lock(&victim_thd->LOCK_thd_data);
+  const bool self_abort= (!bf_thd || bf_thd == victim_thd);
+  if (self_abort)
+  {
+    DEBUG_SYNC(victim_thd, "wsrep_before_SR_rollback");
+  }
+  if (!self_abort)
+  {
+    wsrep_bf_abort(bf_thd, victim_thd);
+  }
+  else
+  {
+    wsrep_thd_self_abort(victim_thd);
+  }
+  mysql_mutex_unlock(&victim_thd->LOCK_thd_data);
+  if (bf_thd)
+  {
+    wsrep_store_threadvars(bf_thd);
+  }
 }
 
 extern "C" my_bool wsrep_thd_bf_abort(THD *bf_thd, THD *victim_thd,

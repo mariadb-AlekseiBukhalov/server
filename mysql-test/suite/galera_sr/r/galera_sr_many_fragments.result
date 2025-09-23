@@ -19,7 +19,7 @@ connection node_1;
 ROLLBACK;
 connection node_2;
 SET SESSION wsrep_sync_wait = 0;
-SET GLOBAL wsrep_provider_options = 'repl.causal_read_timeout=PT10M';
+SET GLOBAL wsrep_sync_wait_timeout = 120;
 SET SESSION wsrep_sync_wait = 7;
 SELECT COUNT(*) = 0 FROM mysql.wsrep_streaming_log;
 COUNT(*) = 0
@@ -27,7 +27,17 @@ COUNT(*) = 0
 SELECT COUNT(*) = 0 FROM t1;
 COUNT(*) = 0
 1
+SET GLOBAL wsrep_sync_wait_timeout = DEFAULT;
+connection node_1;
+SET SESSION wsrep_sync_wait = 0;
+SET GLOBAL wsrep_sync_wait_timeout = 120;
+SET SESSION wsrep_sync_wait = 7;
+SELECT COUNT(*) = 0 FROM mysql.wsrep_streaming_log;
 COUNT(*) = 0
 1
+SELECT COUNT(*) = 0 FROM t1;
 COUNT(*) = 0
 1
+SET GLOBAL wsrep_sync_wait_timeout = DEFAULT;
+DROP TABLE ten;
+DROP TABLE t1;

@@ -39,7 +39,7 @@ COUNT(*) = 3
 SELECT COUNT(*) = (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size') FROM mysql.wsrep_cluster_members;
 COUNT(*) = (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size')
 1
-SELECT COUNT(*) = 1 FROM mysql.wsrep_cluster_members WHERE node_uuid = (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_gcomm_uuid');
+SELECT COUNT(*) = 1 FROM mysql.wsrep_cluster_members WHERE node_uuid IN (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_gcomm_uuid' OR VARIABLE_NAME = 'wsrep_node_id');
 COUNT(*) = 1
 1
 SELECT node_incoming_address LIKE '127.0.0.1:%' from mysql.wsrep_cluster_members;
@@ -59,7 +59,7 @@ COUNT(*) = 3
 SELECT COUNT(*) = (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size') FROM mysql.wsrep_cluster_members;
 COUNT(*) = (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size')
 1
-SELECT COUNT(*) = 1 FROM mysql.wsrep_cluster_members WHERE node_uuid = (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_gcomm_uuid');
+SELECT COUNT(*) = 1 FROM mysql.wsrep_cluster_members WHERE node_uuid IN (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_gcomm_uuid' OR VARIABLE_NAME = 'wsrep_node_id');
 COUNT(*) = 1
 1
 SELECT node_incoming_address LIKE '127.0.0.1:%' from mysql.wsrep_cluster_members;
@@ -79,7 +79,7 @@ COUNT(*) = 3
 SELECT COUNT(*) = (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size') FROM mysql.wsrep_cluster_members;
 COUNT(*) = (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size')
 1
-SELECT COUNT(*) = 1 FROM mysql.wsrep_cluster_members WHERE node_uuid = (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_gcomm_uuid');
+SELECT COUNT(*) = 1 FROM mysql.wsrep_cluster_members WHERE node_uuid IN (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_gcomm_uuid' OR VARIABLE_NAME = 'wsrep_node_id');
 COUNT(*) = 1
 1
 SELECT node_incoming_address LIKE '127.0.0.1:%' from mysql.wsrep_cluster_members;

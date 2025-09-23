@@ -74,15 +74,15 @@ connection node_3a;
 SET SESSION wsrep_sync_wait = 0;
 SET SESSION wsrep_sync_wait = DEFAULT;
 connection node_1a;
-SELECT COUNT(*) AS EXPECT_0 FROM mysql.wsrep_streaming_log;
+SELECT COUNT(*) AS EXPECT_0 FROM  mysql.wsrep_streaming_log;
 EXPECT_0
 0
 connection node_2a;
-SELECT COUNT(*) AS EXPECT_0 FROM mysql.wsrep_streaming_log;
+SELECT COUNT(*) AS EXPECT_0 FROM  mysql.wsrep_streaming_log;
 EXPECT_0
 0
 connection node_3a;
-SELECT COUNT(*) AS EXPECT_0 FROM mysql.wsrep_streaming_log;
+SELECT COUNT(*) AS EXPECT_0 FROM  mysql.wsrep_streaming_log;
 EXPECT_0
 0
 connection node_1;

@@ -18,6 +18,7 @@
 #include "wsrep_server_state.h"
 #include "wsrep_client_state.h"
 #include "wsrep_client_service.h"
+#include "wsrep_provider_grp.h"
 #include "wsrep_storage_service.h"
 #include "wsrep_high_priority_service.h"
 
@@ -49,7 +50,7 @@ static void init_service_thd(THD* thd, void* thread_stack)
   server_threads.insert(thd); // as wsrep_innobase_kill_one_trx() uses find_thread_by_id()
 }
 
-Wsrep_storage_service*
+wsrep::storage_service*
 wsrep_create_storage_service(THD* orig_THD, const char* ctx)
 {
   THD* thd= new THD(true, true);
@@ -218,7 +219,9 @@ void Wsrep_server_service::bootstrap()
   wsrep::log_info()
     << "Bootstrapping a new cluster, setting initial position to "
     << wsrep::gtid::undefined();
-  wsrep_set_SE_checkpoint(wsrep::gtid::undefined(), wsrep_gtid_server.undefined());
+  wsrep_set_SE_checkpoint(wsrep::gtid::undefined(),
+                          wsrep_gtid_server.undefined(),
+                          current_thd->wsrep_grp_log_position);
 }
 
 static std::atomic<bool> suppress_logging{false};
@@ -258,6 +261,8 @@ void Wsrep_server_service::log_view(
 {
   Wsrep_high_priority_service* applier=
     static_cast<Wsrep_high_priority_service*>(high_priority_service);
+  auto grp_log_position= applier ? applier->thd()->wsrep_grp_log_position : 0;
+
   /* Update global system variables */
   mysql_mutex_lock(&LOCK_global_system_variables);
   if (wsrep_auto_increment_control && view.own_index() >= 0)
@@ -289,7 +294,9 @@ void Wsrep_server_service::log_view(
       if (prev_view.state_id().id() != view.state_id().id())
       {
         WSREP_DEBUG("New cluster UUID was generated, resetting position info");
-        wsrep_set_SE_checkpoint(wsrep::gtid::undefined(), wsrep_gtid_server.undefined());
+        wsrep_set_SE_checkpoint(wsrep::gtid::undefined(),
+                                wsrep_gtid_server.undefined(),
+                                grp_log_position);
         checkpoint_was_reset= true;
       }
 
@@ -320,9 +327,11 @@ void Wsrep_server_service::log_view(
           Wsrep_server_state::instance().provider().last_committed_gtid().seqno();
       if (checkpoint_was_reset || last_committed != view.state_id().seqno())
       {
-        wsrep_set_SE_checkpoint(view.state_id(), wsrep_gtid_server.gtid());
+        wsrep_set_SE_checkpoint(view.state_id(), wsrep_gtid_server.gtid(),
+                                grp_log_position);
       }
-      DBUG_ASSERT(wsrep_get_SE_checkpoint<wsrep::gtid>().id() == view.state_id().id());
+      DBUG_ASSERT(wsrep_get_SE_checkpoint<wsrep::gtid>().id() ==
+                  view.state_id().id());
     }
     else
     {
@@ -334,6 +343,9 @@ void Wsrep_server_service::log_view(
 
 void Wsrep_server_service::recover_streaming_appliers(wsrep::client_service& cs)
 {
+  if (get_provider_grp()) {
+    return;
+  }
   Wsrep_client_service& client_service= static_cast<Wsrep_client_service&>(cs);
   wsrep_recover_sr_from_storage(client_service.m_thd);
 }
@@ -341,6 +353,9 @@ void Wsrep_server_service::recover_streaming_appliers(wsrep::client_service& cs)
 void Wsrep_server_service::recover_streaming_appliers(
   wsrep::high_priority_service& hs)
 {
+  if (get_provider_grp()) {
+    return;
+  }
   Wsrep_high_priority_service& high_priority_service=
     static_cast<Wsrep_high_priority_service&>(hs);
   wsrep_recover_sr_from_storage(high_priority_service.m_thd);
@@ -362,6 +377,9 @@ wsrep::gtid Wsrep_server_service::get_position(wsrep::client_service&)
 void Wsrep_server_service::set_position(wsrep::client_service& c WSREP_UNUSED,
                                         const wsrep::gtid& gtid)
 {
+  /* GRP should never need to call this as there is no need to sync
+     seqnos for write sets which have failed certification. */
+  DBUG_ASSERT(!get_provider_grp());
   Wsrep_client_service& cs WSREP_UNUSED (static_cast<Wsrep_client_service&>(c));
   DBUG_ASSERT(cs.m_client_state.transaction().state()
               == wsrep::transaction::s_aborted);
@@ -374,7 +392,7 @@ void Wsrep_server_service::set_position(wsrep::client_service& c WSREP_UNUSED,
     WSREP_WARN("Wait for gtid returned error %d while waiting for "
                "prior transactions to commit before setting position", err);
   }
-  wsrep_set_SE_checkpoint(gtid, wsrep_gtid_server.gtid());
+  wsrep_set_SE_checkpoint(gtid, wsrep_gtid_server.gtid(), 0);
 }
 
 void Wsrep_server_service::log_state_change(

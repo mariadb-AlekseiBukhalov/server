@@ -14,6 +14,9 @@
 --source include/galera_have_debug_sync.inc
 --source include/force_restart.inc
 
+--let $grp_skip_reason = No IST
+--source include/not_galera_plugin.inc
+
 --let $galera_connection_name = node_3
 --let $galera_server_number = 3
 --source include/galera_connect.inc

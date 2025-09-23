@@ -6,6 +6,7 @@
 
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
+--source include/not_galera_plugin.inc
 
 --let $galera_connection_name = node_3
 --let $galera_server_number = 3

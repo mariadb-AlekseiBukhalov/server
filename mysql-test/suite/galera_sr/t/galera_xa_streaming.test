@@ -5,6 +5,8 @@
 #
 
 --source include/galera_cluster.inc
+--let $grp_skip_reason = XA not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 CREATE TABLE t1 (f1 INTEGER PRIMARY KEY);
 

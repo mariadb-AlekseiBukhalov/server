@@ -18,16 +18,25 @@ COUNT(*) > 50000
 connection node_1;
 ROLLBACK;
 connection node_2;
-SET SESSION wsrep_sync_wait = 0;
-SET GLOBAL wsrep_provider_options = 'repl.causal_read_timeout=PT10M';
-SET SESSION wsrep_sync_wait = 7;
+SET GLOBAL wsrep_sync_wait_timeout = 120;
 SELECT COUNT(*) = 0 FROM mysql.wsrep_streaming_log;
 COUNT(*) = 0
 1
 SELECT COUNT(*) = 0 FROM t1;
 COUNT(*) = 0
 1
+SET GLOBAL wsrep_sync_wait_timeout = DEFAULT;
+connection node_1;
+SET GLOBAL wsrep_sync_wait_timeout = 120;
+SELECT COUNT(*) = 0 FROM mysql.wsrep_streaming_log;
 COUNT(*) = 0
 1
+SELECT COUNT(*) = 0 FROM t1;
 COUNT(*) = 0
 1
+SET GLOBAL wsrep_sync_wait_timeout = DEFAULT;
+DROP TABLE ten;
+DROP TABLE t1;
+CALL mtr.add_suppression('InnoDB: Resizing redo log from');
+CALL mtr.add_suppression('InnoDB: Starting to delete and rewrite log files');
+CALL mtr.add_suppression('InnoDB: New log files created, LSN=');

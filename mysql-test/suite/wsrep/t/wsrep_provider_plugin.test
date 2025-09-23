@@ -5,6 +5,8 @@
 
 --source include/have_wsrep.inc
 --source include/have_innodb.inc
+--let $grp_skip_reason = Galera Plugin does not support wsrep provider options
+--source include/not_galera_plugin.inc
 
 --let $galera_version=26.4.26
 source include/check_galera_version.inc;

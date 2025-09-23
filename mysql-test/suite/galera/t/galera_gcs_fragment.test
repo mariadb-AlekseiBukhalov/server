@@ -1,4 +1,5 @@
 # Test fragmentation over configuration changes
+--source include/not_galera_plugin.inc
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 --source include/galera_have_debug_sync.inc

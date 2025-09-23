@@ -7731,7 +7731,8 @@ void mysql_init_multi_delete(LEX *lex)
 static void wsrep_prepare_for_autocommit_retry(THD* thd,
                                                char* rawbuf,
                                                uint length,
-                                               Parser_state* parser_state)
+                                               Parser_state* parser_state,
+                                               wsrep::gtid conflict_gtid)
 {
   thd->clear_error();
   close_thread_tables(thd);
@@ -7777,6 +7778,13 @@ static void wsrep_prepare_for_autocommit_retry(THD* thd,
   DBUG_ASSERT(thd->wsrep_trx().active() == false);
   thd->wsrep_cs().reset_error();
   thd->set_query_id(next_query_id());
+
+  /* Wait for the conflicting write set to commit before retrying a transaction. */
+  if (!conflict_gtid.is_undefined())
+  {
+    thd->wsrep_cs().provider().wait_for_gtid(conflict_gtid,
+            std::numeric_limits<int>::max());
+  }
 }
 
 static bool wsrep_mysql_parse(THD *thd, char *rawbuf, uint length,
@@ -7820,6 +7828,10 @@ static bool wsrep_mysql_parse(THD *thd, char *rawbuf, uint length,
       DEBUG_SYNC(thd, "wsrep_after_statement_enter");
 #endif
 
+    /* Get the conflicting gtid before releasing the handle. */
+    const wsrep::gtid conflict_gtid= thd->wsrep_cs().provider().conflict_gtid(
+            thd->wsrep_trx().ws_handle());
+
     if (wsrep_after_statement(thd) &&
         is_autocommit              &&
         thd_is_connection_alive(thd))
@@ -7843,7 +7855,8 @@ static bool wsrep_mysql_parse(THD *thd, char *rawbuf, uint length,
         WSREP_DEBUG("wsrep retrying AC query: %lu  %s",
                     thd->wsrep_retry_counter,
                     wsrep_thd_query(thd));
-        wsrep_prepare_for_autocommit_retry(thd, rawbuf, length, parser_state);
+        wsrep_prepare_for_autocommit_retry(thd, rawbuf, length, parser_state,
+                                           conflict_gtid);
         if (thd->lex->explain)
           delete_explain_query(thd->lex);
         retry_autocommit= true;

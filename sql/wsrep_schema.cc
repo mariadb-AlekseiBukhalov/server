@@ -34,6 +34,7 @@
 #include "log_event.h"
 #include "sql_class.h"
 
+#include <algorithm>
 #include <string>
 #include <sstream>
 
@@ -615,9 +616,13 @@ static int scan_member(TABLE* table,
   }
 
   try {
-    members.push_back(Wsrep_view::member(member_id,
-                                         member_name,
-                                         member_incoming));
+    members.push_back(
+        Wsrep_view::member(member_id, member_name, member_incoming));
+    std::sort(
+        members.begin(), members.end(),
+        [](const Wsrep_view::member &left, const Wsrep_view::member &right) {
+          return left.id() < right.id();
+        });
   }
   catch (...) {
     WSREP_ERROR("Caught exception while scanning members table");
@@ -762,6 +767,31 @@ int Wsrep_schema::init()
   }
 
   delete thd;
+  DBUG_RETURN(ret);
+}
+
+int Wsrep_schema::clear_on_bootstrap()
+{
+  DBUG_ENTER("Wsrep_schema::clear_on_bootstrap()");
+  THD *orig_thd= current_thd;
+  THD *thd= new THD(next_thread_id());
+  if (!thd)
+  {
+    WSREP_ERROR("Unable to get thd");
+    DBUG_RETURN(1);
+  }
+  wsrep_init_thd_for_schema(thd);
+
+  const std::string clear_fragments= std::string{"DELETE FROM "} +
+                                     WSREP_SCHEMA + "." +
+                                     WSREP_STREAMING_TABLE;
+  int ret= Wsrep_schema_impl::execute_SQL(thd, clear_fragments.c_str(),
+                                          clear_fragments.length());
+
+  delete thd;
+  if (orig_thd) {
+    orig_thd->store_globals();
+  }
   DBUG_RETURN(ret);
 }
 

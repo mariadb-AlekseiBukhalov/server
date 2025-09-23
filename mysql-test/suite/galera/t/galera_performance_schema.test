@@ -4,6 +4,8 @@
 #
 --source include/galera_cluster.inc
 --source include/have_perfschema.inc
+--let $grp_skip_reason = Galera performance schema not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 --let $wait_condition = SELECT VARIABLE_VALUE = 2 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size';
 --source include/wait_condition.inc

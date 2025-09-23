@@ -23,8 +23,6 @@ SELECT COUNT(*) AS EXPECT_2 FROM mysql.wsrep_cluster_members;
 EXPECT_2
 2
 connection node_1;
-SET GLOBAL wsrep_provider_options = 'pc.ignore_sb=true';
-SET GLOBAL wsrep_provider_options = 'pc.weight=2';
 connection node_2;
 # Desync and disconnect node_2
 SET @@global.wsrep_desync = 1;
@@ -69,8 +67,6 @@ SET @@global.wsrep_desync = 0;
 CALL mtr.add_suppression("WSREP: Protocol violation\\. JOIN message sender .+ ?is not in state transfer \\(SYNCED\\)\\. Message ignored\\.");
 connection node_1;
 # Wait until both nodes are back to cluster
-SET GLOBAL wsrep_provider_options = 'pc.ignore_sb=false';
-SET GLOBAL wsrep_provider_options = 'pc.weight=1';
 # Verify that we can access wsrep schema tables
 # Node1
 SELECT COUNT(*) AS EXPECT_0 FROM mysql.wsrep_streaming_log;

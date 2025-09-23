@@ -19,10 +19,8 @@
 #include "wsrep/high_priority_service.hpp"
 #include "my_global.h"
 #include "sql_error.h" /* Diagnostics area */
-#include "sql_class.h" /* rpl_group_info */
+#include "sql_class.h" /* THD, rpl_group_info */
 
-class THD;
-class Relay_log_info;
 class Wsrep_server_service;
 
 class Wsrep_high_priority_service :
@@ -58,9 +56,13 @@ public:
 
   virtual bool check_exit_status() const = 0;
   void debug_crash(const char*) override;
+  THD *thd() const { return m_thd; }
 protected:
   friend Wsrep_server_service;
   THD* m_thd;
+  /* Keep pointer to real applier thread, needed to get wait_for_commit_ptr
+     for GRP SR group commit. */
+  THD* m_applier_thd;
   Relay_log_info*   m_rli;
   rpl_group_info*   m_rgi;
   struct shadow

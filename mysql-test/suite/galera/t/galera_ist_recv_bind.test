@@ -7,6 +7,9 @@
 --source include/have_innodb.inc
 --source include/big_test.inc
 
+--let $grp_skip_reason = No IST
+--source include/not_galera_plugin.inc
+
 --connection node_1
 SELECT @@wsrep_provider_options LIKE '%ist.recv_bind = 127.0.0.1%';
 

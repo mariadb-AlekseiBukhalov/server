@@ -3,6 +3,9 @@
 # As MTR does not allow multiple servers to be down at the same time, we are limited as to what we can test.
 #
 
+--let $grp_skip_reason = No garbd
+--source include/not_galera_plugin.inc
+
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 --source include/have_garbd.inc

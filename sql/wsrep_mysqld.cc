@@ -258,7 +258,8 @@ static PSI_file_info wsrep_files[]=
 
 PSI_thread_key key_wsrep_sst_joiner, key_wsrep_sst_donor,
   key_wsrep_rollbacker, key_wsrep_applier, key_wsrep_nbo_worker,
-  key_wsrep_sst_joiner_monitor, key_wsrep_sst_donor_monitor;
+  key_wsrep_sst_joiner_monitor, key_wsrep_sst_donor_monitor,
+  key_grp_service_thread;
 
 static PSI_thread_info wsrep_threads[]=
 {
@@ -269,7 +270,8 @@ static PSI_thread_info wsrep_threads[]=
  {&key_wsrep_nbo_worker, "wsrep_nbo_worker_thread", PSI_FLAG_GLOBAL},
  {&key_wsrep_sst_joiner_monitor, "wsrep_sst_joiner_monitor", PSI_FLAG_GLOBAL},
  {&key_wsrep_sst_donor_monitor, "wsrep_sst_donor_monitor", PSI_FLAG_GLOBAL},
- {&key_wsrep_cert_alert_thread, "wsrep_cert_alert_thread", PSI_FLAG_GLOBAL}
+ {&key_wsrep_cert_alert_thread, "wsrep_cert_alert_thread", PSI_FLAG_GLOBAL},
+ {&key_grp_service_thread, "grp_service", PSI_FLAG_GLOBAL}
 };
 
 #endif /* HAVE_PSI_INTERFACE */
@@ -1686,8 +1688,11 @@ bool wsrep_sync_wait (THD* thd, uint mask)
     /*
       This allows autocommit SELECTs and a first SELECT after SET AUTOCOMMIT=0
       TODO: modify to check if thd has locked any rows.
+      Note that wsrep-API does not allow subsecond resolution for sync
+      wait timeout, so round the timeout up to 1.
     */
-    if (thd->wsrep_cs().sync_wait(-1))
+    if (thd->wsrep_cs().sync_wait(
+          std::max(thd->variables.wsrep_sync_wait_timeout, 1.)))
     {
       wsrep_override_error(thd, thd->wsrep_cs().current_error(),
                            thd->wsrep_cs().current_error_status());
@@ -3108,7 +3113,9 @@ static void wsrep_TOI_end(THD *thd) {
     wsrep::mutable_buffer err;
 
     thd->wsrep_last_written_gtid_seqno= thd->wsrep_current_gtid_seqno;
-    wsrep_set_SE_checkpoint(client_state.toi_meta().gtid(), wsrep_gtid_server.gtid());
+    wsrep_set_SE_checkpoint(client_state.toi_meta().gtid(),
+                            wsrep_gtid_server.gtid(),
+                            thd->wsrep_grp_log_position);
 
     if (thd->is_error() && !wsrep_must_ignore_error(thd))
     {
@@ -3443,7 +3450,8 @@ void wsrep_NBO_end(THD *thd)
   if (wsrep_thd_is_nbo(thd))
   {
     wsrep::client_state& cs(thd->wsrep_cs());
-    wsrep_set_SE_checkpoint(cs.toi_meta().gtid(), wsrep_gtid_server.gtid());
+    wsrep_set_SE_checkpoint(cs.toi_meta().gtid(), wsrep_gtid_server.gtid(),
+                            thd->wsrep_grp_log_position);
     wsrep::mutable_buffer err;
     if (thd->is_error() && !wsrep_must_ignore_error(thd))
     {

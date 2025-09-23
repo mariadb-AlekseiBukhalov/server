@@ -11,6 +11,8 @@
 #
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
+--let $grp_skip_reason = NBO not supported by Galera Plugin
+--source include/not_galera_plugin.inc
 
 CREATE TABLE t1 (f1 INT PRIMARY KEY);
 SET SESSION wsrep_osu_method=RSU;

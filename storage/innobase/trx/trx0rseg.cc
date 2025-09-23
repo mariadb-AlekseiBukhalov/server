@@ -50,7 +50,8 @@ Created 3/26/1996 Heikki Tuuri
 # ifdef UNIV_DEBUG
 /** The latest known WSREP XID sequence number */
 static long long wsrep_seqno = -1;
-# endif /* UNIV_DEBUG */
+static long long wsrep_provider_position = -1;
+#endif /* UNIV_DEBUG */
 /** The latest known WSREP XID UUID */
 static unsigned char wsrep_uuid[16];
 
@@ -112,17 +113,35 @@ trx_rseg_update_wsrep_checkpoint(
 	ut_ad(wsrep_is_wsrep_xid(xid));
 
 #ifdef UNIV_DEBUG
-	/* Check that seqno is monotonically increasing */
+	/* Check that either:
+	   - Seqno is monotonically increasing or
+	   - Provider position is synced without changing the seqno (final view)
+	*/
 	long long xid_seqno = wsrep_xid_seqno(xid);
 	const byte* xid_uuid = wsrep_xid_uuid(xid);
-
+	long long xid_provider_position = wsrep_xid_provider_position(xid);
 	if (xid_seqno != -1
 	    && !memcmp(xid_uuid, wsrep_uuid, sizeof wsrep_uuid)) {
-		ut_ad(xid_seqno > wsrep_seqno);
-	} else {
-		memcpy(wsrep_uuid, xid_uuid, sizeof wsrep_uuid);
-	}
-	wsrep_seqno = xid_seqno;
+          if (!((xid_seqno > wsrep_seqno &&
+                 xid_provider_position > wsrep_provider_position) ||
+                (xid_seqno == wsrep_seqno &&
+                 xid_provider_position >= wsrep_provider_position))) {
+            if (xid_provider_position > 0)
+            {
+              ib::warn() << "Out of order sync of wsrep position, current: "
+                         << wsrep_seqno << "," << wsrep_provider_position
+                         << " next: " << xid_seqno << ","
+                         << xid_provider_position;
+              ut_ad(0);
+            }
+          }
+        }
+        else
+        {
+          memcpy(wsrep_uuid, xid_uuid, sizeof wsrep_uuid);
+        }
+        wsrep_seqno = xid_seqno;
+        wsrep_provider_position = xid_provider_position;
 #endif /* UNIV_DEBUG */
 	trx_rseg_write_wsrep_checkpoint(rseg_header, xid, mtr);
 }

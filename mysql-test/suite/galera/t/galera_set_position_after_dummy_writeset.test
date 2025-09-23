@@ -3,6 +3,9 @@
 # a dummy write set is applied.
 #
 
+--let $grp_skip_reason = No dummy write sets
+--source include/not_galera_plugin.inc
+
 --source include/galera_cluster.inc
 --source include/have_debug.inc
 --source include/have_debug_sync.inc

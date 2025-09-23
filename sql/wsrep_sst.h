@@ -97,13 +97,17 @@ std::string wsrep_sst_prepare();
 int wsrep_sst_donate(const std::string& request,
                      const wsrep::gtid& gtid,
                      bool bypass);
-
 /**
    Cleanup stale SST users from the database records
    @param thd wsp::thd object (wraps initialized THD* pointer)
   */
 void wsrep_sst_cleanup_user(THD* thd);
 
+/**
+   Request SST for Galera Replication Plugin
+   @return Zero on success, non-zero on failure.
+ */
+int wsrep_grp_sst(int *argc, char ***argv);
 #else
 #define wsrep_SE_initialized() do { } while(0)
 #define wsrep_SE_init_grab() do { } while(0)

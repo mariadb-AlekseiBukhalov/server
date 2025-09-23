@@ -105,7 +105,12 @@ SET GLOBAL wsrep_provider_options='gmcast.isolate=0';
 --connection node_1a
 --let $wait_condition = SELECT VARIABLE_VALUE = 3 FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_cluster_size'
 --source include/wait_condition.inc
---let $node_1_gcomm_uuid = `SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_gcomm_uuid'`
+if ($galera_have_grp) {
+  --let $node_1_own_id = `SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_node_id'`
+}
+if (!$galera_have_grp) {
+  --let $node_1_own_id = `SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME = 'wsrep_gcomm_uuid'`
+}
 
 --connection node_2a
 --source include/wait_condition.inc
@@ -123,7 +128,7 @@ SET GLOBAL wsrep_provider_options='gmcast.isolate=0';
 COMMIT;
 SELECT COUNT(DISTINCT node_uuid) = 1 FROM mysql.wsrep_streaming_log;
 --disable_query_log
---eval SELECT DISTINCT node_uuid = '$node_1_gcomm_uuid' AS wsrep_gcomm_uuid_match FROM mysql.wsrep_streaming_log;
+--eval SELECT DISTINCT node_uuid = '$node_1_own_id' AS wsrep_node_id_match FROM mysql.wsrep_streaming_log;
 --enable_query_log
 
 --connection node_3
@@ -131,7 +136,7 @@ SELECT COUNT(DISTINCT node_uuid) = 1 FROM mysql.wsrep_streaming_log;
 COMMIT;
 SELECT COUNT(DISTINCT node_uuid) = 1 FROM mysql.wsrep_streaming_log;
 --disable_query_log
---eval SELECT DISTINCT node_uuid = '$node_1_gcomm_uuid' AS wsrep_gcomm_uuid_match FROM mysql.wsrep_streaming_log;
+--eval SELECT DISTINCT node_uuid = '$node_1_own_id' AS wsrep_node_id_match FROM mysql.wsrep_streaming_log;
 --enable_query_log
 
 #

@@ -370,7 +370,8 @@ static inline int wsrep_before_prepare(THD* thd, bool all)
          executed out of order. */
       wsrep_xid_init(&thd->wsrep_xid,
                      thd->wsrep_trx().ws_meta().gtid(),
-                     wsrep_gtid_server.undefined());
+                     wsrep_gtid_server.undefined(),
+                     thd->wsrep_grp_log_position);
     }
   }
 
@@ -445,7 +446,8 @@ static inline int wsrep_before_commit(THD* thd, bool all)
     {
       wsrep_xid_init(&thd->wsrep_xid,
                      thd->wsrep_trx().ws_meta().gtid(),
-                     wsrep_gtid_server.gtid());
+                     wsrep_gtid_server.gtid(),
+                     thd->wsrep_grp_log_position);
 
 #ifdef ENABLED_DEBUG_SYNC
       DBUG_EXECUTE_IF("wsrep_after_xid_init",
@@ -543,7 +545,9 @@ static inline int wsrep_before_rollback(THD* thd, bool all)
            Self abort the transaction, the actual rollback and error
            handling will be done in after statement phase. */
         WSREP_DEBUG("statement rollback is not safe for streaming replication");
+        mysql_mutex_lock(&thd->LOCK_thd_data);
         wsrep_thd_self_abort(thd);
+        mysql_mutex_unlock(&thd->LOCK_thd_data);
         ret= 0;
       }
     }

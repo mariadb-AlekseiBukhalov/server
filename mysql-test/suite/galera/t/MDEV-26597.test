@@ -1,3 +1,6 @@
+--let $grp_skip_reason = No repl.max_ws_size
+--source include/not_galera_plugin.inc
+
 --source include/galera_cluster.inc
 
 # Save original auto_increment_offset values.

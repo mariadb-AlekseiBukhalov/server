@@ -1,0 +1,4 @@
+SELECT VARIABLE_VALUE FROM information_schema.global_status WHERE
+VARIABLE_NAME = 'galera_replication_current_leader_node_id';
+VARIABLE_VALUE
+node1
