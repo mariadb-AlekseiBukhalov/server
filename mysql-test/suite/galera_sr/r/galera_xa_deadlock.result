@@ -17,14 +17,13 @@ connection node_1b;
 UPDATE t1 SET f2 = 20 WHERE f1 = 1 /* node_1b */;
 ERROR 40001: Deadlock found when trying to get lock; try restarting transaction
 SELECT COUNT(*) FROM t1;
-COUNT(*)
-2
+ERROR XAE07: XAER_RMFAIL: The command cannot be executed when global transaction is in the  ROLLBACK ONLY state
 INSERT INTO t1 VALUES (10,10);
+ERROR XAE07: XAER_RMFAIL: The command cannot be executed when global transaction is in the  ROLLBACK ONLY state
 SELECT COUNT(*) FROM t1;
-COUNT(*)
-3
+ERROR XAE07: XAER_RMFAIL: The command cannot be executed when global transaction is in the  ROLLBACK ONLY state
 XA END 'trx_b';
-ERROR XA102: XA_RBDEADLOCK: Transaction branch was rolled back: deadlock was detected
+ERROR XAE07: XAER_RMFAIL: The command cannot be executed when global transaction is in the  ROLLBACK ONLY state
 XA ROLLBACK 'trx_b';
 connection node_1a;
 XA END 'trx_a';

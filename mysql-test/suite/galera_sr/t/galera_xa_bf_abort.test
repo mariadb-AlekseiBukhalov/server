@@ -172,6 +172,7 @@ DROP TABLE t1;
 #
 
 --connection node_1
+SET SESSION wsrep_sync_wait=15;
 CREATE TABLE t1 (f1 INTEGER PRIMARY KEY, f2 CHAR(64)) ENGINE=InnoDB;
 INSERT INTO t1 VALUES (1, 'a');
 
@@ -180,7 +181,13 @@ XA START 't1';
 INSERT INTO t1 VALUES (1, 'node1');
 
 --connection node_2
+--let $wait_condition = SELECT COUNT(*) = 1 FROM t1
+--source include/wait_condition.inc
 UPDATE t1 SET f2 = 'node2' WHERE f1 = 1;
+
+--connection node_1a
+--let $wait_condition = SELECT COUNT(*) = 1 FROM t1 WHERE f2 = 'node2'
+--source include/wait_condition.inc
 
 --connection node_1
 --error ER_XA_RBDEADLOCK
@@ -195,6 +202,7 @@ DROP TABLE t1;
 #
 
 --connection node_1
+SET SESSION wsrep_sync_wait=15;
 CREATE TABLE t1 (f1 INTEGER PRIMARY KEY);
 XA START 't';
 INSERT INTO t1 VALUES (1);
@@ -202,19 +210,19 @@ INSERT INTO t1 VALUES (1);
 --connection node_2
 INSERT INTO t1 VALUES (1);
 
+--connection node_1a
+--let $wait_condition = SELECT COUNT(*) = 1 FROM t1
+--source include/wait_condition.inc
+
 --connection node_1
 --error ER_LOCK_DEADLOCK
 INSERT INTO t1 VALUES (2);
-
 --error ER_LOCK_DEADLOCK
 INSERT INTO t1 VALUES (3);
-
 --error ER_XA_RBDEADLOCK
 XA END 't';
-
 --error ER_XA_RBDEADLOCK
 XA PREPARE 't';
-
 --error ER_XA_RBDEADLOCK
 XA COMMIT 't';
 
@@ -228,3 +236,4 @@ XA PREPARE 't';
 XA COMMIT 't';
 
 DROP TABLE t1;
+--disconnect node_1a

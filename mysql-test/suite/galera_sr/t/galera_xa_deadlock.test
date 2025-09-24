@@ -27,12 +27,13 @@ UPDATE t1 SET f2 = 20 WHERE f1 = 2;
 --sleep 1
 --error ER_LOCK_DEADLOCK
 UPDATE t1 SET f2 = 20 WHERE f1 = 1 /* node_1b */;
-
+--error ER_XAER_RMFAIL
 SELECT COUNT(*) FROM t1;
+--error ER_XAER_RMFAIL
 INSERT INTO t1 VALUES (10,10);
+--error ER_XAER_RMFAIL
 SELECT COUNT(*) FROM t1;
-
---error ER_XA_RBDEADLOCK
+--error ER_XAER_RMFAIL
 XA END 'trx_b';
 XA ROLLBACK 'trx_b';
 
