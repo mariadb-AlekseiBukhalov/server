@@ -374,6 +374,20 @@ Deadlock_detection_visitor::opt_change_victim_to(MDL_context *new_victim)
   }
 }
 
+#ifdef WITH_WSREP
+static inline bool wsrep_is_deadlock_error(const THD* thd)
+{
+  DBUG_ASSERT(thd != nullptr);
+  const Diagnostics_area *da= thd->get_stmt_da();
+  /*
+    Attempt to acquire lock resulted in a deadlock error.
+    This happens when there is a MDL conflict between DDL
+    and XA transaction in prepared state.
+    The DDL must be retried, therefore no waiting.
+  */
+  return (WSREP(thd) && da->is_error() && da->sql_errno() == ER_LOCK_DEADLOCK);
+}
+#endif
 
 /**
   The lock context. Created internally for an acquired lock.
@@ -1369,6 +1383,14 @@ end:
       else
       {
         DBUG_ASSERT(!is_empty());
+
+#ifdef WITH_WSREP
+	// We should not wait if acquire lock in can_grant_lock
+	// resulted an deadlock error.
+	if (wait)
+          wait= !wsrep_is_deadlock_error(mdl_context->get_thd());
+#endif /* WITH_WSREP */
+
         if (wait)
         {
           res= TAL_WAIT;
@@ -2925,18 +2947,10 @@ MDL_context::acquire_lock(MDL_request *mdl_request, double lock_wait_timeout)
   }
 
 #ifdef WITH_WSREP
-  if (WSREP(get_thd()) &&
-      get_thd()->get_stmt_da()->is_error() &&
-      get_thd()->get_stmt_da()->sql_errno() == ER_LOCK_DEADLOCK)
-  {
-    /*
-      Attempt to acquire lock resulted in a deadlock error.
-      This happens when there is a MDL conflict between DDL
-      and XA transaction in prepared state.
-      The DDL must be retried.
-    */
+  // We should not wait if try_acquire_lock_impl
+  // resulted an deadlock error.
+  if (wsrep_is_deadlock_error(get_thd()))
     DBUG_RETURN(TRUE);
-  }
 #endif /* WITH_WSREP */
 
   if (lock_wait_timeout == 0)
