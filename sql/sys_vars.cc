@@ -4181,7 +4181,7 @@ static Sys_var_set Sys_new_behavior(
        "new_mode",
        "Used to introduce new behavior to existing MariaDB versions",
        SESSION_VAR(new_behavior), CMD_LINE(REQUIRED_ARG),
-       new_mode_all_names, DEFAULT(0),
+       new_mode_all_names, DEFAULT(NEW_MODE_DEFAULT),
        NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(check_new_mode_var_value), 0, 0,
        new_mode_hidden_names);
 

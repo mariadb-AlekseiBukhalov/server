@@ -233,6 +233,7 @@ void old_mode_deprecated_warnings(ulonglong v);
 #define NEW_MODE_FIX_INDEX_LOOKUP_COST                              (1ULL << 2)
 #define NEW_MODE_MAX                                                3
 
+#define NEW_MODE_DEFAULT (NEW_MODE_FIX_DISK_TMPTABLE_COSTS)
 /* Definitions above that have transitioned from new behaviour to default */
 
 #define NOW_DEFAULT                                             -1

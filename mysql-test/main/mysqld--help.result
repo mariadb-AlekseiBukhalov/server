@@ -1881,7 +1881,7 @@ net-buffer-length 16384
 net-read-timeout 30
 net-retry-count 10
 net-write-timeout 60
-new-mode 
+new-mode FIX_DISK_TMPTABLE_COSTS
 note-verbosity basic,explain
 old FALSE
 old-mode UTF8_IS_UTF8MB3

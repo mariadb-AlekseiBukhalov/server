@@ -36,7 +36,7 @@ analyze table t1;
 explain select * from t1 where pk1=1;
 
 set @save_new_mode=@@new_mode;
-set new_mode=concat(@@new_mode,'FIX_INDEX_LOOKUP_COST');
+set new_mode=concat(@@new_mode,',FIX_INDEX_LOOKUP_COST');
 --replace_column 8 #
 explain select * from t1 where pk1=1;
 
