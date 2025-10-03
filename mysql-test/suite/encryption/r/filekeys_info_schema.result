@@ -1,0 +1,94 @@
+#
+# MENT-2418: Information Schema Table for the file_key_management plugin
+#
+call mtr.add_suppression("file-key-management-filename is not set");
+call mtr.add_suppression("Plugin 'file_key_management' init function returned error");
+call mtr.add_suppression("Plugin 'file_key_management' registration.*failed");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' init function returned error.");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' registration as a INFORMATION SCHEMA failed.");
+SHOW FILE_KEY_MANAGEMENT_KEYS;
+KEY_ID	KEY_VERSION
+1	1
+2	2
+SELECT * FROM INFORMATION_SCHEMA.FILE_KEY_MANAGEMENT_KEYS;
+KEY_ID	KEY_VERSION
+1	1
+2	2
+# add new key
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+Warnings:
+Note	1	Read from MYSQL_TMP_DIR/rotate_keys.txt, read bytes: 272, max key file size: 1048576 bytes
+SHOW FILE_KEY_MANAGEMENT_KEYS;
+KEY_ID	KEY_VERSION
+1	2
+2	2
+SELECT * FROM INFORMATION_SCHEMA.FILE_KEY_MANAGEMENT_KEYS;
+KEY_ID	KEY_VERSION
+1	2
+2	2
+# new keys, supplied in reverse-order of version: keyid=3, version=2
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+Warnings:
+Note	1	Read from MYSQL_TMP_DIR/rotate_keys.txt, read bytes: 410, max key file size: 1048576 bytes
+SHOW FILE_KEY_MANAGEMENT_KEYS;
+KEY_ID	KEY_VERSION
+1	2
+2	2
+3	2
+SELECT * FROM INFORMATION_SCHEMA.FILE_KEY_MANAGEMENT_KEYS;
+KEY_ID	KEY_VERSION
+1	2
+2	2
+3	2
+# check if keys exists after failed FLUSH
+call mtr.add_suppression('Invalid key version \\(version = 0\\)');
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+ERROR HY000: Invalid key version (version = 0) at MYSQL_TMP_DIR/rotate_keys.txt line 7, column 4
+SHOW FILE_KEY_MANAGEMENT_KEYS;
+KEY_ID	KEY_VERSION
+1	2
+2	2
+3	2
+SELECT * FROM INFORMATION_SCHEMA.FILE_KEY_MANAGEMENT_KEYS;
+KEY_ID	KEY_VERSION
+1	2
+2	2
+3	2
+# verify access with users of different privileges
+# FLUSH requires RELOAD and SHOW requires PROCES
+CREATE USER user@localhost;
+GRANT ALL PRIVILEGES ON *.* TO user@localhost;
+REVOKE RELOAD ON *.* FROM user@localhost;
+REVOKE PROCESS ON *.* FROM user@localhost;
+CONNECT conn1, localhost, user, , test;
+SHOW FILE_KEY_MANAGEMENT_KEYS;
+ERROR 42000: Access denied; you need (at least one of) the PROCESS privilege(s) for this operation
+SELECT * FROM INFORMATION_SCHEMA.FILE_KEY_MANAGEMENT_KEYS;
+KEY_ID	KEY_VERSION
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+ERROR 42000: Access denied; you need (at least one of) the RELOAD privilege(s) for this operation
+connection default;
+disconnect conn1;
+GRANT RELOAD ON *.* TO user@localhost;
+GRANT PROCESS ON *.* TO user@localhost;
+CONNECT conn1, localhost, user, , test;
+SHOW FILE_KEY_MANAGEMENT_KEYS;
+KEY_ID	KEY_VERSION
+1	2
+2	2
+3	2
+SELECT * FROM INFORMATION_SCHEMA.FILE_KEY_MANAGEMENT_KEYS;
+KEY_ID	KEY_VERSION
+1	2
+2	2
+3	2
+call mtr.add_suppression('Invalid key version \\(version = 0\\)');
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+ERROR HY000: Invalid key version (version = 0) at MYSQL_TMP_DIR/rotate_keys.txt line 7, column 4
+connection default;
+disconnect conn1;
+DROP USER user@localhost;
+uninstall soname 'file_key_management';
+Warnings:
+Warning	1620	Plugin is busy and will be uninstalled on shutdown
+# End of 11.8 ES tests

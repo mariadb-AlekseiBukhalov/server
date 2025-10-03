@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sql_i_s.h>
 #include "log.h"
+#include "sql_acl.h"                // PROCESS_ACL
 
 #define PLUGIN_VERSION 0x0200
 #define PLUGIN_VERSION_STR "2.0"
@@ -258,11 +259,50 @@ static struct st_mysql_information_schema reload_keys_info=
 
 static ST_FIELD_INFO file_key_management_reload_keys[]=
 {
-  // Un-initialized "old_name" to prevent SHOW FILE_KEY_MANAGEMENT_KEYS
-  Show::Column("KEY_ID",      Show::ULonglong(32), NOT_NULL),
-  Show::Column("KEY_VERSION", Show::ULonglong(32), NOT_NULL),
+  Show::Column("KEY_ID",      Show::ULonglong(32), NOT_NULL, "KEY_ID"),
+  Show::Column("KEY_VERSION", Show::ULonglong(32), NOT_NULL, "KEY_VERSION"),
   Show::CEnd()
 };
+
+
+/*
+ @brief Fill FILE_KEY_MANAGEMENT_KEYS I_S table with key id & latest key version
+
+ 1 - Error / Error when filling I_S table
+ 0 - Success
+*/
+static int fill_filekeys_table(THD *thd, TABLE_LIST *tables, COND *cond)
+{
+  TABLE *table= tables->table;
+  bool is_show= thd_sql_command(thd) == SQLCOM_SHOW_GENERIC;
+
+  if (check_global_access(thd, PROCESS_ACL, !is_show))
+    return is_show;
+
+  mysql_rwlock_rdlock(&lock);
+  for (auto it= keys.begin(); it != keys.end(); it++)
+  {
+    table->field[0]->store(it->first, 0);
+
+    auto &versions= it->second;
+    if (versions.empty())
+    {
+      mysql_rwlock_unlock(&lock);
+      return 1;
+    }
+
+    table->field[1]->store(versions.rbegin()->first, 0);
+
+    if (schema_table_store_record(thd, table))
+    {
+      mysql_rwlock_unlock(&lock);
+      return 1;
+    }
+  }
+
+  mysql_rwlock_unlock(&lock);
+  return 0;
+}
 
 /**
  @breif Reload keys after key rotation
@@ -287,7 +327,8 @@ static int reload_keys_init(void *p)
 
   ST_SCHEMA_TABLE *key_schema_table= (ST_SCHEMA_TABLE*)p;
   key_schema_table->fields_info= file_key_management_reload_keys;
-  key_schema_table->hidden= true; // prevents SELECT from I_S table
+  key_schema_table->fill_table= fill_filekeys_table;
+  key_schema_table->hidden= false;
   key_schema_table->reset_table= reload_keys_callback;
 
   return 0; // success

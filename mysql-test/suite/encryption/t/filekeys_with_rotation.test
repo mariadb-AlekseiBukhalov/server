@@ -32,6 +32,11 @@ insert into innodb_normal values (1, '23'), (2, '34'), (3, '45');
 SELECT NAME, MIN_KEY_VERSION, CURRENT_KEY_ID, CURRENT_KEY_VERSION FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE NAME = 'test/innodb_normal';
 SELECT * FROM innodb_normal;
 
+# current key id and version above should macth with the I_S table
+SHOW FILE_KEY_MANAGEMENT_KEYS;
+--sorted_result
+SELECT * FROM INFORMATION_SCHEMA.FILE_KEY_MANAGEMENT_KEYS;
+
 --echo # rotate keys (add new key version to the key file) & FLUSH
 append_file $MYSQL_TMP_DIR/rotate_keys.txt;
 1;2;c675d7268a20635bb179eae5b40eb57632913cf9ff0afb47c9b531f218bbec48
@@ -48,6 +53,11 @@ FLUSH FILE_KEY_MANAGEMENT_KEYS;
 --sorted_result
 SELECT NAME, MIN_KEY_VERSION, CURRENT_KEY_ID, CURRENT_KEY_VERSION FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE NAME = 'test/innodb_normal';
 SELECT * FROM innodb_normal;
+
+# current key id and version above should macth with the I_S table
+SHOW FILE_KEY_MANAGEMENT_KEYS;
+--sorted_result
+SELECT * FROM INFORMATION_SCHEMA.FILE_KEY_MANAGEMENT_KEYS;
 
 drop table innodb_normal;
 remove_file $MYSQL_TMP_DIR/rotate_keys.txt;
