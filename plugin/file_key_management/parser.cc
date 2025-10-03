@@ -39,14 +39,26 @@ file_key_management_filename = \\\\unc\\keys.enc        (windows share)
 file_key_management_filename = e:/tmp/keys.enc          (windows path)
 file_key_management_filename = /tmp/keys.enc            (linux path)
 
+Each line in the keyfile contains a key identifier, key version and the hex
+encoded key, separted by semi-colon. The format of the key file is as follows-
+<key_id1>;<version1>;<hex_encoded_key1>
+<key_id1>;<version2>;<hex_encoded_key2>
+...
+<key_id1>;<versionN>;<hex_encoded_keyN>
+<key_id2>;<version1>;<hex_encoded_key1>
+
 The key file contains AES keys as hex-encoded strings.
 Supported are keys of size 128, 192 or 256 bits.
 Example:
 1;F5502320F8429037B8DAEF761B189D12
 2;770A8A65DA156D24EE2A093277530142770A8A65DA156D24EE2A093277530142
+2;2;f434fe38bb4c2bc30f4453617f0684b6e5e9ce559b68e1389ef40fbcd6186e88
+2;3;80d1657b101df9957762ae6ff512012266fe046dcd05ff1ca8a7c15b8dceb17e
 
 1 is the key identifier which can be used for table creation,
-it is followed by a AES key
+it is followed by a AES key. If the version is not specified for a key, by
+default it is set to 1. If there are two keys with same key id and key version,
+the key which appears later in the keyfile is considered.
 
 The key file could be encrypted and the key to decrypt the file can
 be given with the optional file_key_management_filekey
@@ -77,6 +89,7 @@ openssl enc -aes-256-cbc -md sha1 -k "secret" -in keys.txt -out keys.enc
 #define FILE_PREFIX "FILE:"
 #define MAX_KEY_FILE_SIZE 1024*1024
 #define MAX_SECRET_SIZE 256
+#define MAX_VERSION 4294967295
 
 /*
   The values below are what one gets after
@@ -136,7 +149,7 @@ void Parser::bytes_to_key(const unsigned char *salt, const char *input,
 }
 
 
-bool Parser::parse(std::map<uint,keyentry> *keys)
+bool Parser::parse(Keymap *keys)
 {
   const char *secret= filekey;
   char buf[MAX_SECRET_SIZE + 1];
@@ -197,7 +210,7 @@ bool Parser::read_filekey(const char *filekey, char *secret)
    @return 0 when ok, 1 for an error
  */
 
-bool Parser::parse_file(std::map<uint,keyentry> *keys, const char *secret)
+bool Parser::parse_file(Keymap *keys, const char *secret)
 {
   char *buffer= read_and_decrypt_file(secret);
 
@@ -217,13 +230,13 @@ bool Parser::parse_file(std::map<uint,keyentry> *keys, const char *secret)
       free(buffer);
       return 1;
     case 0:
-      (*keys)[key.id] = key;
+      (*keys)[key.id][key.version] = key;
       break;
     }
   }
 
   free(buffer);
-  if (keys->size() == 0 || (*keys)[1].id == 0)
+  if (keys->find(1) == keys->end())
   {
     report_error("System key id 1 is missing", 0);
     return 1;
@@ -282,6 +295,51 @@ int Parser::parse_line(char **line_ptr, keyentry *key)
 
     p++;
     key->id= (unsigned int)id;
+
+    // parse key version
+    char *p_after_id= p;
+    char *p_scan= p;
+    while (*p_scan && *p_scan != '\n' && *p_scan != ';') p_scan++;
+    if (*p_scan == ';')
+    {
+      longlong version= 0;
+      while (isdigit(*p))
+      {
+        version = version * 10 + *p - '0';
+        if (version > (longlong) MAX_VERSION)
+        {
+          my_printf_error(EE_READ,
+            "Invalid key version (version > %ld) at %s line %u, column %zu",
+            ME_ERROR_LOG, MAX_VERSION, filename, line_number, p - *line_ptr + 1);
+          return -1;
+        }
+        p++;
+      }
+
+      if (p > p_after_id && *p == ';')
+      {
+        if (version < 1)
+        {
+          report_error("Invalid key version (version = 0)", p - *line_ptr);
+          return -1;
+        }
+        key->version= (unsigned int)version;
+        p++;
+      }
+      else
+      {
+        // key version with non-numbers
+        report_error("Invalid key version (non-number)", p - *line_ptr);
+        return -1;
+      }
+    }
+    else
+    {
+      // no version provided, set to default version
+      key->version= 1;
+      p= p_after_id;
+    }
+
     key->length=0;
     while (isxdigit(p[0]) && isxdigit(p[1]) && key->length < sizeof(key->key))
     {

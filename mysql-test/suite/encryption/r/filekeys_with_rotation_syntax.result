@@ -1,0 +1,52 @@
+#
+# MENT-2352: Implement key rotation for file_key_management plugin
+#
+call mtr.add_suppression("file-key-management-filename is not set");
+call mtr.add_suppression("Plugin 'file_key_management' init function returned error");
+call mtr.add_suppression("Plugin 'file_key_management' registration.*failed");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' init function returned error.");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' registration as a INFORMATION SCHEMA failed.");
+# Syntax tests
+# theoretically valid key, shouldn't be invalid version
+install soname 'file_key_management';
+NOT FOUND /Invalid key version \(version > MAX_VERSION\)/ in mysqld.1.err
+# invalid key version - version too big
+call mtr.add_suppression("Invalid key version \(version > MAX_VERSION\)");
+call mtr.add_suppression("Invalid key version");
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+ERROR HY000: Invalid key version (version > 4294967295) at MYSQL_TMP_DIR/rotate_keys.txt line 1, column 13
+NOT FOUND /Invalid key version \(version > MAX_VERSION\)/ in mysqld.1.err
+FOUND 1 /file_key_management: Failed to reload keys/ in mysqld.1.err
+create table t1(c1 bigint not null, b char(200))  engine=innodb encrypted=yes encryption_key_id=2;
+ERROR HY000: Can't create table `test`.`t1` (errno: 140 "Wrong create options")
+# invalid key version - empty key version
+call mtr.add_suppression("Invalid key version \(non-number\)");
+call mtr.add_suppression("Invalid key version");
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+ERROR HY000: Invalid key version (non-number) at MYSQL_TMP_DIR/rotate_keys.txt line 1, column 3
+FOUND 1 /Invalid key version \(non-number\)/ in mysqld.1.err
+FOUND 2 /file_key_management: Failed to reload keys/ in mysqld.1.err
+create table t1(c1 bigint not null, b char(200))  engine=innodb encrypted=yes encryption_key_id=2;
+ERROR HY000: Can't create table `test`.`t1` (errno: 140 "Wrong create options")
+# invalid key version - key version = 0
+call mtr.add_suppression("Invalid key version \(version = 0\)");
+call mtr.add_suppression("Invalid key version");
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+ERROR HY000: Invalid key version (version = 0) at MYSQL_TMP_DIR/rotate_keys.txt line 1, column 4
+FOUND 1 /Invalid key version \(version = 0\)/ in mysqld.1.err
+FOUND 3 /file_key_management: Failed to reload keys/ in mysqld.1.err
+create table t1(c1 bigint not null, b char(200))  engine=innodb encrypted=yes encryption_key_id=2;
+ERROR HY000: Can't create table `test`.`t1` (errno: 140 "Wrong create options")
+# invalid key version - version with non-numbers
+call mtr.add_suppression("Invalid key version \(non-number\)");
+call mtr.add_suppression("Invalid key version");
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+ERROR HY000: Invalid key version (non-number) at MYSQL_TMP_DIR/rotate_keys.txt line 1, column 4
+FOUND 2 /Invalid key version \(non-number\)/ in mysqld.1.err
+FOUND 4 /file_key_management: Failed to reload keys/ in mysqld.1.err
+create table t1(c1 bigint not null, b char(200))  engine=innodb encrypted=yes encryption_key_id=2;
+ERROR HY000: Can't create table `test`.`t1` (errno: 140 "Wrong create options")
+uninstall soname 'file_key_management';
+Warnings:
+Warning	1620	Plugin is busy and will be uninstalled on shutdown
+# End of 11.8 ES test

@@ -1,0 +1,79 @@
+--echo #
+--echo # MENT-2352: Implement key rotation for file_key_management plugin
+--echo #
+
+-- source include/not_embedded.inc
+--let SEARCH_FILE= $MYSQLTEST_VARDIR/log/mysqld.1.err
+--let FLUSH_SUCCESS=file_key_management: Reloading keys successful
+--let FLUSH_FAIL=file_key_management: Failed to reload keys
+
+# At this point, the server has already started, finds no keyfile and fails
+# to load the plugin. That's why keyfile is created and server is restarted.
+call mtr.add_suppression("file-key-management-filename is not set");
+call mtr.add_suppression("Plugin 'file_key_management' init function returned error");
+call mtr.add_suppression("Plugin 'file_key_management' registration.*failed");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' init function returned error.");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' registration as a INFORMATION SCHEMA failed.");
+
+--echo # new keyfile format with version, mixed with old format
+write_file $MYSQL_TMP_DIR/rotate_keys.txt;
+1;1;526540c9854d26cea56a463e4ccff3ec59af70fb2f9f9e0acbff9af9c81dec91
+1;2;c675d7268a20635bb179eae5b40eb57632913cf9ff0afb47c9b531f218bbec48
+2;dc315931aa81efc3ce085f3a2744d270ccfd67f4adc5e0d51ecc7362bcffb4f8
+2;2;933a02ce942a2ce312e00462cd32ca045215842b20fce6f96c8fe7722da5dad2
+EOF
+
+--let $restart_parameters=--loose-file-key-management-filename=$MYSQL_TMP_DIR/rotate_keys.txt
+--let $restart_noprint=2
+--source include/restart_mysqld.inc
+
+--replace_result $MYSQL_TMP_DIR MYSQL_TMP_DIR
+install soname 'file_key_management';
+
+--let GOOD_ID=2
+--let BAD_ID=3
+source filekeys_with_rotation_good.inc;
+
+append_file $MYSQL_TMP_DIR/rotate_keys.txt;
+3;2;07da0e6350562ce34613cf57cd11593595d19804c96757dcca47f0129a945c9a
+EOF
+
+--echo # append new key to keyfile, flush and use new keys
+--replace_result $MYSQL_TMP_DIR MYSQL_TMP_DIR
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+
+--let GOOD_ID=3
+--let BAD_ID=4
+source filekeys_with_rotation_good.inc;
+
+--let SEARCH_PATTERN=$FLUSH_SUCCESS
+--source include/search_pattern_in_file.inc
+
+--echo # check if keys are usable after a failed flush
+--let CLEANUP=0
+--let GOOD_ID=2
+
+# create table with a good key
+source filekeys_with_rotation_keys.inc;
+
+# append bad key
+append_file $MYSQL_TMP_DIR/rotate_keys.txt;
+4;0;07da0e6350562ce34613cf57cd11593595d19804c96757dcca47f0129a945c9b
+EOF
+
+call mtr.add_suppression('Invalid key version \\(version = 0\\)');
+--replace_result $MYSQL_TMP_DIR MYSQL_TMP_DIR
+--error 2
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+
+--let SEARCH_PATTERN=$FLUSH_FAIL
+--source include/search_pattern_in_file.inc
+
+# check if the table create with good keys is accessible afte flush failed
+--let CLEANUP=1
+source filekeys_with_rotation_keys.inc;
+
+remove_file $MYSQL_TMP_DIR/rotate_keys.txt;
+uninstall soname 'file_key_management';
+
+--echo # End of 11.8 ES test

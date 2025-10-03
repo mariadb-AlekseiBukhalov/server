@@ -1,0 +1,82 @@
+--echo #
+--echo # MENT-2352: Implement key rotation for file_key_management plugin
+--echo #
+
+-- source include/not_embedded.inc
+--let SEARCH_FILE= $MYSQLTEST_VARDIR/log/mysqld.1.err
+--let BIG_VERSION=Invalid key version \(version > MAX_VERSION\)
+--let ZERO_VERSION=Invalid key version \(version = 0\)
+--let NON_NUMBERS=Invalid key version \(non-number\)
+--let FLUSH_SUCCESS=file_key_management: Reloading keys successful
+--let FLUSH_FAIL=file_key_management: Failed to reload keys
+--let PLUGIN_SUCCESS=Read from '.*.txt', read bytes: '.*', max key file size:'.*' bytes
+
+call mtr.add_suppression("file-key-management-filename is not set");
+call mtr.add_suppression("Plugin 'file_key_management' init function returned error");
+call mtr.add_suppression("Plugin 'file_key_management' registration.*failed");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' init function returned error.");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' registration as a INFORMATION SCHEMA failed.");
+
+--echo # Syntax tests
+--echo # theoretically valid key, shouldn't be invalid version
+
+--let KEY_ID=2
+
+write_file $MYSQL_TMP_DIR/rotate_keys.txt;
+1;2222222222222222222222222222222222222222222222222222222222222222
+EOF
+
+--let $restart_parameters=--loose-file-key-management-filename=$MYSQL_TMP_DIR/rotate_keys.txt
+--let $restart_noprint=2
+--source include/restart_mysqld.inc
+
+--replace_result $MYSQL_TMP_DIR MYSQL_TMP_DIR
+install soname 'file_key_management';
+
+--let SEARCH_PATTERN=$BIG_VERSION
+--source include/search_pattern_in_file.inc
+
+--echo # invalid key version - version too big
+
+remove_file $MYSQL_TMP_DIR/rotate_keys.txt;
+write_file $MYSQL_TMP_DIR/rotate_keys.txt;
+2;33333333333333333333333333333333333333333;58082b3413a962e85c47d63e8a4915fe
+EOF
+
+let SEARCH_PATTERN=$BIG_VERSION;
+source filekeys_with_rotation_bad.inc;
+
+--echo # invalid key version - empty key version
+
+remove_file $MYSQL_TMP_DIR/rotate_keys.txt;
+write_file $MYSQL_TMP_DIR/rotate_keys.txt;
+2;;58082b3413a962e85c47d63e8a4915fe
+EOF
+
+let SEARCH_PATTERN=$NON_NUMBERS;
+source filekeys_with_rotation_bad.inc;
+
+--echo # invalid key version - key version = 0
+
+remove_file $MYSQL_TMP_DIR/rotate_keys.txt;
+write_file $MYSQL_TMP_DIR/rotate_keys.txt;
+2;0;58082b3413a962e85c47d63e8a4915fe
+EOF
+
+let SEARCH_PATTERN=$ZERO_VERSION;
+source filekeys_with_rotation_bad.inc;
+
+--echo # invalid key version - version with non-numbers
+
+remove_file $MYSQL_TMP_DIR/rotate_keys.txt;
+write_file $MYSQL_TMP_DIR/rotate_keys.txt;
+2;3a;58082b3413a962e85c47d63e8a4915fe
+EOF
+
+let SEARCH_PATTERN=$NON_NUMBERS;
+source filekeys_with_rotation_bad.inc;
+
+remove_file $MYSQL_TMP_DIR/rotate_keys.txt;
+uninstall soname 'file_key_management';
+
+--echo # End of 11.8 ES test

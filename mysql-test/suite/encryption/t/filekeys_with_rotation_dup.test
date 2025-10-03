@@ -1,0 +1,86 @@
+--echo #
+--echo # MENT-2352: Implement key rotation for file_key_management plugin
+--echo #
+
+-- source include/not_embedded.inc
+-- source include/have_innodb.inc
+-- source filekeys_plugin.inc
+
+--let SEARCH_FILE= $MYSQLTEST_VARDIR/log/mysqld.1.err
+--let FLUSH_SUCCESS=file_key_management: Reloading keys successful
+--let FLUSH_FAIL=file_key_management: Failed to reload keys
+
+call mtr.add_suppression("file-key-management-filename is not set");
+call mtr.add_suppression("Plugin 'file_key_management' init function returned error");
+call mtr.add_suppression("Plugin 'file_key_management' registration.*failed");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' init function returned error.");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' registration as a INFORMATION SCHEMA failed.");
+call mtr.add_suppression("InnoDB: Failed to read page 3 from file './test/t1.ibd': Table is compressed or encrypted but uncompress or decrypt failed.");
+call mtr.add_suppression("InnoDB: File './test/t1.ibd' is corrupted");
+call mtr.add_suppression("Table `test`.`t1` is corrupted. Please drop the table and recreate.");
+
+--echo # two keys with same id and version
+--echo #
+
+--echo # Step 1. create table t1 with key1 with id=1 version=1
+write_file $MYSQL_TMP_DIR/keys_1.txt;
+1;1;526540c9854d26cea56a463e4ccff3ec59af70fb2f9f9e0acbff9af9c81dec91
+EOF
+
+--let $restart_parameters=--loose-file-key-management-filename=$MYSQL_TMP_DIR/keys_1.txt
+--let $restart_noprint=2
+--source include/restart_mysqld.inc
+
+--replace_result $MYSQL_TMP_DIR MYSQL_TMP_DIR
+install soname 'file_key_management';
+
+create table t1(c1 bigint not null) engine=innodb encrypted=yes encryption_key_id=1;
+insert into t1 values (1234);
+
+uninstall soname 'file_key_management';
+
+--echo # Step 2. create table t2 with key2 with id=1 version=1
+write_file $MYSQL_TMP_DIR/keys_2.txt;
+1;1;c675d7268a20635bb179eae5b40eb57632913cf9ff0afb47c9b531f218bbec48
+EOF
+
+--let $restart_parameters=--loose-file-key-management-filename=$MYSQL_TMP_DIR/keys_2.txt
+--let $restart_noprint=2
+--source include/restart_mysqld.inc
+
+--replace_result $MYSQL_TMP_DIR MYSQL_TMP_DIR
+install soname 'file_key_management';
+
+create table t2(c1 bigint not null) engine=innodb encrypted=yes encryption_key_id=1;
+insert into t2 values (5678);
+
+uninstall soname 'file_key_management';
+
+--echo # Step 3. Restart server with file containing key1, key2 but with same
+--echo # keyid and version. Key which appears later in the file wins. We should be able
+--echo # to read data from table t2 (was encrypted with key2) and t1 should be corrupted.
+write_file $MYSQL_TMP_DIR/testkeys_1.txt;
+1;1;526540c9854d26cea56a463e4ccff3ec59af70fb2f9f9e0acbff9af9c81dec91
+1;1;c675d7268a20635bb179eae5b40eb57632913cf9ff0afb47c9b531f218bbec48
+EOF
+
+--let $restart_parameters=--loose-file-key-management-filename=$MYSQL_TMP_DIR/testkeys_1.txt
+--let $restart_noprint=2
+--source include/restart_mysqld.inc
+
+--replace_result $MYSQL_TMP_DIR MYSQL_TMP_DIR
+install soname 'file_key_management';
+
+select * from t2;
+
+--error ER_TABLE_CORRUPT
+select * from t1;
+
+remove_file $MYSQL_TMP_DIR/keys_1.txt;
+remove_file $MYSQL_TMP_DIR/keys_2.txt;
+remove_file $MYSQL_TMP_DIR/testkeys_1.txt;
+uninstall soname 'file_key_management';
+
+drop table t1, t2;
+
+--echo # End of 11.8 ES test

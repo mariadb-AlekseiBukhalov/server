@@ -1,0 +1,41 @@
+#
+# MENT-2352: Implement key rotation for file_key_management plugin
+#
+call mtr.add_suppression("file-key-management-filename is not set");
+call mtr.add_suppression("Plugin 'file_key_management' init function returned error");
+call mtr.add_suppression("Plugin 'file_key_management' registration.*failed");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' init function returned error.");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' registration as a INFORMATION SCHEMA failed.");
+call mtr.add_suppression("InnoDB: Failed to read page 3 from file './test/t1.ibd': Table is compressed or encrypted but uncompress or decrypt failed.");
+call mtr.add_suppression("InnoDB: File './test/t1.ibd' is corrupted");
+call mtr.add_suppression("Table `test`.`t1` is corrupted. Please drop the table and recreate.");
+# two keys with same id and version
+#
+# Step 1. create table t1 with key1 with id=1 version=1
+install soname 'file_key_management';
+create table t1(c1 bigint not null) engine=innodb encrypted=yes encryption_key_id=1;
+insert into t1 values (1234);
+uninstall soname 'file_key_management';
+Warnings:
+Warning	1620	Plugin is busy and will be uninstalled on shutdown
+# Step 2. create table t2 with key2 with id=1 version=1
+install soname 'file_key_management';
+create table t2(c1 bigint not null) engine=innodb encrypted=yes encryption_key_id=1;
+insert into t2 values (5678);
+uninstall soname 'file_key_management';
+Warnings:
+Warning	1620	Plugin is busy and will be uninstalled on shutdown
+# Step 3. Restart server with file containing key1, key2 but with same
+# keyid and version. Key which appears later in the file wins. We should be able
+# to read data from table t2 (was encrypted with key2) and t1 should be corrupted.
+install soname 'file_key_management';
+select * from t2;
+c1
+5678
+select * from t1;
+ERROR HY000: Table `test`.`t1` is corrupted. Please drop the table and recreate.
+uninstall soname 'file_key_management';
+Warnings:
+Warning	1620	Plugin is busy and will be uninstalled on shutdown
+drop table t1, t2;
+# End of 11.8 ES test

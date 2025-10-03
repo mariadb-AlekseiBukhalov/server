@@ -1,0 +1,56 @@
+--echo #
+--echo # MENT-2352: Implement key rotation for file_key_management plugin
+--echo #
+
+--echo # Innodb encryption with key rotation in file_key_management plugin
+
+-- source include/not_embedded.inc
+-- source include/not_valgrind.inc
+-- source include/have_innodb.inc
+
+call mtr.add_suppression("file-key-management-filename is not set");
+call mtr.add_suppression("Plugin 'file_key_management' init function returned error");
+call mtr.add_suppression("Plugin 'file_key_management' registration.*failed");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' init function returned error.");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' registration as a INFORMATION SCHEMA failed.");
+
+write_file $MYSQL_TMP_DIR/rotate_keys.txt;
+1;526540c9854d26cea56a463e4ccff3ec59af70fb2f9f9e0acbff9af9c81dec91
+EOF
+
+--let $restart_parameters=--plugin-load-add=file_key_management --file-key-management-filename=$MYSQL_TMP_DIR/rotate_keys.txt --innodb-encrypt-tables=ON --innodb-encrypt-log=ON --innodb-encryption-rotate-key-age=15 --innodb-encryption-threads=4 --innodb-tablespaces-encryption
+--let $restart_noprint=2
+--source include/restart_mysqld.inc
+
+--echo # Create innodb table with encryption ON
+create table innodb_normal(c1 bigint not null, b char(200)) engine=innodb;
+show create table innodb_normal;
+insert into innodb_normal values (1, '23'), (2, '34'), (3, '45');
+
+--echo # verify the key id and version used for encryption
+--sorted_result
+SELECT NAME, MIN_KEY_VERSION, CURRENT_KEY_ID, CURRENT_KEY_VERSION FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE NAME = 'test/innodb_normal';
+SELECT * FROM innodb_normal;
+
+--echo # rotate keys (add new key version to the key file) & FLUSH
+append_file $MYSQL_TMP_DIR/rotate_keys.txt;
+1;2;c675d7268a20635bb179eae5b40eb57632913cf9ff0afb47c9b531f218bbec48
+EOF
+
+--replace_result $MYSQL_TMP_DIR MYSQL_TMP_DIR
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+
+--echo # wait for it to change and verify the current key verion
+--let $wait_timeout=30
+--let $wait_condition=SELECT CURRENT_KEY_VERSION = 2 FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE NAME = 'test/innodb_normal';
+--source include/wait_condition.inc
+
+--sorted_result
+SELECT NAME, MIN_KEY_VERSION, CURRENT_KEY_ID, CURRENT_KEY_VERSION FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE NAME = 'test/innodb_normal';
+SELECT * FROM innodb_normal;
+
+drop table innodb_normal;
+remove_file $MYSQL_TMP_DIR/rotate_keys.txt;
+uninstall soname 'file_key_management';
+
+--echo # End of 11.8 ES test

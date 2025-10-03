@@ -13,6 +13,8 @@ set global innodb_file_per_table=OFF;
 call mtr.add_suppression("(mysqld|mariadbd).*: file-key-management-filename is not set");
 call mtr.add_suppression("Plugin 'file_key_management' init function returned error.");
 call mtr.add_suppression("Plugin 'file_key_management' registration as a ENCRYPTION failed.");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' init function returned error.");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' registration as a INFORMATION SCHEMA failed.");
 flush tables;
 
 create table t1(a int not null primary key, b char(200)) engine=innodb;
@@ -60,4 +62,3 @@ SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_
 
 SELECT * from t1;
 DROP TABLE t1;
-

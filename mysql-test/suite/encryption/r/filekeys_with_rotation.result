@@ -1,0 +1,45 @@
+#
+# MENT-2352: Implement key rotation for file_key_management plugin
+#
+# Innodb encryption with key rotation in file_key_management plugin
+call mtr.add_suppression("file-key-management-filename is not set");
+call mtr.add_suppression("Plugin 'file_key_management' init function returned error");
+call mtr.add_suppression("Plugin 'file_key_management' registration.*failed");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' init function returned error.");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' registration as a INFORMATION SCHEMA failed.");
+# Create innodb table with encryption ON
+create table innodb_normal(c1 bigint not null, b char(200)) engine=innodb;
+show create table innodb_normal;
+Table	Create Table
+innodb_normal	CREATE TABLE `innodb_normal` (
+  `c1` bigint(20) NOT NULL,
+  `b` char(200) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci
+insert into innodb_normal values (1, '23'), (2, '34'), (3, '45');
+# verify the key id and version used for encryption
+SELECT NAME, MIN_KEY_VERSION, CURRENT_KEY_ID, CURRENT_KEY_VERSION FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE NAME = 'test/innodb_normal';
+NAME	MIN_KEY_VERSION	CURRENT_KEY_ID	CURRENT_KEY_VERSION
+test/innodb_normal	1	1	1
+SELECT * FROM innodb_normal;
+c1	b
+1	23
+2	34
+3	45
+# rotate keys (add new key version to the key file) & FLUSH
+FLUSH FILE_KEY_MANAGEMENT_KEYS;
+Warnings:
+Note	1	Read from MYSQL_TMP_DIR/rotate_keys.txt, read bytes: 136, max key file size: 1048576 bytes
+# wait for it to change and verify the current key verion
+SELECT NAME, MIN_KEY_VERSION, CURRENT_KEY_ID, CURRENT_KEY_VERSION FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE NAME = 'test/innodb_normal';
+NAME	MIN_KEY_VERSION	CURRENT_KEY_ID	CURRENT_KEY_VERSION
+test/innodb_normal	1	1	2
+SELECT * FROM innodb_normal;
+c1	b
+1	23
+2	34
+3	45
+drop table innodb_normal;
+uninstall soname 'file_key_management';
+Warnings:
+Warning	1620	Plugin is busy and will be uninstalled on shutdown
+# End of 11.8 ES test

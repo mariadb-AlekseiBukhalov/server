@@ -18,6 +18,8 @@ call mtr.add_suppression("InnoDB: Missing FILE_CHECKPOINT");
 call mtr.add_suppression("InnoDB: Log scan aborted at LSN");
 call mtr.add_suppression("InnoDB: Set innodb_force_recovery=1 to ignore corruption");
 call mtr.add_suppression("InnoDB: Encryption key is not found for");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' init function returned error.");
+call mtr.add_suppression("Plugin 'FILE_KEY_MANAGEMENT_KEYS' registration as a INFORMATION SCHEMA failed.");
 
 -- let $restart_parameters=--file-key-management-filename=$MYSQL_TEST_DIR/std_data/keys2.txt
 -- source include/restart_mysqld.inc

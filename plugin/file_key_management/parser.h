@@ -27,9 +27,13 @@ Created 09/15/2014
 
 struct keyentry {
   unsigned int id;
+  unsigned int version;
   unsigned char key[MY_AES_MAX_KEY_LENGTH];
   unsigned int length;
 };
+
+/// Map of key ID to versioned keys
+typedef std::map<unsigned int, std::map<unsigned int, keyentry>> Keymap;
 
 class Parser
 {
@@ -43,7 +47,7 @@ class Parser
   void bytes_to_key(const unsigned char *salt, const char *secret,
                     unsigned char *key, unsigned char *iv);
   bool read_filekey(const char *filekey, char *secret);
-  bool parse_file(std::map<unsigned int ,keyentry> *keys, const char *secret);
+  bool parse_file(Keymap *keys, const char *secret);
   void report_error(const char *reason, size_t position);
   int parse_line(char **line_ptr, keyentry *key);
   char* read_and_decrypt_file(const char *secret);
@@ -51,5 +55,5 @@ class Parser
 public:
   Parser(const char* fn, const char *fk) :
     filename(fn), filekey(fk), line_number(0) { }
-  bool parse(std::map<unsigned int ,keyentry> *keys);
+  bool parse(Keymap *keys);
 };

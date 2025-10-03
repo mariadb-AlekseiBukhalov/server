@@ -18,6 +18,15 @@
 #include "parser.h"
 #include <mysql/plugin_encryption.h>
 #include <string.h>
+#include <sql_i_s.h>
+#include "log.h"
+
+#define PLUGIN_VERSION 0x0200
+#define PLUGIN_VERSION_STR "2.0"
+
+namespace file_key_management_plugin
+{
+
 
 static char* filename;
 static char* filekey;
@@ -61,36 +70,78 @@ static struct st_mysql_sys_var* settings[] = {
   NULL
 };
 
-std::map<unsigned int,keyentry> keys;
+/*
+  The Keymap is protected with a read-write lock to prevent data races.
+  Read operations (lookups) use a shared lock for high concurrency, while
+  the write operation (swapping the map on reload) uses an exclusive lock.
 
-static keyentry *get_key(unsigned int key_id)
+  Benchmarks indicate no noticeable difference and should this lock ever become
+  a bottleneck, this can be replaced with lock-free implementations.
+*/
+Keymap keys;
+static bool loaded= false; // flag to check if the main plugin is loaded
+mysql_rwlock_t lock;
+
+static void register_and_init_lock()
 {
-  keyentry &key= keys[key_id];
-  if (key.id == 0)
-    return 0;
-  return &key;
+#ifdef HAVE_PSI_INTERFACE
+  static PSI_rwlock_key key_rwlock_LOCK_keymap;
+  static PSI_rwlock_info file_key_managment_plugin_rwlocks[]=
+  {
+    { &key_rwlock_LOCK_keymap, "LOCK_keymap", 0}
+  };
+  int count= array_elements(file_key_managment_plugin_rwlocks);
+  mysql_rwlock_register("plugin", file_key_managment_plugin_rwlocks, count);
+#endif
+
+  mysql_rwlock_init(key_rwlock_LOCK_keymap, &lock);
 }
 
-/* the version is always the same, no automatic key rotation */
 static unsigned int get_latest_version(uint key_id)
 {
-  return  get_key(key_id) ? 1 : ENCRYPTION_KEY_VERSION_INVALID;
+  mysql_rwlock_rdlock(&lock);
+  auto it= keys.find(key_id);
+  if (it == keys.end())
+  {
+    mysql_rwlock_unlock(&lock);
+    return ENCRYPTION_KEY_VERSION_INVALID;
+  }
+
+  auto &versions= it->second;
+  if (versions.empty())
+  {
+    mysql_rwlock_unlock(&lock);
+    return ENCRYPTION_KEY_VERSION_INVALID;
+  }
+  unsigned int version= versions.rbegin()->first;
+  mysql_rwlock_unlock(&lock);
+  return version;
 }
 
 static unsigned int get_key_from_key_file(unsigned int key_id,
        unsigned int key_version, unsigned char* dstbuf, unsigned *buflen)
 {
-  if (key_version != 1)
+  mysql_rwlock_rdlock(&lock);
+  auto it= keys.find(key_id);
+  if (it == keys.end())
+  {
+    mysql_rwlock_unlock(&lock);
     return ENCRYPTION_KEY_VERSION_INVALID;
+  }
 
-  keyentry* entry = get_key(key_id);
-
-  if (entry == NULL)
+  auto &versions= it->second;
+  auto it_v= versions.find(key_version);
+  if (it_v == versions.end())
+  {
+    mysql_rwlock_unlock(&lock);
     return ENCRYPTION_KEY_VERSION_INVALID;
+  }
 
+  keyentry *entry= &it_v->second;
   if (*buflen < entry->length)
   {
     *buflen= entry->length;
+    mysql_rwlock_unlock(&lock);
     return ENCRYPTION_KEY_BUFFER_TOO_SMALL;
   }
 
@@ -98,6 +149,7 @@ static unsigned int get_key_from_key_file(unsigned int key_id,
   if (dstbuf)
     memcpy(dstbuf, entry->key, entry->length);
 
+  mysql_rwlock_unlock(&lock);
   return 0;
 }
 
@@ -168,17 +220,80 @@ struct st_mariadb_encryption file_key_management_plugin= {
   get_length
 };
 
+static int reload_keys()
+{
+  Keymap temp_keys;
+  Parser parser(filename, filekey);
+
+  if (!parser.parse(&temp_keys))
+  {
+    mysql_rwlock_wrlock(&lock);
+    keys.swap(temp_keys);
+    mysql_rwlock_unlock(&lock);
+    return 0;
+  }
+  return 1;
+}
+
 static int file_key_management_plugin_init(void *p)
 {
-  Parser parser(filename, filekey);
-  return parser.parse(&keys);
+  register_and_init_lock();
+  if (reload_keys() == 0)
+  {
+    loaded= true;
+    return 0; // success
+  }
+  return 1; // failed
 }
 
 static int file_key_management_plugin_deinit(void *p)
 {
   keys.clear();
+  mysql_rwlock_destroy(&lock);
   return 0;
 }
+
+static struct st_mysql_information_schema reload_keys_info=
+                              { MYSQL_INFORMATION_SCHEMA_INTERFACE_VERSION };
+
+static ST_FIELD_INFO file_key_management_reload_keys[]=
+{
+  // Un-initialized "old_name" to prevent SHOW FILE_KEY_MANAGEMENT_KEYS
+  Show::Column("KEY_ID",      Show::ULonglong(32), NOT_NULL),
+  Show::Column("KEY_VERSION", Show::ULonglong(32), NOT_NULL),
+  Show::CEnd()
+};
+
+/**
+ @breif Reload keys after key rotation
+
+ 1 - Error  / Could not read new version of the key
+ 0 - Succes / Successfully read new keyfile
+ */
+static int reload_keys_callback()
+{
+  int err= reload_keys();
+  if (err)
+    sql_print_information("file_key_management: Failed to reload keys");
+  else
+    sql_print_information("file_key_management: Reloading keys successful");
+  return err;
+}
+
+static int reload_keys_init(void *p)
+{
+  if (!loaded)
+    return 1; // failed
+
+  ST_SCHEMA_TABLE *key_schema_table= (ST_SCHEMA_TABLE*)p;
+  key_schema_table->fields_info= file_key_management_reload_keys;
+  key_schema_table->hidden= true; // prevents SELECT from I_S table
+  key_schema_table->reset_table= reload_keys_callback;
+
+  return 0; // success
+}
+
+} // namespace file_key_management_plugin
 
 /*
   Plugin library descriptor
@@ -186,17 +301,32 @@ static int file_key_management_plugin_deinit(void *p)
 maria_declare_plugin(file_key_management)
 {
   MariaDB_ENCRYPTION_PLUGIN,
-  &file_key_management_plugin,
+  &file_key_management_plugin::file_key_management_plugin,
   "file_key_management",
   "Denis Endro eperi GmbH",
   "File-based key management plugin",
   PLUGIN_LICENSE_GPL,
-  file_key_management_plugin_init,
-  file_key_management_plugin_deinit,
-  0x0100 /* 1.0 */,
+  file_key_management_plugin::file_key_management_plugin_init,
+  file_key_management_plugin::file_key_management_plugin_deinit,
+  PLUGIN_VERSION /* 2.0 */,
   NULL,	/* status variables */
-  settings,
-  "1.0",
-  MariaDB_PLUGIN_MATURITY_STABLE
+  file_key_management_plugin::settings,
+  PLUGIN_VERSION_STR,
+  MariaDB_PLUGIN_MATURITY_GAMMA
+},
+{
+  MYSQL_INFORMATION_SCHEMA_PLUGIN,
+  &file_key_management_plugin::reload_keys_info,
+  "file_key_management_keys",
+  "Raghunandan Bhat",
+  "Reload encryption keys after key rotation",
+  PLUGIN_LICENSE_GPL,
+  file_key_management_plugin::reload_keys_init,
+  NULL,
+  PLUGIN_VERSION,
+  NULL,
+  NULL,
+  PLUGIN_VERSION_STR,
+  MariaDB_PLUGIN_MATURITY_GAMMA
 }
 maria_declare_plugin_end;
