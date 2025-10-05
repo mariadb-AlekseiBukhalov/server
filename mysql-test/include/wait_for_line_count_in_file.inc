@@ -12,7 +12,8 @@ perl;
     close(FILE);
     last if ($cnt == $search_count);
     $wait_counter-- or
-      die "Timeout waiting for $search_count lines in $search_file\n";
+      die "Timeout waiting for $search_count lines in $search_file, the actual conter $cnt\n";
     sleep(0.1);
   }
+  print "Line count in file: $search_count\n";
 EOF

@@ -32,7 +32,9 @@ wsrep::seqno wsrep_xid_seqno(const XID&);
 
 template<typename T> T wsrep_get_SE_checkpoint();
 int64_t wsrep_get_SE_checkpoint_provider_position();
-bool wsrep_set_SE_checkpoint(const wsrep::gtid& gtid, const wsrep_server_gtid_t&);
+bool wsrep_set_SE_checkpoint(const wsrep::gtid& gtid,
+                             const wsrep_server_gtid_t&,
+                             long long position);
 bool wsrep_get_SE_checkpoint(XID&);
 //void wsrep_set_SE_checkpoint(XID&);             /* uncomment if needed */
 
