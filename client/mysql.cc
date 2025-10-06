@@ -248,6 +248,7 @@ static my_bool ignore_errors=0,wait_flag=0,quick=0,
                default_pager_set= 0, opt_sigint_ignore= 0,
                auto_vertical_output= 0, show_query_cost= 0,
                show_warnings= 0, executing_query= 0,
+               serveroutput= 0,
                ignore_spaces= 0, opt_binhex= 0, opt_progress_reports,
                opt_print_query_on_error;
 static my_bool debug_info_flag, debug_check_flag, batch_abort_on_error;
@@ -327,7 +328,10 @@ static int com_quit(String *str,char*),
            com_notee(String *str, char*), com_charset(String *str,char*),
            com_prompt(String *str, char*), com_delimiter(String *str, char*),
      com_warnings(String *str, char*), com_nowarnings(String *str, char*),
+     com_serveroutput(String *, char *), com_noserveroutput(String *, char *),
      com_sandbox(String *str, char*);
+
+static int enable_serveroutput(my_bool batch);
 static void print_query_to_stderr(String *buffer);
 static int com_query_cost(String *str, char*);
 
@@ -394,6 +398,9 @@ static COMMANDS commands[] = {
 #ifdef USE_POPEN
   { "nopager",'n', com_nopager,0, "Disable pager, print to stdout." },
 #endif
+  { "noserveroutput", 'o', com_noserveroutput, 0,
+                           "Disable showing the DBMS_OUTPUT package messages "
+                           "after every statement."},
   { "notee",  't', com_notee,  0, "Don't write into outfile." },
   { "nowarning", 'w', com_nowarnings, 0,
     "Don't show warnings after every statement." },
@@ -409,6 +416,9 @@ static COMMANDS commands[] = {
   { "rehash", '#', com_rehash, 0, "Rebuild completion hash." },
   { "sandbox", '-', com_sandbox, 0,
     "Disallow commands that access the file system (except \\P without an argument and \\e)." },
+  { "serveroutput", 'O', com_serveroutput, 0,
+                         "Show the DBMS_OUTPUT package messages "
+                         "after every statement."},
   { "source", '.', com_source, 1,
     "Execute an SQL script file. Takes a file name as an argument."},
   { "status", 's', com_status, 0, "Get status information from the server."},
@@ -1414,6 +1424,16 @@ int main(int argc,char *argv[])
     put_info((char*) glob_buffer.ptr(),INFO_INFO);
     put_info(ORACLE_WELCOME_COPYRIGHT_NOTICE("2000"), INFO_INFO);
   }
+  if (serveroutput == 1)
+  {
+    /*
+      We're here if --show-serveroutput was requested on the command line.
+      DBMS_OUTPUT.ENABLE() has not been called yet. Call it now.
+    */
+    enable_serveroutput(status.batch);
+    if (!status.batch)
+      put_info("", INFO_INFO); // One extra line in the initial welcome banner
+  }
 
 #ifdef HAVE_READLINE
   initialize_readline();
@@ -1936,6 +1956,9 @@ static struct my_option my_long_options[] =
     &show_query_cost, &show_query_cost, 0, GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0},
   {"show-warnings", 0, "Show warnings after every statement.",
     &show_warnings, &show_warnings, 0, GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0},
+  {"show-serveroutput", 0, "Show the DBMS_OUTPUT package messages "
+                           "after every statement.",
+    &serveroutput, &serveroutput, 0, GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0},
   {"sigint-ignore", 0, "Ignore SIGINT (CTRL-C).", &opt_sigint_ignore,
     &opt_sigint_ignore, 0, GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0},
   {"silent", 's', "Be more silent. Print results with a tab as separator, "
@@ -3585,6 +3608,108 @@ static int com_charset(String *, char *line)
   return 0;
 }
 
+
+static int enable_serveroutput(my_bool batch)
+{
+  if (serveroutput < 2)
+  {
+    const char query[]= "CALL sys.DBMS_OUTPUT.ENABLE()";
+    if (int error= mysql_real_query_for_lazy(query, sizeof(query) - 1))
+      return error;
+    serveroutput= 2; // 2 means DBMS_OUTPUT.ENABLE has been successfully called
+  }
+  if (!batch)
+    put_info("Server output enabled.", INFO_INFO);
+  return 0;
+}
+
+
+static int com_serveroutput(String *, char *)
+{
+  return enable_serveroutput(FALSE);
+}
+
+
+static int com_noserveroutput(String *, char *)
+{
+  if (serveroutput)
+  {
+    const char query[]= "CALL sys.DBMS_OUTPUT.DISABLE()";
+    if (int error= mysql_real_query_for_lazy(query, sizeof(query) - 1))
+      return error;
+    serveroutput= 0;
+  }
+  put_info("Server output disabled.", INFO_INFO);
+  return 0;
+}
+
+
+static uint print_serveroutput_one_result(const char *query)
+{
+  MYSQL_ROW row;
+  MYSQL_RES *result;
+  uint error= mysql_store_result_for_lazy(&result);
+  if (error)
+    return error;
+
+  if (!result) // The result of the CALL statement
+    return 0;
+
+  if (mysql_num_fields(result) != 1/*The SELECT statement*/)
+  {
+    tee_fprintf(PAGER, "Unexpected structure of the result of \"%s\"", query);
+    goto end; // No lines or an unexpected result set structure
+  }
+
+  while ((row= mysql_fetch_row(result)))
+  {
+    tee_puts(row[0] ? row[0] : "NULL", PAGER);
+  }
+
+end:
+  if (unbuffered)
+    fflush(stdout);
+  mysql_free_result(result);
+  return error;
+}
+
+
+static int print_serveroutput()
+{
+  const char query[]= "CALL sys.DBMS_OUTPUT.GET_LINES_RESULT()";
+  uint error;
+
+  if ((error= mysql_real_query_for_lazy(query, sizeof(query) - 1)))
+    return error;
+
+  init_pager();
+  /*
+    The result is expected to consist of two result sets:
+    - The result of the SELECT called inside GET_LINES_RESULT(),
+      with the list of lines
+    - The empty result of the CALL itself
+  */
+  for ( ; !(error= print_serveroutput_one_result(query)); )
+  {
+    int rc_next_result= mysql_next_result(&mysql);
+    if (rc_next_result)
+    {
+      /*
+        We're here in cases:
+         >0  - An error occured
+         -1  - No more results
+      */
+      if (rc_next_result > 0)
+        error= put_error(&mysql);
+      break;
+    }
+  }
+  end_pager();
+
+  return error;
+}
+
+
 /*
   Execute command
   Returns: 0  if ok
@@ -3764,6 +3889,7 @@ static int com_go(String *buffer, char *)
     error= put_error(&mysql);
   }
 
+
 end:
 
  /* Show warnings if any or error occurred */
@@ -3771,6 +3897,8 @@ end:
     print_warnings();
   if (show_query_cost)
     print_last_query_cost();
+  if (serveroutput)
+    print_serveroutput();
 
   if (!error && !status.batch && 
       (mysql.server_status & SERVER_STATUS_DB_DROPPED))

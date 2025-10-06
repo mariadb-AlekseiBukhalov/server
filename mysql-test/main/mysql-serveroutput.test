@@ -1,0 +1,60 @@
+-- source include/have_working_dns.inc
+-- source include/not_embedded.inc
+
+--echo #
+--echo # MENT-2391 DBMS_OUTPUT on the client side
+--echo #
+
+DELIMITER $$;
+CREATE PROCEDURE p1()
+BEGIN
+  SIGNAL SQLSTATE '01000' SET MESSAGE_TEXT = 'A warning occurred';
+  SELECT 'p1' AS msg;
+  CALL sys.DBMS_OUTPUT.PUT_LINE('line1');
+  CALL sys.DBMS_OUTPUT.PUT_LINE('line2');
+  CALL sys.DBMS_OUTPUT.PUT_LINE(NULL);
+  CALL sys.DBMS_OUTPUT.PUT_LINE('line3');
+  SELECT '/p1' AS msg;
+END;
+$$
+DELIMITER ;$$
+
+--echo #### With output ####
+
+--exec $MYSQL --database=test -vt --show-warnings --show-serveroutput -e "CALL p1;"
+
+
+--echo #### Without output ####
+
+--exec $MYSQL --database=test -vt --show-warnings --show-serveroutput=0 -e "CALL p1;"
+
+
+--echo #### With output ####
+
+--exec $MYSQL --database=test -vt --show-warnings -e "serveroutput;CALL p1;"
+
+--exec $MYSQL --database=test -vt --show-warnings -e "\OCALL p1;"
+
+
+--echo #### Without output ####
+
+--exec $MYSQL --database=test -vt --show-warnings  -e "noserveroutput;CALL p1;"
+
+--exec $MYSQL --database=test -vt --show-warnings  -e "\oCALL p1;"
+
+
+--echo #### Start with output, continue without output ####
+
+--exec $MYSQL --database=test -vt --show-warnings --show-serveroutput -e "CALL p1;noserveroutput;CALL p1;"
+
+--exec $MYSQL --database=test -vt --show-warnings --show-serveroutput -e "CALL p1;\oCALL p1;"
+
+
+--echo #### Start without output, continue with output ####
+
+--exec $MYSQL --database=test -vt --show-warnings --show-serveroutput=0 -e "CALL p1;serveroutput;CALL p1;"
+
+--exec $MYSQL --database=test -vt --show-warnings --show-serveroutput=0 -e "CALL p1;\OCALL p1;"
+
+
+DROP PROCEDURE p1;

@@ -134,6 +134,7 @@ static my_bool display_result_vertically= FALSE, display_result_lower= FALSE,
 static my_bool disable_query_log= 0, disable_result_log= 0;
 static my_bool disable_connect_log= 0;
 static my_bool disable_warnings= 0, disable_column_names= 0;
+static my_bool serveroutput_enabled= 0;
 static my_bool prepare_warnings_enabled= 0;
 static my_bool disable_info= 1;
 static my_bool abort_on_error= 1, opt_continue_on_error= 0;
@@ -169,7 +170,8 @@ static struct property prop_list[] = {
   { &service_connection_enabled, 0, 1, 0, "$ENABLED_SERVICE_CONNECTION"},
   { &disable_query_log, 0, 0, 1, "$ENABLED_QUERY_LOG" },
   { &disable_result_log, 0, 0, 1, "$ENABLED_RESULT_LOG" },
-  { &disable_warnings, 0, 0, 1, "$ENABLED_WARNINGS" }
+  { &disable_warnings, 0, 0, 1, "$ENABLED_WARNINGS" },
+  { &serveroutput_enabled, 0, 0, 0, "$ENABLED_SERVEROUTPUT" }
 };
 
 static my_bool once_property= FALSE;
@@ -188,6 +190,7 @@ enum enum_prop {
   P_QUERY,
   P_RESULT,
   P_WARN,
+  P_SERVEROUTPUT,
   P_MAX
 };
 
@@ -389,6 +392,7 @@ enum enum_commands {
   Q_ENABLE_CONNECT_LOG, Q_DISABLE_CONNECT_LOG,
   Q_WAIT_FOR_SLAVE_TO_STOP,
   Q_ENABLE_WARNINGS, Q_DISABLE_WARNINGS,
+  Q_ENABLE_SERVEROUTPUT, Q_DISABLE_SERVEROUTPUT,
   Q_ENABLE_INFO, Q_DISABLE_INFO,
   Q_ENABLE_SESSION_TRACK_INFO, Q_DISABLE_SESSION_TRACK_INFO,
   Q_ENABLE_METADATA, Q_DISABLE_METADATA,
@@ -473,6 +477,8 @@ const char *command_names[]=
   "wait_for_slave_to_stop",
   "enable_warnings",
   "disable_warnings",
+  "enable_serveroutput",
+  "disable_serveroutput",
   "enable_info",
   "disable_info",
   "enable_session_track_info",
@@ -11083,6 +11089,77 @@ int append_warnings(DYNAMIC_STRING *ds, MYSQL* mysql)
 
 
 /*
+  Fetch DBMS_OUTPUT messages from the server and append to ds
+
+  @retval 1 - the result set with messages was empty
+  @retval 0 - the result set with messages was not empty
+*/
+
+static int append_serveroutput_one_result(DYNAMIC_STRING *ds,
+                                          MYSQL *mysql, const char *query)
+{
+  DBUG_ENTER("append_serveroutput_one_result");
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+
+  if (!(res= mysql_store_result(mysql)))
+    DBUG_RETURN(1);
+
+  if (mysql_num_fields(res) != 1)
+    die("Unexpected structure of the result of \"%s\"", query);
+
+  while ((row= mysql_fetch_row(res)))
+  {
+    unsigned long *lengths= mysql_fetch_lengths(res);
+    if (row[0])
+      replace_dynstr_append_mem(ds, row[0], lengths[0]);
+    else
+      dynstr_append_mem(ds, "NULL", 4);
+    dynstr_append_mem(ds, "\n", 1);
+  }
+  mysql_free_result(res);
+  DBUG_RETURN(0);
+}
+
+
+/*
+  Fetch multiple result sets containing DBMS_OUTPUT lines and append to ds.
+  In case if an error happens, the function makes the program die.
+
+  @retval  0 - on success
+*/
+static int append_serveroutput(DYNAMIC_STRING *ds, MYSQL *mysql)
+{
+  DBUG_ENTER("append_serveroutput");
+  DBUG_ASSERT(!mysql_more_results(mysql)); // See append_warnings()
+  int error;
+  const char query[]= "CALL sys.DBMS_OUTPUT.GET_LINES_RESULT()";
+
+  if (mysql_real_query(mysql, query, sizeof(query) - 1))
+    die("Error running query \"%s\": %s", query, mysql_error(mysql));
+
+  for ( ; !(error= append_serveroutput_one_result(ds, mysql, query)); )
+  {
+    if (int rc_next_result= mysql_next_result(mysql))
+    {
+      /*
+        We're here in cases:
+         >0  - An error occured
+         -1  - No more results
+      */
+      if (rc_next_result > 0)
+        die("Error: %d: %s", mysql_errno(mysql), mysql_error(mysql));
+      break;
+    }
+  }
+
+  append_serveroutput_one_result(ds, mysql, query);
+
+  DBUG_RETURN(0);
+}
+
+
+/*
   Handle situation where query is sent but there is no active connection 
   (e.g directly after disconnect).
 
@@ -11246,6 +11323,9 @@ void run_query_normal(struct st_connection *cn, struct st_command *command,
 	  dynstr_append_mem(ds, ds_warnings->str, ds_warnings->length);
 	}
       }
+
+      if (serveroutput_enabled && !mysql_more_results(mysql))
+        append_serveroutput(ds, mysql);
     }
 
     if (res)
@@ -11809,6 +11889,10 @@ void run_query_stmt(struct st_connection *cn, struct st_command *command,
                               ds_execute_warnings.length);
         }
       }
+
+      if (serveroutput_enabled && !mysql_more_results(stmt->mysql))
+        append_serveroutput(ds, stmt->mysql);
+
     }
   } while ( !(err= mysql_stmt_next_result(stmt)));
 
@@ -12332,6 +12416,29 @@ int util_query(MYSQL* org_mysql, const char* query){
 }
 
 
+/*
+  Check if a new query can be run in this connection.
+  Die in case if not (e.g. send or reap out of an expected order)
+*/
+static void check_query_can_be_run(const struct st_connection *cn, int flags)
+{
+  if (cn->pending && (flags & QUERY_SEND_FLAG))
+    die("Cannot run query on connection between send and reap");
+
+  if (!(flags & QUERY_SEND_FLAG) && !cn->pending)
+    die("Cannot reap on a connection without pending send");
+}
+
+
+static void run_serveroutput_toggle_query(const struct st_connection *cn,
+                                          int flags, const char *query)
+{
+  check_query_can_be_run(cn, flags);
+  if (mysql_query(cn->mysql, query))
+    die("%s failed: %d: %s", query,
+        mysql_errno(cn->mysql), mysql_error(cn->mysql));
+}
+
 
 /*
   Run query
@@ -12360,11 +12467,7 @@ void run_query(struct st_connection *cn, struct st_command *command, int flags)
                            (flags & QUERY_REAP_FLAG));
   DBUG_ENTER("run_query");
 
-  if (cn->pending && (flags & QUERY_SEND_FLAG))
-    die("Cannot run query on connection between send and reap");
-
-  if (!(flags & QUERY_SEND_FLAG) && !cn->pending)
-    die("Cannot reap on a connection without pending send");
+  check_query_can_be_run(cn, flags);
 
   init_dynamic_string(&rs_warnings, NULL, 0, 256);
   ds_warn= &rs_warnings;
@@ -13243,6 +13346,16 @@ int main(int argc, char **argv)
         break;
       case Q_DISABLE_WARNINGS:
         set_property(command, P_WARN, 1);
+        break;
+      case Q_ENABLE_SERVEROUTPUT:
+        run_serveroutput_toggle_query(cur_con, QUERY_SEND_FLAG,
+                                      "CALL sys.DBMS_OUTPUT.ENABLE()");
+        set_property(command, P_SERVEROUTPUT, 1);
+        break;
+      case Q_DISABLE_SERVEROUTPUT:
+        run_serveroutput_toggle_query(cur_con, QUERY_SEND_FLAG,
+                                      "CALL sys.DBMS_OUTPUT.DISABLE()");
+        set_property(command, P_SERVEROUTPUT, 0);
         break;
       case Q_ENABLE_INFO:
         set_property(command, P_INFO, 0);

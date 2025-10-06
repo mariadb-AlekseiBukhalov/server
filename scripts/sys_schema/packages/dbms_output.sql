@@ -38,6 +38,7 @@ AS
   PROCEDURE GET_LINE(line OUT TEXT CHARACTER SET utf8mb4,
                      status OUT INTEGER);
   -- PROCEDURE GET_LINES; -- Not yet
+  PROCEDURE GET_LINES_RESULT(); -- MariaDB extension
   PROCEDURE NEW_LINE;
   /*
     Put a partial line
@@ -151,6 +152,27 @@ AS
       m_buffer.delete(idx);
       status:= 0;
     END IF;
+  END;
+
+  FUNCTION RETURN_LINE() RETURN TEXT CHARACTER SET utf8mb4 AS
+    line TEXT CHARACTER SET utf8mb4;
+    status INT;
+  BEGIN
+    CALL sys.DBMS_OUTPUT.GET_LINE(line, status);
+    RETURN line;
+  END;
+
+  PROCEDURE GET_LINES_RESULT AS
+    cnt INT := m_buffer.count;
+  BEGIN
+    WITH RECURSIVE cte AS (
+        SELECT 0 AS idx, RETURN_LINE() AS line WHERE cnt > 0
+      UNION ALL
+        SELECT idx + 1, RETURN_LINE()
+        FROM cte
+        WHERE idx + 1 < cnt
+    )
+    SELECT line FROM cte;
   END;
 
   PROCEDURE NEW_LINE AS

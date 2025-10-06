@@ -1,0 +1,58 @@
+--echo #
+--echo # MENT-2391 DBMS_OUTPUT on the client side
+--echo #
+
+DELIMITER $$;
+CREATE PROCEDURE p1()
+BEGIN
+  SIGNAL SQLSTATE '01000' SET MESSAGE_TEXT = 'A warning occurred';
+  SELECT 'p1' AS msg;
+  CALL sys.DBMS_OUTPUT.PUT_LINE('line1');
+  CALL sys.DBMS_OUTPUT.PUT_LINE('line2');
+  CALL sys.DBMS_OUTPUT.PUT_LINE(NULL);
+  CALL sys.DBMS_OUTPUT.PUT_LINE('line3');
+  SELECT '/p1' AS msg;
+END;
+$$
+DELIMITER ;$$
+
+
+--echo #### Without output ####
+CALL p1;
+CALL sys.DBMS_OUTPUT.GET_LINES_RESULT;
+
+
+--echo #### With output ####
+CALL sys.DBMS_OUTPUT.ENABLE;
+CALL p1;
+CALL sys.DBMS_OUTPUT.GET_LINES_RESULT;
+
+
+--echo #### Without output ####
+CALL sys.DBMS_OUTPUT.DISABLE;
+CALL p1;
+CALL sys.DBMS_OUTPUT.GET_LINES_RESULT;
+
+
+--echo ### With automatic output ####
+--enable_serveroutput
+CALL p1;
+--replace_result line1 LINE1
+CALL p1;
+--eval CALL p1
+--query_vertical CALL p1
+
+--echo ### Without automatic output ####
+--disable_serveroutput
+CALL p1;
+
+
+--echo ### Send/reap with and without automatic output ####
+--enable_serveroutput
+--send CALL p1
+--reap
+--disable_serveroutput
+--send CALL p1
+--reap
+
+DROP PROCEDURE p1;

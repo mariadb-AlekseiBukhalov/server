@@ -1,0 +1,259 @@
+#
+# MENT-2391 DBMS_OUTPUT on the client side
+#
+CREATE PROCEDURE p1()
+BEGIN
+SIGNAL SQLSTATE '01000' SET MESSAGE_TEXT = 'A warning occurred';
+SELECT 'p1' AS msg;
+CALL sys.DBMS_OUTPUT.PUT_LINE('line1');
+CALL sys.DBMS_OUTPUT.PUT_LINE('line2');
+CALL sys.DBMS_OUTPUT.PUT_LINE(NULL);
+CALL sys.DBMS_OUTPUT.PUT_LINE('line3');
+SELECT '/p1' AS msg;
+END;
+$$
+#### With output ####
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+line1
+line2
+NULL
+line3
+#### Without output ####
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+#### With output ####
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+line1
+line2
+NULL
+line3
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+line1
+line2
+NULL
+line3
+#### Without output ####
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+#### Start with output, continue without output ####
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+line1
+line2
+NULL
+line3
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+line1
+line2
+NULL
+line3
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+#### Start without output, continue with output ####
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+line1
+line2
+NULL
+line3
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+--------------
+CALL p1
+--------------
+
++-----+
+| msg |
++-----+
+| p1  |
++-----+
++-----+
+| msg |
++-----+
+| /p1 |
++-----+
+Warning (Code 1642): A warning occurred
+line1
+line2
+NULL
+line3
+DROP PROCEDURE p1;
