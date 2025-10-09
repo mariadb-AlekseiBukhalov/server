@@ -44,10 +44,12 @@
 #include "wsrep_thd.h"
 #include "wsrep_xid.h"
 
+#ifdef HAVE_PSI_INTERFACE
 /* Defined in mysqld.cc */
 extern PSI_socket_key key_socket_grp;
 /* Defined in wsrep_mysqld.cc */
 extern PSI_thread_key key_grp_service_thread;
+#endif /* HAVE_PSI_INTERFACE */
 
 namespace
 {
@@ -442,7 +444,11 @@ void log_message(grp_log_level_t level, const char* msg)
 
 PSI_socket_key get_psi_socket_key()
 {
+#ifdef HAVE_PSI_INTERFACE
   return key_socket_grp;
+#else
+  return 0;
+#endif
 }
 
 extern "C" void *run_grp_service_thread(void *arg)
@@ -963,6 +969,7 @@ Wsrep_provider_grp::Wsrep_provider_grp(wsrep::server_state &server_state,
       m_pause_seqno{}, m_pause_state{Pause_state::IDLE}, m_services{services},
       m_status{}, m_grp{grp}
 {
+#ifdef HAVE_PSI_INTERFACE
   static PSI_mutex_key key_grp_events_mutex;
   static PSI_cond_key key_grp_events_cond;
   static PSI_mutex_key key_grp_last_committed_mutex;
@@ -971,7 +978,7 @@ Wsrep_provider_grp::Wsrep_provider_grp(wsrep::server_state &server_state,
   static PSI_mutex_key key_grp_pause_mutex;
   static PSI_cond_key key_grp_pause_cond;
   static PSI_mutex_key key_grp_status_mutex;
-
+#endif /* HAVE_PSI_INTERFACE */
   mysql_mutex_init(key_grp_events_mutex, &m_events_mutex, MY_MUTEX_INIT_FAST);
   mysql_cond_init(key_grp_events_cond, &m_events_cond, nullptr);
   mysql_mutex_init(key_grp_last_committed_mutex, &m_last_committed_mutex,
@@ -2064,7 +2071,9 @@ struct Wsrep_provider_grp::waiters_entry
   mysql_cond_t cond;
   waiters_entry() : committed{false}
   {
+#ifdef HAVE_PSI_INTERFACE
     static PSI_cond_key key_grp_last_committed_cond;
+#endif /* HAVE_PSI_INTERFACE */
     mysql_cond_init(key_grp_last_committed_cond, &cond, nullptr);
   }
   ~waiters_entry()
@@ -2383,8 +2392,10 @@ Wsrep_provider_grp::leave_toi(wsrep::client_id, const wsrep::ws_meta &ws_meta,
   DBUG_RETURN(0 == ret ? success : error_provider_failed);
 }
 
+#ifdef HAVE_PSI_INTERFACE
 static PSI_thread_key KEY_grp_causal_read_mutex;
 static PSI_cond_key KEY_grp_causal_read_cond;
+#endif /* HAVE_PSI_INTERFACE */
 class Wsrep_provider_grp::Causal_read_handler_context
 {
 public:
