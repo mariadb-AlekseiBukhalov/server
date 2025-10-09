@@ -593,8 +593,10 @@ int wsrep_after_statement(THD* thd)
   DBUG_ENTER("wsrep_after_statement");
   if (!wsrep_is_active(thd))
   {
+    mysql_mutex_lock(&thd->LOCK_thd_data);
     delete thd->wsrep_cert_key_history;
     thd->wsrep_cert_key_history = nullptr;
+    mysql_mutex_unlock(&thd->LOCK_thd_data);
   }
   int ret= ((thd->wsrep_cs().state() != wsrep::client_state::s_none &&
                thd->wsrep_cs().mode() == Wsrep_client_state::m_local) &&
