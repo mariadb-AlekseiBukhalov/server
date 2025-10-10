@@ -6,6 +6,8 @@ if (!$SERVER_AUDIT2_SO) {
   skip No SERVER_AUDIT2 plugin;
 }
 
+--disable_ps2_protocol
+
 --source server_audit2_init.inc
 
 # activate logging without filter definitions
@@ -34,4 +36,4 @@ SHOW STATUS LIKE "Server_audit_session_filter";
 
 # cleanup
 --source server_audit2_cleanup.inc
-
+--enable_ps2_protocol

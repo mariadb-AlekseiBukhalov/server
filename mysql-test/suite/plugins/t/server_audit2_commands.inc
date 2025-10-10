@@ -1,19 +1,25 @@
 # queries to be executed by server audit plugin
 # connects
 # successful connect
-connect (con1,localhost,root,,mysql);
 connection default;
+connect (con1,localhost,root,,mysql);
 disconnect con1;
+--source include/wait_until_disconnected.inc
+
 # failed  connect pwd
 --replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (con1,localhost,root,wrong_pwd,mysql);
+
 connection default;
+--source include/wait_until_connected_sync.inc
 # trigger failed connect unknown user (will use default filter)
 --replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (con1,localhost,no_such_user,,mysql);
+
 connection default;
+--source include/wait_until_connected_sync.inc
 
 # Trigger a change user event
 change_user root;

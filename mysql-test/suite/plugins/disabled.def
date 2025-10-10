@@ -9,8 +9,3 @@
 #  Do not use any TAB characters for whitespace.
 #
 ##############################################################################
-server_audit2_connect    : server_audit2 tests are undeterministic, need to fix
-server_audit2_general    : server_audit2 tests are undeterministic, need to fix
-server_audit2_multiuser  : server_audit2 tests are undeterministic, need to fix
-server_audit2_query      : server_audit2 tests are undeterministic, need to fix
-server_audit2_table      : server_audit2 tests are undeterministic, need to fix

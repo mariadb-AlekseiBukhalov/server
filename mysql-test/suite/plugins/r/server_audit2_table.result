@@ -11,19 +11,23 @@ CONSTRAINT c_host_user UNIQUE (host, user)
 install plugin server_audit soname 'server_audit2';
 show variables like 'server_audit%';
 Variable_name	Value
+server_audit_file_buffer_size	0
 server_audit_file_path	server_audit.log
 server_audit_file_rotate_now	OFF
 server_audit_file_rotate_size	1000000
 server_audit_file_rotations	9
+server_audit_load_on_error	ON
 server_audit_logging	OFF
 server_audit_mode	0
 server_audit_output_type	file
 server_audit_query_log_limit	1024
 server_audit_reload_filters	OFF
+server_audit_sync_log_file	OFF
 server_audit_syslog_facility	LOG_USER
 server_audit_syslog_ident	mysql-server_auditing
 server_audit_syslog_info	
 server_audit_syslog_priority	LOG_INFO
+server_audit_timestamp_format	%Y%m%d %H:%i:%s
 INSERT INTO mysql.server_audit_filters VALUES ('default','{"logging" : "off"}');
 INSERT INTO mysql.server_audit_filters VALUES ('table_all','{"table_event" : "ALL"}');
 INSERT INTO mysql.server_audit_filters VALUES ('table_read','{"table_event" : "READ"}');
@@ -39,8 +43,8 @@ SET GLOBAL server_audit_reload_filters=ON;
 SHOW STATUS LIKE "Server_audit_session_filter";
 Variable_name	Value
 Server_audit_session_filter	table_all
-connect  con1,localhost,root,,mysql;
 connection default;
+connect  con1,localhost,root,,mysql;
 disconnect con1;
 connect(localhost,root,wrong_pwd,mysql,MASTER_PORT,MASTER_SOCKET);
 connect  con1,localhost,root,wrong_pwd,mysql;
@@ -75,8 +79,8 @@ SET GLOBAL server_audit_reload_filters=ON;
 SHOW STATUS LIKE "Server_audit_session_filter";
 Variable_name	Value
 Server_audit_session_filter	table_read
-connect  con1,localhost,root,,mysql;
 connection default;
+connect  con1,localhost,root,,mysql;
 disconnect con1;
 connect(localhost,root,wrong_pwd,mysql,MASTER_PORT,MASTER_SOCKET);
 connect  con1,localhost,root,wrong_pwd,mysql;
@@ -111,8 +115,8 @@ SET GLOBAL server_audit_reload_filters=ON;
 SHOW STATUS LIKE "Server_audit_session_filter";
 Variable_name	Value
 Server_audit_session_filter	table_write
-connect  con1,localhost,root,,mysql;
 connection default;
+connect  con1,localhost,root,,mysql;
 disconnect con1;
 connect(localhost,root,wrong_pwd,mysql,MASTER_PORT,MASTER_SOCKET);
 connect  con1,localhost,root,wrong_pwd,mysql;
@@ -147,8 +151,8 @@ SET GLOBAL server_audit_reload_filters=ON;
 SHOW STATUS LIKE "Server_audit_session_filter";
 Variable_name	Value
 Server_audit_session_filter	table_create
-connect  con1,localhost,root,,mysql;
 connection default;
+connect  con1,localhost,root,,mysql;
 disconnect con1;
 connect(localhost,root,wrong_pwd,mysql,MASTER_PORT,MASTER_SOCKET);
 connect  con1,localhost,root,wrong_pwd,mysql;
@@ -183,8 +187,8 @@ SET GLOBAL server_audit_reload_filters=ON;
 SHOW STATUS LIKE "Server_audit_session_filter";
 Variable_name	Value
 Server_audit_session_filter	table_alter
-connect  con1,localhost,root,,mysql;
 connection default;
+connect  con1,localhost,root,,mysql;
 disconnect con1;
 connect(localhost,root,wrong_pwd,mysql,MASTER_PORT,MASTER_SOCKET);
 connect  con1,localhost,root,wrong_pwd,mysql;
@@ -219,8 +223,8 @@ SET GLOBAL server_audit_reload_filters=ON;
 SHOW STATUS LIKE "Server_audit_session_filter";
 Variable_name	Value
 Server_audit_session_filter	table_rename
-connect  con1,localhost,root,,mysql;
 connection default;
+connect  con1,localhost,root,,mysql;
 disconnect con1;
 connect(localhost,root,wrong_pwd,mysql,MASTER_PORT,MASTER_SOCKET);
 connect  con1,localhost,root,wrong_pwd,mysql;
@@ -255,8 +259,8 @@ SET GLOBAL server_audit_reload_filters=ON;
 SHOW STATUS LIKE "Server_audit_session_filter";
 Variable_name	Value
 Server_audit_session_filter	table_drop
-connect  con1,localhost,root,,mysql;
 connection default;
+connect  con1,localhost,root,,mysql;
 disconnect con1;
 connect(localhost,root,wrong_pwd,mysql,MASTER_PORT,MASTER_SOCKET);
 connect  con1,localhost,root,wrong_pwd,mysql;
@@ -291,8 +295,8 @@ SET GLOBAL server_audit_reload_filters=ON;
 SHOW STATUS LIKE "Server_audit_session_filter";
 Variable_name	Value
 Server_audit_session_filter	table_combined
-connect  con1,localhost,root,,mysql;
 connection default;
+connect  con1,localhost,root,,mysql;
 disconnect con1;
 connect(localhost,root,wrong_pwd,mysql,MASTER_PORT,MASTER_SOCKET);
 connect  con1,localhost,root,wrong_pwd,mysql;
@@ -327,9 +331,9 @@ Warnings:
 Warning	1620	Plugin is busy and will be uninstalled on shutdown
 truncate mysql.server_audit_filters;
 truncate mysql.server_audit_users;
-TIME,HOSTNAME,,,0,0,AUDIT_CONFIG,,file_path=server_audit.log,0
-TIME,HOSTNAME,,,0,0,AUDIT_CONFIG,,rotate_size=1000000,0
-TIME,HOSTNAME,,,0,0,AUDIT_CONFIG,,file_rotations=9,0
+TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,file_path=server_audit.log,0
+TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,rotate_size=1000000,0
+TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,file_rotations=9,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,logging=ON,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,reload_filters=ON,0
 TIME,HOSTNAME,root,localhost,ID,ID,CREATE,d1,t1,

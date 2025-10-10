@@ -6,6 +6,8 @@ if (!$SERVER_AUDIT2_SO) {
   skip No SERVER_AUDIT2 plugin;
 }
 
+--disable_ps2_protocol
+
 --source server_audit2_init.inc
 
 SET GLOBAL server_audit_logging=on;
@@ -27,8 +29,11 @@ GRANT all on *.* to 'user2'@'%';
 GRANT all on *.* to 'user3'@'%'; 
 
 connect (conn1,localhost,user1,,);
+--source include/wait_until_connected_sync.inc
 connect (conn2,localhost,user2,,);
+--source include/wait_until_connected_sync.inc
 connect (conn3,localhost,user3,,);
+--source include/wait_until_connected_sync.inc
 
 connection conn1;
 # show status to check used filter
@@ -69,10 +74,17 @@ DELETE FROM d1.t1;
 DROP TABLE d1.t1;
 DROP DATABASE d1;
 
-connection default;
+connection conn1;
 disconnect conn1;
+--source include/wait_until_disconnected.inc
+connection conn2;
 disconnect conn2;
+--source include/wait_until_disconnected.inc
+connection conn3;
 disconnect conn3;
+--source include/wait_until_disconnected.inc
+
+connection default;
 
 DROP USER 'user1'@'%';
 DROP USER 'user2'@'%';
@@ -80,3 +92,4 @@ DROP USER 'user3'@'%';
 
 --source server_audit2_cleanup.inc
 
+--enable_ps2_protocol
