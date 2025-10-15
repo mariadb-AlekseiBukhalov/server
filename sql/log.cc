@@ -8309,8 +8309,12 @@ int Event_log::write_cache(THD *thd, binlog_cache_data *cache_data)
 
   mysql_mutex_assert_owner(&LOCK_log);
 
+  DBUG_EXECUTE_IF("simulate_binlog_tmp_file_no_space_left_on_flush",
+                  { DBUG_SET("+d,simulate_file_write_error"); });
   if (cache_data->init_for_read())
     DBUG_RETURN(ER_ERROR_ON_WRITE);
+  DBUG_EXECUTE_IF("simulate_binlog_tmp_file_no_space_left_on_flush",
+                  { DBUG_SET("-d,simulate_file_write_error"); });
 
   /*
     If possible, just copy the cache over byte-by-byte with pre-computed
