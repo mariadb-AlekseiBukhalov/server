@@ -353,7 +353,7 @@ maria_declare_plugin(file_key_management)
   NULL,	/* status variables */
   file_key_management_plugin::settings,
   PLUGIN_VERSION_STR,
-  MariaDB_PLUGIN_MATURITY_GAMMA
+  MariaDB_PLUGIN_MATURITY_STABLE
 },
 {
   MYSQL_INFORMATION_SCHEMA_PLUGIN,
@@ -368,6 +368,6 @@ maria_declare_plugin(file_key_management)
   NULL,
   NULL,
   PLUGIN_VERSION_STR,
-  MariaDB_PLUGIN_MATURITY_GAMMA
+  MariaDB_PLUGIN_MATURITY_STABLE
 }
 maria_declare_plugin_end;
