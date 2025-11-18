@@ -1,0 +1,50 @@
+# MENT-2435 SST not possible with datadir on NFS and log-bin enabled
+#
+# Setup of a Galera node might not work if mariabackup SST method is
+# used and the data directory is mounted via Network File System (NFS).
+#
+# This patch fixes the problem by modifying the
+# "wsrep_sst_mariabackup.sh" script not to delete .nfs files that are
+# created by NFS for those deleted file that is still open in some
+# process.
+
+# NFS creates special files (.nfs* files) for those files that
+# are deleted but still open in some process.
+# This MTR test simulates the appearenace of this files
+# explicitly creating two such files in the data directory of node 2.
+# In this way, the fix for MENT-2435 can be tested without NSF.
+
+--source include/big_test.inc
+--source include/galera_cluster.inc
+--source include/have_innodb.inc
+--source include/have_mariabackup.inc
+
+--connection node_2
+--let $MYSQLD_DATADIR_2= `select @@datadir`
+
+# create first .nfs file
+--exec touch $MYSQLD_DATADIR_2/.nfs001
+
+--connection node_1
+
+# Save original auto_increment_offset values.
+--let $node_1=node_1
+--let $node_2=node_2
+--source include/auto_increment_offset_save.inc
+
+--source suite/galera/include/galera_st_shutdown_slave.inc
+--source suite/galera/include/galera_st_clean_slave.inc
+
+--connection node_2
+# create second .nfs file
+--exec touch $MYSQLD_DATADIR_2/.nfs002
+
+--connection node_1
+
+--source suite/galera/include/galera_st_kill_slave.inc
+--source suite/galera/include/galera_st_kill_slave_ddl.inc
+
+# Restore original auto_increment_offset values.
+--source include/auto_increment_offset_restore.inc
+
+--source include/galera_end.inc
