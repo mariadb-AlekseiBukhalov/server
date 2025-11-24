@@ -103,7 +103,7 @@ tablespace-flags                  4294967295
 Number of pages:#
 Number of pages:#
 [4]:# Print the version of innochecksum and exit
-innochecksum from #.#.#-MariaDB, client #.# for OS (ARCH)
+innochecksum from #.#.#-#-MariaDB, client #.# for OS (ARCH)
 [5]:# check t1.ibd and t2.ibd summary with and without tablespace_flags
 # Restart the DB server
 DROP TABLE t4, t3, t2, t1;
