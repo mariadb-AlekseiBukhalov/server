@@ -82,12 +82,6 @@ EOF
 --source include/start_mysqld.inc
 
 --echo # node_2
-call mtr.add_suppression("WSREP: GCache recovery is not supported when encryption is enabled. Recovery will be skipped.");
-
-call mtr.add_suppression("mariadbd: File.*");
-call mtr.add_suppression("Plugin 'file_key_management' init function returned error.");
-call mtr.add_suppression("Plugin 'file_key_management' registration as a ENCRYPTION failed.");
-
 show variables like 'encrypt_binlog';
 
 INSERT INTO encryption values (2, 'NotAnymoreSecret');
@@ -200,3 +194,12 @@ INSERT INTO encryption values (3, 'AgainMoreSecret');
 
 --connection node_1
 DROP TABLE encryption;
+
+--connection node_2
+call mtr.add_suppression("WSREP: GCache recovery is not supported when encryption is enabled. Recovery will be skipped.");
+
+call mtr.add_suppression("mariadbd: File");
+call mtr.add_suppression("Plugin \'file_key_management_keys\' init function returned error");
+call mtr.add_suppression("Plugin \'file_key_management_keys\' registration as a INFORMATION SCHEMA failed");
+call mtr.add_suppression("Plugin \'file_key_management\' init function returned error");
+call mtr.add_suppression("Plugin \'file_key_management\' registration as a ENCRYPTION failed");
