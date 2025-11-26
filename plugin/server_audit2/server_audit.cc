@@ -20,6 +20,7 @@
 #define _my_thread_var loc_thread_var
 
 #include <my_config.h>
+#include "my_counter.h"
 #include <assert.h>
 
 
@@ -193,11 +194,6 @@ struct user_def
 
 static struct user_def *user_list= 0;
 
-#define flogger_mutex_init(A,B,C) mysql_mutex_init(A, B, C)
-#define flogger_mutex_destroy(A) mysql_mutex_destroy(A)
-#define flogger_mutex_lock(A) mysql_mutex_lock(A)
-#define flogger_mutex_unlock(A) mysql_mutex_unlock(A)
-
 #ifndef DBUG_OFF
 #define PLUGIN_DEBUG_VERSION "-debug"
 #else
@@ -232,7 +228,7 @@ static unsigned int file_buffer_size;
 static my_bool reload_filters= TRUE;
 static my_bool load_on_error= TRUE;
 static char logging;
-static volatile int internal_stop_logging= 0;
+static Atomic_counter<int> internal_stop_logging;
 static unsigned int query_log_limit= 0;
 static char* ts_format;
 
@@ -488,36 +484,18 @@ static struct st_mysql_show_var audit_status[]=
 };
 
 
-#if defined(HAVE_PSI_INTERFACE) && !defined(FLOGGER_NO_PSI)
-/* These belong to the service initialization */
-static PSI_mutex_key key_LOCK_atomic;
-#endif
-
 #ifdef HAVE_PSI_INTERFACE
 static PSI_mutex_key key_LOCK_operations;
 static PSI_mutex_info mutex_key_list[]=
 {
   { &key_LOCK_operations, "SERVER_AUDIT_plugin::lock_operations",
     PSI_FLAG_GLOBAL}
-#ifndef FLOGGER_NO_PSI
-  ,
-  { &key_LOCK_atomic, "SERVER_AUDIT_plugin::lock_atomic",
-    PSI_FLAG_GLOBAL},
-#endif /*FLOGGER_NO_PSI*/
 };
 #endif /*HAVE_PSI_INTERFACE*/
 
 static mysql_prlock_t lock_operations;
-static mysql_mutex_t lock_atomic;
 
 #define CLIENT_ERROR my_printf_error
-
-#define ADD_ATOMIC(x, a)              \
-  do {                                \
-  flogger_mutex_lock(&lock_atomic);   \
-  x+= a;                              \
-  flogger_mutex_unlock(&lock_atomic); \
-  } while (0)
 
 
 enum sa_keywords
@@ -1337,10 +1315,10 @@ static int start_logging(MYSQL_THD thd)
       my_snprintf(last_error_buf, sizeof(last_error_buf),
                   "Could not create file '%s'.", alt_fname);
       is_active= 0;
-      ADD_ATOMIC(internal_stop_logging, 1);
+      internal_stop_logging++;
       CLIENT_ERROR(1, "SERVER AUDIT plugin can't create file '%s'.",
           MYF(ME_WARNING), alt_fname);
-      ADD_ATOMIC(internal_stop_logging, -1);
+      internal_stop_logging--;
       return 1;
     }
     error_header();
@@ -2975,7 +2953,6 @@ static int server_audit_init(void *)
     PSI_server->register_mutex("server_audit", mutex_key_list, 1);
 #endif
   mysql_prlock_init(key_LOCK_operations, &lock_operations);
-  flogger_mutex_init(key_LOCK_atomic, &lock_atomic, MY_MUTEX_INIT_FAST);
 
 
   error_header();
@@ -3003,7 +2980,7 @@ static int server_audit_init(void *)
 
   if (logging)
   {
-    ADD_ATOMIC(internal_stop_logging, 1);
+    internal_stop_logging++;
     if (load_filters())
     {
       if (load_on_error)
@@ -3015,12 +2992,12 @@ static int server_audit_init(void *)
       {
         explain_error("Filters aren't loaded, plugin is disabled.");
         memcpy(last_error_buf, err_msg, err_len+1);
-        ADD_ATOMIC(internal_stop_logging, -1);
+        internal_stop_logging--;
         return 1;
       }
     }
     start_logging(0);
-    ADD_ATOMIC(internal_stop_logging, -1);
+    internal_stop_logging--;
   }
 
   init_done= 1;
@@ -3051,7 +3028,6 @@ static int server_audit_deinit(void *)
     closelog();
 
   mysql_prlock_destroy(&lock_operations);
-  flogger_mutex_destroy(&lock_atomic);
 
   error_header();
   fprintf(stderr, "STOPPED\n");
@@ -3080,7 +3056,7 @@ static void do_reload_filters(MYSQL_THD thd, st_mysql_sys_var *, void *,
   struct filter_def *old_default_filter;
   struct user_def *old_user_list;
 
-  ADD_ATOMIC(internal_stop_logging, 1);
+  internal_stop_logging++;
   mysql_prlock_wrlock(&lock_operations);
 
   old_filter_list= filter_list;
@@ -3109,7 +3085,7 @@ static void do_reload_filters(MYSQL_THD thd, st_mysql_sys_var *, void *,
   }
 
   mysql_prlock_unlock(&lock_operations);
-  ADD_ATOMIC(internal_stop_logging, -1);
+  internal_stop_logging--;
 }
 
 
@@ -3187,7 +3163,7 @@ static void update_file_path(MYSQL_THD thd, st_mysql_sys_var *, void *,
 {
   char *new_name= (*(char **) save) ? *(char **) save : empty_str;
 
-  ADD_ATOMIC(internal_stop_logging, 1);
+  internal_stop_logging++;
   mysql_prlock_wrlock(&lock_operations);
   error_header();
   fprintf(stderr, "Log file name was changed to '%s'.\n", new_name);
@@ -3221,7 +3197,7 @@ static void update_file_path(MYSQL_THD thd, st_mysql_sys_var *, void *,
   file_path= path_buffer;
 exit_func:
   mysql_prlock_unlock(&lock_operations);
-  ADD_ATOMIC(internal_stop_logging, -1);
+  internal_stop_logging--;
 }
 
 
@@ -3285,7 +3261,7 @@ static void update_file_buffer_size(MYSQL_THD, struct st_mysql_sys_var *,
   if (!logging || output_type != OUTPUT_FILE)
     return;
 
-  ADD_ATOMIC(internal_stop_logging, 1);
+  internal_stop_logging++;
   if (!maria_55_started || !debug_server_started)
     mysql_prlock_wrlock(&lock_operations);
 
@@ -3300,7 +3276,7 @@ static void update_file_buffer_size(MYSQL_THD, struct st_mysql_sys_var *,
 
   if (!maria_55_started || !debug_server_started)
     mysql_prlock_unlock(&lock_operations);
-  ADD_ATOMIC(internal_stop_logging, -1);
+  internal_stop_logging--;
 }
 
 
@@ -3311,7 +3287,7 @@ static void update_output_type(MYSQL_THD thd, st_mysql_sys_var *, void *,
   if (output_type == new_output_type)
     return;
 
-  ADD_ATOMIC(internal_stop_logging, 1);
+  internal_stop_logging++;
   mysql_prlock_wrlock(&lock_operations);
   if (logging)
   {
@@ -3327,7 +3303,7 @@ static void update_output_type(MYSQL_THD thd, st_mysql_sys_var *, void *,
   if (logging)
     start_logging(thd);
   mysql_prlock_unlock(&lock_operations);
-  ADD_ATOMIC(internal_stop_logging, -1);
+  internal_stop_logging--;
 }
 
 
@@ -3374,7 +3350,7 @@ static void update_logging(MYSQL_THD thd, st_mysql_sys_var *, void *,
   if (new_logging == logging)
     return;
 
-  ADD_ATOMIC(internal_stop_logging, 1);
+  internal_stop_logging++;
   mysql_prlock_wrlock(&lock_operations);
   log_config(thd, "logging", "OFF");
   if ((logging= new_logging))
@@ -3402,7 +3378,7 @@ static void update_logging(MYSQL_THD thd, st_mysql_sys_var *, void *,
   }
 
   mysql_prlock_unlock(&lock_operations);
-  ADD_ATOMIC(internal_stop_logging, -1);
+  internal_stop_logging--;
 }
 
 
@@ -3434,7 +3410,7 @@ static void update_syslog_ident(MYSQL_THD thd, st_mysql_sys_var *, void *,
   strncpy(syslog_ident_buffer, new_ident, sizeof(syslog_ident_buffer)-1);
   syslog_ident_buffer[sizeof(syslog_ident_buffer)-1]= 0;
   syslog_ident= syslog_ident_buffer;
-  ADD_ATOMIC(internal_stop_logging, 1);
+  internal_stop_logging++;
   mysql_prlock_wrlock(&lock_operations);
   log_config(thd, "syslog_ident", syslog_ident);
   error_header();
@@ -3445,7 +3421,7 @@ static void update_syslog_ident(MYSQL_THD thd, st_mysql_sys_var *, void *,
     start_logging(thd);
   }
   mysql_prlock_unlock(&lock_operations);
-  ADD_ATOMIC(internal_stop_logging, -1);
+  internal_stop_logging--;
 }
 
 
