@@ -89,6 +89,7 @@ static void closelog() {}
 #define RTLD_DEFAULT NULL
 #endif
 
+extern "C" {
 LEX_STRING * thd_query_string (MYSQL_THD thd);
 unsigned long long thd_query_id(const MYSQL_THD thd);
 size_t thd_query_safe(MYSQL_THD thd, char *buf, size_t buflen);
@@ -111,6 +112,7 @@ unsigned long thd_query_start_sec_part(MYSQL_THD thd);
 void get_time_info(MYSQL_THD thd, const char *format, size_t len,
                    const MYSQL_TIME *l_time, uint type, LEX_STRING *res,
                    size_t buffer_size);
+}
 
 static char **int_mysql_data_home;
 static char *default_home= (char *)".";
@@ -488,7 +490,7 @@ static struct st_mysql_show_var audit_status[]=
   {"server_audit_writes_failed", (char *)&log_write_failures, SHOW_LONG},
   {"server_audit_last_error", last_error_buf, SHOW_CHAR},
   {"server_audit_session_filter", (char*) &show_filter, SHOW_SIMPLE_FUNC},
-  {0,0,0}
+  {0,0,SHOW_UNDEF}
 };
 
 
@@ -1825,7 +1827,7 @@ static int int_do_filter(struct connection_info *ci, struct filter_cond *c)
     {
       const char *orig_query= query;
 
-      if ((query= skip_set_statement(query)) == SQLCOM_NOTHING)
+      if (!(query= skip_set_statement(query)))
         return 0;
 
       if (c->query_mask & EVENT_OPT_QUERY_DDL)
@@ -2529,7 +2531,7 @@ static int log_statement(MYSQL_THD thd, struct connection_info *cn, const char *
   if (query_len > (message_size - csize)/2)
   {
     size_t big_buffer_alloced= (query_len * 2 + csize + 4095) & ~4095L;
-    if (!(big_buffer= malloc(big_buffer_alloced)))
+    if (!(big_buffer= static_cast<char*>(malloc(big_buffer_alloced))))
       return 0;
 
     memcpy(big_buffer, message, csize);
@@ -2947,9 +2949,12 @@ static int server_audit_init(void *p __attribute__((unused)))
       return 1;
   }
 
-  if(!(int_mysql_data_home= find_sym("mysql_data_home")))
+  if (!(int_mysql_data_home= static_cast<char**>(find_sym("mysql_data_home"))))
   {
-    if(!(int_mysql_data_home= find_sym("?mysql_data_home@@3PADA")))
+#ifdef _MSC_VER
+    if (!(int_mysql_data_home=
+          static_cast<char**>(find_sym("?mysql_data_home@@3PADA"))))
+#endif
       int_mysql_data_home= &default_home;
   }
 
