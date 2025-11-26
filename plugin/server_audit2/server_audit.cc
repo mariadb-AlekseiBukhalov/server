@@ -203,12 +203,6 @@ static struct user_def *user_list= 0;
 #else
 #define PLUGIN_DEBUG_VERSION ""
 #endif /*DBUG_OFF*/
-/*
- Disable __attribute__() on non-gcc compilers.
-*/
-#if !defined(__attribute__) && !defined(__GNUC__)
-#define __attribute__(A)
-#endif
 
 #ifdef _WIN32
 #define localtime_r(a, b) localtime_s(b, a)
@@ -2927,7 +2921,7 @@ static void *find_sym(const char *sym)
 #endif
 }
 
-static int server_audit_init(void *p __attribute__((unused)))
+static int server_audit_init(void *)
 {
   if (!serv_ver)
   {
@@ -3043,7 +3037,7 @@ static int server_audit_init_mysql(void *p)
 }
 
 
-static int server_audit_deinit(void *p __attribute__((unused)))
+static int server_audit_deinit(void *)
 {
   if (!init_done)
     return 0;
@@ -3065,10 +3059,8 @@ static int server_audit_deinit(void *p __attribute__((unused)))
 }
 
 
-static void rotate_log(MYSQL_THD thd  __attribute__((unused)),
-                       struct st_mysql_sys_var *var  __attribute__((unused)),
-                       void *var_ptr  __attribute__((unused)),
-                       const void *save  __attribute__((unused)))
+static void rotate_log(MYSQL_THD thd, st_mysql_sys_var *, void *,
+                       const void *save)
 {
   mysql_prlock_wrlock(&lock_operations);
   log_config(thd, "file_rotate_now", "ON");
@@ -3081,10 +3073,8 @@ static void rotate_log(MYSQL_THD thd  __attribute__((unused)),
 }
 
 
-static void do_reload_filters(MYSQL_THD thd  __attribute__((unused)),
-                              struct st_mysql_sys_var *var  __attribute__((unused)),
-                              void *var_ptr  __attribute__((unused)),
-                              const void *save  __attribute__((unused)))
+static void do_reload_filters(MYSQL_THD thd, st_mysql_sys_var *, void *,
+                              const void *)
 {
   struct filter_def *old_filter_list;
   struct filter_def *old_default_filter;
@@ -3123,10 +3113,8 @@ static void do_reload_filters(MYSQL_THD thd  __attribute__((unused)),
 }
 
 
-static void sync_log(MYSQL_THD thd  __attribute__((unused)),
-                     struct st_mysql_sys_var *var  __attribute__((unused)),
-                     void *var_ptr  __attribute__((unused)),
-                     const void *save  __attribute__((unused)))
+static void sync_log(MYSQL_THD thd, st_mysql_sys_var *, void *,
+                     const void *save)
 {
   if (output_type == OUTPUT_FILE && logfile && *(my_bool*) save)
   {
@@ -3194,9 +3182,8 @@ maria_declare_plugin(server_audit)
 maria_declare_plugin_end;
 
 
-static void update_file_path(MYSQL_THD thd,
-              struct st_mysql_sys_var *var  __attribute__((unused)),
-              void *var_ptr  __attribute__((unused)), const void *save)
+static void update_file_path(MYSQL_THD thd, st_mysql_sys_var *, void *,
+                             const void *save)
 {
   char *new_name= (*(char **) save) ? *(char **) save : empty_str;
 
@@ -3238,9 +3225,8 @@ exit_func:
 }
 
 
-static void update_file_rotations(MYSQL_THD thd  __attribute__((unused)),
-              struct st_mysql_sys_var *var  __attribute__((unused)),
-              void *var_ptr  __attribute__((unused)), const void *save)
+static void update_file_rotations(MYSQL_THD thd, st_mysql_sys_var *,
+                                  void *, const void *save)
 {
   rotations= *(unsigned int *) save;
   error_header();
@@ -3257,9 +3243,8 @@ static void update_file_rotations(MYSQL_THD thd  __attribute__((unused)),
 }
 
 
-static void update_query_log_limit(MYSQL_THD thd  __attribute__((unused)),
-              struct st_mysql_sys_var *var  __attribute__((unused)),
-              void *var_ptr  __attribute__((unused)), const void *save)
+static void update_query_log_limit(MYSQL_THD thd, st_mysql_sys_var *,
+                                   void *, const void *save)
 {
   query_log_limit= *(unsigned int *) save;
   error_header();
@@ -3272,9 +3257,8 @@ static void update_query_log_limit(MYSQL_THD thd  __attribute__((unused)),
 }
 
 
-static void update_file_rotate_size(MYSQL_THD thd  __attribute__((unused)),
-              struct st_mysql_sys_var *var  __attribute__((unused)),
-              void *var_ptr  __attribute__((unused)), const void *save)
+static void update_file_rotate_size(MYSQL_THD thd, struct st_mysql_sys_var *,
+                                    void *, const void *save)
 {
   file_rotate_size= *(unsigned long long *) save;
   error_header();
@@ -3290,9 +3274,8 @@ static void update_file_rotate_size(MYSQL_THD thd  __attribute__((unused)),
 }
 
 
-static void update_file_buffer_size(MYSQL_THD thd  __attribute__((unused)),
-              struct st_mysql_sys_var *var  __attribute__((unused)),
-              void *var_ptr  __attribute__((unused)), const void *save)
+static void update_file_buffer_size(MYSQL_THD, struct st_mysql_sys_var *,
+                                    void *, const void *save)
 {
   file_buffer_size= *(unsigned int *) save;
 
@@ -3321,9 +3304,8 @@ static void update_file_buffer_size(MYSQL_THD thd  __attribute__((unused)),
 }
 
 
-static void update_output_type(MYSQL_THD thd,
-              struct st_mysql_sys_var *var  __attribute__((unused)),
-              void *var_ptr  __attribute__((unused)), const void *save)
+static void update_output_type(MYSQL_THD thd, st_mysql_sys_var *, void *,
+                               const void *save)
 {
   ulong new_output_type= *((ulong *) save);
   if (output_type == new_output_type)
@@ -3349,9 +3331,8 @@ static void update_output_type(MYSQL_THD thd,
 }
 
 
-static void update_syslog_facility(MYSQL_THD thd  __attribute__((unused)),
-              struct st_mysql_sys_var *var  __attribute__((unused)),
-              void *var_ptr  __attribute__((unused)), const void *save)
+static void update_syslog_facility(MYSQL_THD thd, st_mysql_sys_var *, void *,
+                                   const void *save)
 {
   ulong new_facility= *((ulong *) save);
   if (syslog_facility == new_facility)
@@ -3368,9 +3349,8 @@ static void update_syslog_facility(MYSQL_THD thd  __attribute__((unused)),
 }
 
 
-static void update_syslog_priority(MYSQL_THD thd  __attribute__((unused)),
-              struct st_mysql_sys_var *var  __attribute__((unused)),
-              void *var_ptr  __attribute__((unused)), const void *save)
+static void update_syslog_priority(MYSQL_THD thd, st_mysql_sys_var *, void *,
+                                   const void *save)
 {
   ulong new_priority= *((ulong *) save);
   if (syslog_priority == new_priority)
@@ -3387,9 +3367,8 @@ static void update_syslog_priority(MYSQL_THD thd  __attribute__((unused)),
 }
 
 
-static void update_logging(MYSQL_THD thd,
-              struct st_mysql_sys_var *var  __attribute__((unused)),
-              void *var_ptr  __attribute__((unused)), const void *save)
+static void update_logging(MYSQL_THD thd, st_mysql_sys_var *, void *,
+                           const void *save)
 {
   char new_logging= *(char *) save;
   if (new_logging == logging)
@@ -3427,9 +3406,8 @@ static void update_logging(MYSQL_THD thd,
 }
 
 
-static void update_mode(MYSQL_THD thd  __attribute__((unused)),
-              struct st_mysql_sys_var *var  __attribute__((unused)),
-              void *var_ptr  __attribute__((unused)), const void *save)
+static void update_mode(MYSQL_THD thd, st_mysql_sys_var *, void *,
+                        const void *save)
 {
   unsigned int new_mode= *(unsigned int *) save;
 
@@ -3449,9 +3427,8 @@ static void update_mode(MYSQL_THD thd  __attribute__((unused)),
 }
 
 
-static void update_syslog_ident(MYSQL_THD thd  __attribute__((unused)),
-              struct st_mysql_sys_var *var  __attribute__((unused)),
-              void *var_ptr  __attribute__((unused)), const void *save)
+static void update_syslog_ident(MYSQL_THD thd, st_mysql_sys_var *, void *,
+                                const void *save)
 {
   char *new_ident= (*(char **) save) ? *(char **) save : empty_str;
   strncpy(syslog_ident_buffer, new_ident, sizeof(syslog_ident_buffer)-1);
@@ -3473,9 +3450,7 @@ static void update_syslog_ident(MYSQL_THD thd  __attribute__((unused)),
 
 
 static int show_filter(MYSQL_THD thd, struct st_mysql_show_var *var,
-                       char *buff,
-                       struct system_status_var *sv  __attribute__((unused)),
-                       enum enum_var_type scope)
+                       char *buff, system_status_var *, enum_var_type scope)
 {
   struct connection_info *cn= get_loc_info(thd);
   struct filter_def *f;
