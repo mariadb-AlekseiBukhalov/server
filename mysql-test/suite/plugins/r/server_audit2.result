@@ -654,7 +654,6 @@ TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'CREATE USER u3 IDENTIFIED BY ***
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'drop user u1, u2, u3',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,reload_filters=ON,0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'insert into t1 values (1), (2)',0
-TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,logging=OFF,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,file_path=server_audit.log,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,rotate_size=1000000,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,file_rotations=9,0
@@ -799,7 +798,6 @@ TIME,HOSTNAME,root,localhost,ID,0,CONNECT,mysql,,0
 TIME,HOSTNAME,root,localhost,ID,ID,WRITE,sa_db,t1,
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,mysql,'insert into sa_db.t1 values (1, \'one\')',0
 TIME,HOSTNAME,root,localhost,ID,0,DISCONNECT,mysql,,0
-TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,logging=OFF,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,file_path=server_audit.log,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,rotate_size=1000000,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,file_rotations=9,0

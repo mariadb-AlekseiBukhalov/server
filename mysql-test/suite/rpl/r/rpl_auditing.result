@@ -53,14 +53,12 @@ TIME,HOSTNAME,<replication_slave>,,ID,ID,WRITE,test,t1,
 TIME,HOSTNAME,<replication_slave>,,ID,ID,CREATE,test,t1,
 TIME,HOSTNAME,<replication_slave>,,ID,ID,DROP,test,t1,
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,test,'select master_pos_wait(\'master-bin.#', POS, 300, \'\')',0
-TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,logging=OFF,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,file_path=server_audit.log,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,rotate_size=1000000,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,file_rotations=9,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,logging=ON,0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,test,'set global server_audit_logging=on',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,test,'select master_pos_wait(\'master-bin.#', POS, 300, \'\')',0
-TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,test,logging=OFF,0
 set @@global.gtid_cleanup_batch_size= $save__gtid_cleanup_batch_size;
 connection master;
 include/rpl_end.inc
