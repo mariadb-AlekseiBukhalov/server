@@ -460,17 +460,9 @@ static struct st_mysql_show_var audit_status[]=
   {0,0,SHOW_UNDEF}
 };
 
+#include "../../storage/innobase/include/srw_lock.h"
 
-#ifdef HAVE_PSI_INTERFACE
-static PSI_mutex_key key_LOCK_operations;
-static PSI_mutex_info mutex_key_list[]=
-{
-  { &key_LOCK_operations, "SERVER_AUDIT_plugin::lock_operations",
-    PSI_FLAG_GLOBAL}
-};
-#endif /*HAVE_PSI_INTERFACE*/
-
-static mysql_prlock_t lock_operations;
+static srw_lock_low lock_operations;
 
 #define CLIENT_ERROR my_printf_error
 
@@ -2011,6 +2003,9 @@ static char escaped_char(char c)
 
 static int write_log(const char *message, size_t len) noexcept
 {
+#if defined _WIN32 || !defined SUX_LOCK_GENERIC
+  DBUG_ASSERT(lock_operations.is_locked_or_waiting());
+#endif
   int result= 0;
 
   if (output_type == OUTPUT_FILE)
@@ -2041,9 +2036,9 @@ static int write_log(const char *message, size_t len) noexcept
 static int writeln_and_lock(char *message, size_t len) noexcept
 {
   message[len++]= '\n';
-  mysql_prlock_rdlock(&lock_operations);
+  lock_operations.rd_lock();
   int result= write_log(message, len);
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.rd_unlock();
   return result;
 }
 
@@ -2110,6 +2105,10 @@ static int log_config(MYSQL_THD thd, const char *var_name, const char *value)
   uint db_len= 0;
   int status= 0;
   unsigned long id= 0;
+
+#if !defined _WIN32 && !defined SUX_LOCK_GENERIC
+  DBUG_ASSERT(lock_operations.is_locked());
+#endif
 
   if (!logging)
     return 0;
@@ -2609,7 +2608,7 @@ static void auditing(MYSQL_THD thd, unsigned int event_class, const void *ev)
   struct connection_info *cn;
 
   /* That one is important as this function can be called with      */
-  /* lock_operations locked when the server logs an error reported */
+  /* &lock_operations locked when the server logs an error reported */
   /* by this plugin.                                                */
   if (!thd || internal_stop_logging)
     return;
@@ -2620,7 +2619,7 @@ static void auditing(MYSQL_THD thd, unsigned int event_class, const void *ev)
   if (!(cn= get_loc_info(thd)))
     return;
 
-  mysql_prlock_rdlock(&lock_operations);
+  lock_operations.rd_lock();
 
   if (event_class == MYSQL_AUDIT_GENERAL_CLASS)
   {
@@ -2791,7 +2790,7 @@ static void auditing(MYSQL_THD thd, unsigned int event_class, const void *ev)
     }
   }
 
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.rd_unlock();
 }
 
 
@@ -2891,11 +2890,7 @@ static int server_audit_init(void *)
   servhost_len= (uint)strlen(servhost);
 
   logger_init_mutexes();
-#ifdef HAVE_PSI_INTERFACE
-  if (PSI_server)
-    PSI_server->register_mutex("server_audit", mutex_key_list, 1);
-#endif
-  mysql_prlock_init(key_LOCK_operations, &lock_operations);
+  lock_operations.init();
 
 
   error_header();
@@ -2922,7 +2917,7 @@ static int server_audit_init(void *)
 
   if (logging)
   {
-    mysql_prlock_wrlock(&lock_operations);
+    lock_operations.wr_lock();
     internal_stop_logging++;
     int err= load_filters();
     if (err)
@@ -2942,7 +2937,7 @@ static int server_audit_init(void *)
     if (!err)
       start_logging(nullptr);
     internal_stop_logging--;
-    mysql_prlock_unlock(&lock_operations);
+    lock_operations.wr_unlock();
     if (err)
       return err;
   }
@@ -2961,7 +2956,7 @@ static int server_audit_deinit(void *)
   init_done= 0;
 
   stop_logging();
-  mysql_prlock_destroy(&lock_operations);
+  lock_operations.destroy();
   return 0;
 }
 
@@ -2969,14 +2964,14 @@ static int server_audit_deinit(void *)
 static void rotate_log(MYSQL_THD thd, st_mysql_sys_var *, void *,
                        const void *save)
 {
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
   log_config(thd, "file_rotate_now", "ON");
   if (output_type == OUTPUT_FILE && logfile && *(my_bool*) save)
   {
     (void) logger_rotate(logfile);
     log_start_file(thd);
   }
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
@@ -2988,7 +2983,7 @@ static void do_reload_filters(MYSQL_THD thd, st_mysql_sys_var *, void *,
   struct user_def *old_user_list;
 
   internal_stop_logging++;
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
 
   old_filter_list= filter_list;
   old_default_filter= default_filter;
@@ -3016,7 +3011,7 @@ static void do_reload_filters(MYSQL_THD thd, st_mysql_sys_var *, void *,
   }
 
   internal_stop_logging--;
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
@@ -3067,7 +3062,7 @@ static void update_file_path(MYSQL_THD thd, st_mysql_sys_var *, void *,
   char *new_name= (*(char **) save) ? *(char **) save : empty_str;
 
   internal_stop_logging++;
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
   error_header();
   fprintf(stderr, "Log file name was changed to '%s'.\n", new_name);
 
@@ -3100,14 +3095,14 @@ static void update_file_path(MYSQL_THD thd, st_mysql_sys_var *, void *,
   file_path= path_buffer;
 exit_func:
   internal_stop_logging--;
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
 static void update_file_rotations(MYSQL_THD thd, st_mysql_sys_var *,
                                   void *, const void *save)
 {
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
   rotations= *static_cast<const unsigned*>(save);
   error_header();
   fprintf(stderr, "Log file rotations was changed to '%d'.\n", rotations);
@@ -3117,27 +3112,27 @@ static void update_file_rotations(MYSQL_THD thd, st_mysql_sys_var *,
   if (logging && output_type == OUTPUT_FILE)
     logger_set_rotations(logfile, rotations);
 
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
 static void update_query_log_limit(MYSQL_THD thd, st_mysql_sys_var *,
                                    void *, const void *save)
 {
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
   query_log_limit= *(unsigned int *) save;
   error_header();
   fprintf(stderr, "Query log limit was changed to '%d'.\n", query_log_limit);
 
   log_uint_config(thd, "query_log_Limit", query_log_limit);
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
 static void update_file_rotate_size(MYSQL_THD thd, struct st_mysql_sys_var *,
                                     void *, const void *save)
 {
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
   file_rotate_size= *(unsigned long long *) save;
   error_header();
   fprintf(stderr, "Log file rotate size was changed to '%lld'.\n",
@@ -3147,7 +3142,7 @@ static void update_file_rotate_size(MYSQL_THD thd, struct st_mysql_sys_var *,
   if (logging && output_type == OUTPUT_FILE)
     logger_set_filesize_limit(logfile, file_rotate_size);
 
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
@@ -3163,7 +3158,7 @@ static void update_file_buffer_size(MYSQL_THD, struct st_mysql_sys_var *,
     return;
 
   internal_stop_logging++;
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
 
   if (logger_resize_buffer(logfile, file_buffer_size))
   {
@@ -3175,7 +3170,7 @@ static void update_file_buffer_size(MYSQL_THD, struct st_mysql_sys_var *,
   }
 
   internal_stop_logging--;
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
@@ -3183,7 +3178,7 @@ static void update_output_type(MYSQL_THD thd, st_mysql_sys_var *, void *,
                                const void *save)
 {
   const ulong new_output_type= *static_cast<const ulong*>(save);
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
   if (output_type != new_output_type)
   {
     internal_stop_logging++;
@@ -3202,7 +3197,7 @@ static void update_output_type(MYSQL_THD thd, st_mysql_sys_var *, void *,
       start_logging(thd);
     internal_stop_logging--;
   }
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
@@ -3210,7 +3205,7 @@ static void update_syslog_facility(MYSQL_THD thd, st_mysql_sys_var *, void *,
                                    const void *save)
 {
   const ulong new_facility= *static_cast<const ulong*>(save);
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
   if (syslog_facility != new_facility)
   {
     log_config(thd, "syslog_facility", syslog_facility_names[new_facility]);
@@ -3220,7 +3215,7 @@ static void update_syslog_facility(MYSQL_THD thd, st_mysql_sys_var *, void *,
             syslog_facility_names[new_facility]);
     syslog_facility= new_facility;
   }
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
@@ -3228,7 +3223,7 @@ static void update_syslog_priority(MYSQL_THD thd, st_mysql_sys_var *, void *,
                                    const void *save)
 {
   const ulong new_priority= *static_cast<const ulong*>(save);
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
   const ulong old_priority= syslog_priority;
   if (old_priority != new_priority)
   {
@@ -3239,7 +3234,7 @@ static void update_syslog_priority(MYSQL_THD thd, st_mysql_sys_var *, void *,
             syslog_priority_names[old_priority],
             syslog_priority_names[new_priority]);
   }
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
@@ -3247,7 +3242,7 @@ static void update_logging(MYSQL_THD thd, st_mysql_sys_var *, void *,
                            const void *save)
 {
   const my_bool new_logging= *static_cast<const my_bool*>(save);
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
   if (new_logging != logging)
   {
     logging= new_logging;
@@ -3278,7 +3273,7 @@ static void update_logging(MYSQL_THD thd, st_mysql_sys_var *, void *,
     }
     internal_stop_logging--;
   }
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
@@ -3286,7 +3281,7 @@ static void update_mode(MYSQL_THD thd, st_mysql_sys_var *, void *,
                         const void *save)
 {
   const unsigned new_mode= *static_cast<const unsigned*>(save);
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
   const unsigned old_mode= mode;
   if (new_mode != old_mode)
   {
@@ -3296,7 +3291,7 @@ static void update_mode(MYSQL_THD thd, st_mysql_sys_var *, void *,
     fprintf(stderr, "Logging mode was changed from %u to %u.\n",
             old_mode, new_mode);
   }
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
@@ -3304,7 +3299,7 @@ static void update_syslog_ident(MYSQL_THD thd, st_mysql_sys_var *, void *,
                                 const void *save)
 {
   char *new_ident= *static_cast<char*const*>(save);
-  mysql_prlock_wrlock(&lock_operations);
+  lock_operations.wr_lock();
   if (!new_ident)
     *syslog_ident= '\0';
   else
@@ -3320,7 +3315,7 @@ static void update_syslog_ident(MYSQL_THD thd, st_mysql_sys_var *, void *,
     stop_logging();
     start_logging(thd);
   }
-  mysql_prlock_unlock(&lock_operations);
+  lock_operations.wr_unlock();
 }
 
 
@@ -3379,5 +3374,133 @@ BOOL WINAPI DllMain(HINSTANCE, DWORD fdwReason, LPVOID)
   if (fdwReason == DLL_PROCESS_ATTACH)
     audit_plugin_so_init();
   return 1;
+}
+#elif !defined SUX_LOCK_GENERIC
+# ifdef __linux__
+#  include <linux/futex.h>
+#  include <sys/syscall.h>
+#  define SRW_FUTEX(a,op,n) \
+   syscall(SYS_futex, a, FUTEX_ ## op ## _PRIVATE, n, nullptr, nullptr, 0)
+# elif defined __OpenBSD__
+#  include <sys/time.h>
+#  include <sys/futex.h>
+#  define SRW_FUTEX(a,op,n) \
+   futex((volatile uint32_t*) a, FUTEX_ ## op, n, nullptr, nullptr)
+# elif defined __FreeBSD__
+#  include <sys/types.h>
+#  include <sys/umtx.h>
+#  define FUTEX_WAKE UMTX_OP_WAKE_PRIVATE
+#  define FUTEX_WAIT UMTX_OP_WAIT_UINT_PRIVATE
+#  define SRW_FUTEX(a,op,n) _umtx_op(a, FUTEX_ ## op, n, nullptr, nullptr)
+# elif defined __DragonFly__
+#  include <unistd.h>
+#  define FUTEX_WAKE(a,n) umtx_wakeup(a,n)
+#  define FUTEX_WAIT(a,n) umtx_sleep(a,n,0)
+#  define SRW_FUTEX(a,op,n) FUTEX_ ## op((volatile int*) a, int(n))
+# else
+#  error "no futex support nor #define SUX_LOCK_GENERIC"
+# endif
+
+# ifdef __GNUC__
+#  pragma GCC visibility push(hidden) /* Avoid a symbol clash with InnoDB */
+# endif
+
+template<> inline void srw_mutex_impl<false>::wait(uint32_t lk) noexcept
+{ SRW_FUTEX(&lock, WAIT, lk); }
+template<> inline void srw_mutex_impl<false>::wake() noexcept
+{ SRW_FUTEX(&lock, WAKE, 1); }
+template<> inline void srw_mutex_impl<false>::wake_all() noexcept
+{ SRW_FUTEX(&lock, WAKE, INT_MAX); }
+template<> inline void ssux_lock_impl<false>::wait(uint32_t lk) noexcept
+{ SRW_FUTEX(&readers, WAIT, lk); }
+template<> inline void ssux_lock_impl<false>::wake() noexcept
+{ SRW_FUTEX(&readers, WAKE, 1); }
+
+template<>
+void srw_mutex_impl<false>::wait_and_lock() noexcept
+{
+  uint32_t lk= WAITER + lock.fetch_add(WAITER, std::memory_order_relaxed);
+  for (;;)
+  {
+    DBUG_ASSERT(~HOLDER & lk);
+    if (lk & HOLDER)
+    {
+      wait(lk);
+#if defined __i386__||defined __x86_64__
+reload:
+#endif
+      lk= lock.load(std::memory_order_relaxed);
+    }
+    else
+    {
+#if defined __i386__||defined __x86_64__
+      if (lock.fetch_or(HOLDER, std::memory_order_relaxed) & HOLDER)
+        goto reload;
+#else
+      if ((lk= lock.fetch_or(HOLDER, std::memory_order_relaxed)) & HOLDER)
+        continue;
+      DBUG_ASSERT(lk);
+#endif
+      std::atomic_thread_fence(std::memory_order_acquire);
+      return;
+    }
+  }
+}
+
+template<>
+void ssux_lock_impl<false>::wr_wait(uint32_t lk) noexcept
+{
+  DBUG_ASSERT(writer.is_locked());
+  DBUG_ASSERT(lk);
+  DBUG_ASSERT(lk < WRITER);
+
+  lk|= WRITER;
+
+  do
+  {
+    DBUG_ASSERT(lk > WRITER);
+    wait(lk);
+    lk= readers.load(std::memory_order_acquire);
+  }
+  while (lk != WRITER);
+}
+
+template<bool spinloop>
+void ssux_lock_impl<spinloop>::rd_lock_nospin() noexcept
+{
+  /* Subscribe to writer.wake() or write.wake_all() calls of
+  concurrently executing rd_wait() or writer.wr_unlock(). */
+  uint32_t wl= writer.WAITER +
+    writer.lock.fetch_add(writer.WAITER, std::memory_order_acquire);
+
+  for (;;)
+  {
+    if (writer.HOLDER & wl)
+      writer.wait(wl);
+    uint32_t lk= rd_lock_try_low();
+    if (!lk)
+      break;
+    if (UNIV_UNLIKELY(lk == WRITER)) /* A wr_lock() just succeeded. */
+      /* Immediately wake up (also) wr_lock(). We may also unnecessarily
+      wake up other concurrent threads that are executing rd_wait().
+      If we invoked writer.wake() here to wake up just one thread,
+      we could wake up a rd_wait(), which then would invoke writer.wake(),
+      waking up possibly another rd_wait(), and we could end up doing
+      lots of non-productive context switching until the wr_lock()
+      is finally woken up. */
+      writer.wake_all();
+    wl= writer.lock.load(std::memory_order_acquire);
+    ut_ad(wl);
+  }
+
+  /* Unsubscribe writer.wake() and writer.wake_all(). */
+  wl= writer.lock.fetch_sub(writer.WAITER, std::memory_order_release);
+  ut_ad(wl);
+
+  /* Wake any other threads that may be blocked in writer.wait().
+  All other waiters than this rd_wait() would end up acquiring writer.lock
+  and waking up other threads on unlock(). */
+  if (wl > writer.WAITER)
+    writer.wake_all();
 }
 #endif
