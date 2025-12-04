@@ -5271,31 +5271,11 @@ bool DML_prelocking_strategy::handle_table(THD *thd,
 {
   DBUG_ENTER("handle_table");
   TABLE *table= table_list->table;
-  bool trigger_prelocking_needed=
-      (table_list->lock_type >= TL_FIRST_WRITE) ? TRUE : FALSE;
   /* We rely on a caller to check that table is going to be changed. */
   DBUG_ASSERT(table_list->lock_type >= TL_FIRST_WRITE ||
-              ((sql_command_flags[thd->lex->sql_command] & CF_INSERTS_DATA)
-               && table_list->lock_type == TL_READ) ||
               thd->lex->default_used);
 
-#ifdef WITH_WSREP
-  /*
-    Only do trigger prelocking for tables that are doing to be modified (with
-    a write lock), but ignore rest for Galera additional keys for the
-    referenced/foreign table are needed to avoid potential MDL conflicts with
-    concurrent update and DDLs.
-  */
-  if (WSREP(thd) && !thd->wsrep_applier &&
-      wsrep_is_active(thd) &&
-      (sql_command_flags[thd->lex->sql_command] & CF_INSERTS_DATA) &&
-      table_list->trg_event_map && !table->triggers)
-  {
-    trigger_prelocking_needed= TRUE;
-  }
-#endif // WITH_WSREP
-
-  if (table_list->trg_event_map && trigger_prelocking_needed)
+  if (table_list->trg_event_map && table_list->lock_type >= TL_FIRST_WRITE)
   {
     if (table->triggers)
     {
