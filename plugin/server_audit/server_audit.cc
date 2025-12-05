@@ -15,8 +15,8 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335 USA */
 
 
-#define PLUGIN_VERSION 0x104
-#define PLUGIN_STR_VERSION "1.4.14"
+#define PLUGIN_VERSION 0x107
+#define PLUGIN_STR_VERSION "1.7.0"
 
 #include <my_config.h>
 #include "my_counter.h"
