@@ -212,7 +212,7 @@ int aria_read_index(File kfile, ARIA_TABLE_CAPABILITIES *cap, ulonglong block,
 
   share.keypage_header= cap->keypage_header;
   share.block_size= cap->block_size;
-
+  share.open_file_name.str= cap->filename;
   for (;;)
   {
     size_t length;
@@ -301,6 +301,8 @@ int aria_read_index(File kfile, ARIA_TABLE_CAPABILITIES *cap, ulonglong block,
       error= HA_ERR_WRONG_CRC;
       break;
     }
+    if (retry++ >= MAX_RETRY)
+      break;
     my_sleep(100000);                              /* Sleep 0.1 seconds */
   }
   my_printf_error(error,
@@ -336,7 +338,7 @@ int aria_read_data(File dfile, ARIA_TABLE_CAPABILITIES *cap, ulonglong block,
 
   share.keypage_header= cap->keypage_header;
   share.block_size= cap->block_size;
-
+  share.open_file_name.str= cap->filename;
   if (!cap->online_backup_safe)
   {
     *bytes_read= my_pread(dfile, buffer, cap->block_size,
@@ -357,10 +359,6 @@ int aria_read_data(File dfile, ARIA_TABLE_CAPABILITIES *cap, ulonglong block,
       if (length == (size_t) -1)
         DBUG_RETURN(my_errno ? my_errno : -1);
     }
-
-    /* If not transactional or key file header, there are no checksums */
-    if (!cap->online_backup_safe)
-      DBUG_RETURN(length == cap->block_size ? 0 : HA_ERR_CRASHED);
 
     if (length == cap->block_size)
     {
@@ -409,6 +407,8 @@ retry:
       error= HA_ERR_WRONG_CRC;
       break;
     }
+    if (retry++ >= MAX_RETRY)
+      break;
     my_sleep(100000);                              /* Sleep 0.1 seconds */
   }
   my_printf_error(error,

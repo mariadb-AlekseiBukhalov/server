@@ -19,6 +19,8 @@
 
 C_MODE_START
 
+typedef struct st_maria_crypt_data MARIA_CRYPT_DATA;
+
 typedef struct st_aria_table_capabilities
 {
   my_off_t header_size;

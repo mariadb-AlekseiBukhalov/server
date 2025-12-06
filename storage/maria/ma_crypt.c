@@ -366,6 +366,7 @@ void ma_crypt_set_data_pagecache_callbacks(PAGECACHE_FILE *file,
   }
 }
 
+
 my_bool ma_crypt_index_post_read_hook(int res,
                                       PAGECACHE_IO_HOOK_ARGS *args)
 {
@@ -414,6 +415,7 @@ my_bool ma_crypt_index_post_read_hook(int res,
 
   return maria_page_crc_check_index(res, args);
 }
+
 
 static my_bool ma_crypt_index_pre_write_hook(PAGECACHE_IO_HOOK_ARGS *args)
 {
