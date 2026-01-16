@@ -355,7 +355,7 @@ static struct st_mysql_sys_var* vars[] = {
 
 
 /* Status variables for SHOW STATUS */
-static int is_active= 0;
+static bool is_active= 0;
 static Atomic_counter<long> log_write_failures;
 static char current_log_buf[FN_REFLEN]= "";
 static char last_error_buf[512]= "";
