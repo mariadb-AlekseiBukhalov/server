@@ -7,7 +7,8 @@ replace_result $VAULT_ADDR VAULT_ADDR;
 SELECT VARIABLE_NAME, VARIABLE_VALUE
 FROM information_schema.GLOBAL_VARIABLES
 WHERE VARIABLE_NAME LIKE 'hashicorp%'
-  AND VARIABLE_NAME NOT LIKE 'hashicorp_key_management_namespace%';
+  AND VARIABLE_NAME NOT LIKE 'hashicorp_key_management_namespace%'
+ORDER BY VARIABLE_NAME;
 
 create table t1(c1 bigint not null, b char(200)) engine=innodb encrypted=yes encryption_key_id=1;
 show create table t1;
