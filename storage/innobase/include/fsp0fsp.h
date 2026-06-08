@@ -452,14 +452,17 @@ fseg_free_page(
 	MY_ATTRIBUTE((nonnull, warn_unused_result));
 
 /** Determine whether a page is allocated.
-@param mtr     mini-transaction
-@param space   tablespace
-@param page    page number
+@param mtr                 mini-transaction
+@param space               tablespace
+@param page                page number
+@param rollback_to_savept  whether to rollback the mtr to the savepoint taken on
+                           entry, releasing any latch that
+                           was acquired on the allocation bitmap page
 @return error code
 @retval DB_SUCCESS             if the page is marked as free
 @retval DB_SUCCESS_LOCKED_REC  if the page is marked as allocated */
-dberr_t fseg_page_is_allocated(mtr_t *mtr, fil_space_t *space, unsigned page)
-  noexcept
+dberr_t fseg_page_is_allocated(mtr_t *mtr, fil_space_t *space, unsigned page,
+                               bool rollback_to_savept= true) noexcept
   MY_ATTRIBUTE((nonnull, warn_unused_result));
 
 MY_ATTRIBUTE((nonnull, warn_unused_result))

@@ -2674,14 +2674,17 @@ dberr_t fseg_free_page(fseg_header_t *seg_header, fil_space_t *space,
 }
 
 /** Determine whether a page is allocated.
-@param mtr     mini-transaction
-@param space   tablespace
-@param page    page number
+@param mtr                 mini-transaction
+@param space               tablespace
+@param page                page number
+@param rollback_to_savept  whether to rollback the mtr to the savepoint taken on
+                           entry, releasing any latch that
+                           was acquired on the allocation bitmap page
 @return error code
 @retval DB_SUCCESS             if the page is marked as free
 @retval DB_SUCCESS_LOCKED_REC  if the page is marked as allocated */
-dberr_t fseg_page_is_allocated(mtr_t *mtr, fil_space_t *space, unsigned page)
-  noexcept
+dberr_t fseg_page_is_allocated(mtr_t *mtr, fil_space_t *space, unsigned page,
+                               bool rollback_to_savept) noexcept
 {
   uint32_t dpage= xdes_calc_descriptor_page(space->zip_size(), page);
   const unsigned zip_size= space->zip_size();
@@ -2712,7 +2715,8 @@ dberr_t fseg_page_is_allocated(mtr_t *mtr, fil_space_t *space, unsigned page)
         : DB_SUCCESS_LOCKED_REC;
   }
 
-  mtr->rollback_to_savepoint(sp);
+  if (rollback_to_savept)
+    mtr->rollback_to_savepoint(sp);
   return err;
 }
 
