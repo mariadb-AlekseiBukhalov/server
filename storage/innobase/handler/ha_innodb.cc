@@ -15899,9 +15899,18 @@ ha_innobase::extra(
 	{
 		trx = check_trx_exists(thd);
 		const unsigned alter_undo = m_prebuilt->table->skip_alter_undo;
+		if (!alter_undo) {
+			/* This could be invoked inside INSERT...SELECT.
+			We do not want any extra log writes, because
+			they could cause a severe performance regression. */
+			break;
+		}
 
-		if (alter_undo == dict_table_t::IGNORE_UNDO) {
-			trx->reset_and_truncate_undo();
+		if (!m_prebuilt->table->skip_alter_undo) {
+			/* This could be invoked inside INSERT...SELECT.
+			We do not want any extra log writes, because
+			they could cause a severe performance regression. */
+			break;
 		}
 		m_prebuilt->table->skip_alter_undo = 0;
 		if (dberr_t err= trx->bulk_insert_apply<TRX_DDL_BULK>()) {
