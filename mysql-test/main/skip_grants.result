@@ -179,9 +179,12 @@ def	mysql	PRIMARY	mysql	time_zone_name	PRIMARY KEY
 def	mysql	PRIMARY	mysql	time_zone_transition	PRIMARY KEY
 def	mysql	PRIMARY	mysql	time_zone_transition_type	PRIMARY KEY
 def	mysql	Priv	mysql	global_priv	CHECK
+def	mysql	c_filtername	mysql	server_audit_filters	UNIQUE
+def	mysql	c_host_user	mysql	server_audit_users	UNIQUE
 def	mysql	name	mysql	help_category	UNIQUE
 def	mysql	name	mysql	help_keyword	UNIQUE
 def	mysql	name	mysql	help_topic	UNIQUE
+def	mysql	rule	mysql	server_audit_filters	CHECK
 def	sys	PRIMARY	sys	sys_config	PRIMARY KEY
 Warnings:
 Warning	1286	Unknown storage engine 'InnoDB'

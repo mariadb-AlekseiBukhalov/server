@@ -7111,8 +7111,8 @@ DROP TABLE IF EXISTS `v1`;
 SET @saved_cs_client     = @@character_set_client;
 SET character_set_client = utf8mb4;
 /*!50001 CREATE VIEW `v1` AS SELECT
- 1 AS `My_exp_a`,
-  1 AS `a` */;
+ NULL AS `My_exp_a`,
+ NULL AS `a` */;
 SET character_set_client = @saved_cs_client;
 /*!50001 DROP VIEW IF EXISTS `v1`*/;
 /*!50001 SET @saved_cs_client          = @@character_set_client */;
