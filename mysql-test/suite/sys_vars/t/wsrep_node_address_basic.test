@@ -29,6 +29,19 @@ SELECT @@global.wsrep_node_address;
 --error ER_WRONG_VALUE_FOR_VAR
 SET @@global.wsrep_node_address=NULL;
 SELECT @@global.wsrep_node_address;
+--error ER_WRONG_VALUE_FOR_VAR
+SET @@global.wsrep_node_address="127.0.0.1'ps";
+SELECT @@global.wsrep_node_address;
+--error ER_WRONG_VALUE_FOR_VAR
+SET @@global.wsrep_node_address="127.0.0.1 ps";
+SELECT @@global.wsrep_node_address;
+--error ER_WRONG_VALUE_FOR_VAR
+SET @@global.wsrep_node_address="127.0.0.1`ps";
+SELECT @@global.wsrep_node_address;
+--error ER_WRONG_VALUE_FOR_VAR
+SET @@global.wsrep_node_address="127.0.0.1$ps";
+SELECT @@global.wsrep_node_address;
+
 # The values being assigned to wsrep_node_address are not verified so the
 # following alues are currently valid too.
 SET @@global.wsrep_node_address=ON;
