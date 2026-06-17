@@ -39,7 +39,7 @@ INSERT INTO t1 VALUES (2);
 --source include/wait_condition.inc
 
 --error 1
---exec $MYSQLD --defaults-group-suffix=.2 --defaults-file=$MYSQLTEST_VARDIR/my.cnf --loose-innodb --loose-ssl-key=$MYSQL_TEST_DIR/std_data/galera-key.pem --loose-ssl-cert=$MYSQL_TEST_DIR/std_data/galera-cert.pem --log-error=$MYSQL_TMP_DIR/galera_ssl_mode_server_x509.log --loose-galera-replication-ssl-key=$MYSQL_TEST_DIR/std_data/galera-key.pem --loose-galera-replication-ssl-cert=$MYSQL_TEST_DIR/std_data/galera-cert.pem --loose-galera-replication-have-ssl=VERIFY_PEER
+--exec $MYSQLD --defaults-group-suffix=.2 --defaults-file=$MYSQLTEST_VARDIR/my.cnf --loose-ssl-key=$MYSQL_TEST_DIR/std_data/server-key.pem --loose-ssl-cert=$MYSQL_TEST_DIR/std_data/server-cert.pem --log-error=$MYSQL_TMP_DIR/galera_ssl_mode_server_x509.log
 
 --echo # waiting to above command to fail
 --sleep 5
