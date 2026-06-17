@@ -48,7 +48,7 @@ ADD_CUSTOM_TARGET(GenError
 
 # this approach doesn't work with cross-compiing (runs mariadbd)
 # and doesn't work with ASAN, because LSAN complains about RocksDB (MDEV-36345).
-IF(NOT CMAKE_CROSSCOMPILING AND NOT WITH_ASAN AND TARGET mariadbd)
+IF(NOT CMAKE_CROSSCOMPILING AND NOT WITH_ASAN AND NOT WITH_MSAN AND TARGET mariadbd)
   ADD_EXECUTABLE(generate_option_list generate_option_list.cc)
   TARGET_LINK_LIBRARIES(generate_option_list mysys pcre2-8)
   TARGET_INCLUDE_DIRECTORIES(generate_option_list PRIVATE ${PCRE_INCLUDE_DIRS})
