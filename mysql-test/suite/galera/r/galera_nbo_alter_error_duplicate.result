@@ -18,18 +18,30 @@ Table	Create Table
 t1	CREATE TABLE `t1` (
   `f1` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci
-SELECT COUNT(*) =  7 FROM t1;
-COUNT(*) =  7
-1
+SELECT COUNT(*) AS EXPECT_5 FROM t1;
+EXPECT_5
+7
 connection node_1;
 ALTER IGNORE TABLE t1 LOCK=SHARED, ADD PRIMARY KEY (f1);
-SELECT COUNT(*) = 5 FROM t1;
-COUNT(*) = 5
+SELECT COUNT(*) AS EXPECT_4 FROM t1;
+EXPECT_4
+4
+SELECT * FROM t1;
+f1
 1
+2
+3
+4
 connection node_2;
-SELECT COUNT(*) = 5 FROM t1;
-COUNT(*) = 5
+SELECT COUNT(*) AS EXPECT_4 FROM t1;
+EXPECT_4
+4
+SELECT * FROM t1;
+f1
 1
+2
+3
+4
 DROP TABLE t1;
 CALL mtr.add_suppression("WSREP: Event 1 Query apply failed: 1, seqno -1");
 connection node_1;

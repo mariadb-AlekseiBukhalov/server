@@ -21,16 +21,22 @@ INSERT INTO t1 VALUES (1);
 SHOW CREATE TABLE t1;
 
 --connection node_2
+--let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 't1'
+--source include/wait_condition.inc
+--let $wait_condition = SELECT COUNT(*) = 7 FROM t1
+--source include/wait_condition.inc
 SHOW CREATE TABLE t1;
-SELECT COUNT(*) =  7 FROM t1;
+SELECT COUNT(*) AS EXPECT_5 FROM t1;
 
 --connection node_1
 ALTER IGNORE TABLE t1 LOCK=SHARED, ADD PRIMARY KEY (f1);
 
-SELECT COUNT(*) = 5 FROM t1;
+SELECT COUNT(*) AS EXPECT_4 FROM t1;
+SELECT * FROM t1;
 
 --connection node_2
-SELECT COUNT(*) = 5 FROM t1;
+SELECT COUNT(*) AS EXPECT_4 FROM t1;
+SELECT * FROM t1;
 
 DROP TABLE t1;
 
