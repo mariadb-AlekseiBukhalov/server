@@ -1,6 +1,5 @@
 /* Copyright (c) 2008, 2025, Codership Oy <http://www.codership.com>
    Copyright (c) 2020, 2026, MariaDB
-   Copyright (c) 2026, MariaDB plc
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -3689,6 +3688,12 @@ static void wsrep_get_state(const THD* thd, const bool granted, String *str)
     str->append(STRING_WITH_LEN("ABORTING "));
   if (wsrep_thd_is_SR(thd))
     str->append(STRING_WITH_LEN("SR "));
+  if (thd->wsrep_trx().is_xa())
+    str->append(STRING_WITH_LEN("XA "));
+  if (thd->wsrep_trx().state() == wsrep::transaction::s_prepared)
+    str->append(STRING_WITH_LEN("PREPARED "));
+  if (thd->wsrep_trx().state() == wsrep::transaction::s_certifying)
+    str->append(STRING_WITH_LEN("CERTIFYING "));
   if (thd->wsrep_trx().active())
     str->append(STRING_WITH_LEN("WSREP TRX "));
   if (wsrep_thd_is_toi(thd))
@@ -3796,13 +3801,19 @@ static void wsrep_log_state(const char *msg, const THD *thd, bool granted)
 @param granted_thd  thread holding conflicting MDL-lock
 @param ticket       conflicting MDL-ticket
 @param key          MDL key
+@param request_type MDL type
+
+@retval true        requestor should wait for MDL-lock to be released
+@retval false       requestor should be aborted
 */
-static void wsrep_handle_granted_bf(
+static bool wsrep_handle_granted_bf(
              THD* request_thd,
              THD* granted_thd,
              const MDL_ticket *ticket,
-             const MDL_key *key)
+             const MDL_key *key,
+             enum_mdl_type request_type)
 {
+  bool wait=true;
   mysql_mutex_assert_owner(&granted_thd->LOCK_thd_kill);
   mysql_mutex_assert_owner(&granted_thd->LOCK_thd_data);
 
@@ -3818,11 +3829,30 @@ static void wsrep_handle_granted_bf(
   }
   else if (wsrep_thd_is_SR(granted_thd) && wsrep_thd_is_toi(request_thd))
   {
-    // Granted thread is executing streaming replication and request is DDL,
-    // abort granted
-    wsrep_mdl_log(WSREP_MDL_INFO, "MDL conflict, DDL vs SR",
+    if (granted_thd->wsrep_trx().state() == wsrep::transaction::s_prepared)
+    {
+      // Granted thread is executing XA and request is DDL, requestor
+      // should abort
+      wsrep_mdl_log(WSREP_MDL_INFO, "MDL conflict, DDL vs XA (SR)",
+                    request_thd, granted_thd, ticket, key);
+      wait= false;
+    }
+    else
+    {
+      // Granted thread is executing streaming replication and request is DDL,
+      // abort granted
+      wsrep_mdl_log(WSREP_MDL_INFO, "MDL conflict, DDL vs SR",
+                    request_thd, granted_thd, ticket, key);
+      ticket->wsrep_bf_abort_history(request_thd, request_type);
+      wsrep_abort_thd(request_thd, granted_thd, 1);
+    }
+  }
+  else if (granted_thd->wsrep_trx().state() == wsrep::transaction::s_prepared)
+  {
+    // Prepared XA-transaction
+    wsrep_mdl_log(WSREP_MDL_INFO, "MDL conflict, DDL vs XA",
                   request_thd, granted_thd, ticket, key);
-    wsrep_abort_thd(request_thd, granted_thd, 1);
+    wait= false;
   }
   else
   {
@@ -3832,6 +3862,8 @@ static void wsrep_handle_granted_bf(
     DBUG_ASSERT(!(wsrep_thd_is_BF(granted_thd, false) &&
                   wsrep_thd_is_BF(request_thd, false)));
   }
+
+  return wait;
 }
 
 /** This function handles MDL-conflict when thread holding MDL-lock
@@ -3848,11 +3880,13 @@ static void wsrep_handle_granted_bf(
 @param granted_thd  thread holding conflicting MDL-lock
 @param ticket       conflicting MDL-ticket
 @param key          MDL key
+@param request_type MDL type
 */
 static void wsrep_handle_locked(THD* request_thd,
                                 THD* granted_thd,
                                 const MDL_ticket *ticket,
-                                const MDL_key *key)
+                                const MDL_key *key,
+                                const enum_mdl_type request_type)
 {
   mysql_mutex_assert_owner(&granted_thd->LOCK_thd_kill);
   mysql_mutex_assert_owner(&granted_thd->LOCK_thd_data);
@@ -3870,6 +3904,7 @@ static void wsrep_handle_locked(THD* request_thd,
     // User has allowed killing mariabackup
     wsrep_mdl_log(WSREP_MDL_INFO, "MDL conflict, ongoing backup",
                   request_thd, granted_thd, ticket, key);
+    ticket->wsrep_bf_abort_history(request_thd, request_type);
     wsrep_abort_thd(request_thd, granted_thd, true);
   }
   // else requestor must wait for MDL-lock to be released
@@ -3887,16 +3922,29 @@ else
 @param granted_thd  thread holding conflicting MDL-lock
 @param ticket       conflicting MDL-ticket
 @param key          MDL key
+@param request_type MDL type
+
+@retval true        requestor should wait for MDL-lock to be released
+@retval false       requestor should be aborted
 */
-static void wsrep_abort_granted(THD* request_thd,
+static bool wsrep_abort_granted(THD* request_thd,
                                 THD* granted_thd,
                                 const MDL_ticket *ticket,
-                                const MDL_key *key)
+                                const MDL_key *key,
+                                const enum_mdl_type request_type)
 {
   mysql_mutex_assert_owner(&granted_thd->LOCK_thd_kill);
   mysql_mutex_assert_owner(&granted_thd->LOCK_thd_data);
   DBUG_ASSERT(!wsrep_thd_is_BF(granted_thd, false));
   DBUG_ASSERT(wsrep_thd_is_BF(request_thd, false));
+  bool wait= true;
+
+  // In Galera, DDL statements such as ALTER TABLE, DROP TABLE, and
+  // other schema modifications are executed in Total Order Isolation
+  // (TOI) mode. Normally, TOIs have the highest priority during conflict
+  // resolution, meaning that they abort concurrent transactions to ensure
+  // consistent schema changes across the cluster.
+  // In this function request is either DDL or applying.
 
   if (wsrep_debug)
   {
@@ -3909,17 +3957,44 @@ static void wsrep_abort_granted(THD* request_thd,
 
   if (granted_thd->wsrep_trx().active())
   {
-    // Granted thread has active wsrep transaction, abort it
-    wsrep_abort_thd(request_thd, granted_thd, 1);
+    if (granted_thd->wsrep_trx().is_xa() &&
+        granted_thd->wsrep_trx().is_streaming())
+    {
+      // Once an XA transaction has been prepared, it cannot be rolled back
+      // due to conflicts. Therefore, prepared XA transactions take precedence
+      // over DDL operations.
+      // If a DDL statement conflicts with a prepared XA transaction, the DDL
+      // operation fails. This ensures that the prepared XA transaction remains
+      // intact, as only the client or Transaction Manager is allowed to
+      // determine the outcome of the transaction via XA COMMIT or XA ROLLBACK.
+      DBUG_ASSERT(wsrep_thd_is_toi(request_thd));
+      DBUG_ASSERT(granted_thd->wsrep_trx().state() == wsrep::transaction::s_prepared ||
+		  granted_thd->wsrep_trx().state() == wsrep::transaction::s_certifying);
+      wsrep_mdl_log(WSREP_MDL_DEBUG, "MDL conflict DDL -> XA (SR)",
+		    request_thd, granted_thd, ticket, key);
+      wait= false;
+    }
+    else
+    {
+      DBUG_ASSERT(!(granted_thd->wsrep_trx().is_xa() &&
+		    (granted_thd->wsrep_trx().state() == wsrep::transaction::s_prepared ||
+		     granted_thd->wsrep_trx().state() == wsrep::transaction::s_certifying)));
+      // Granted thread has active wsrep transaction, abort it
+      ticket->wsrep_bf_abort_history(request_thd, request_type);
+      wsrep_abort_thd(request_thd, granted_thd, 1);
+    }
   }
   else
   {
     // Granted thread is not wsrep transaction or it has no
     // active transaction e.g. CREATE TABLE X AS SELECT,
     // signal KILL_QUERY and abort transaction
+    ticket->wsrep_bf_abort_history(request_thd, request_type);
     granted_thd->awake_no_mutex(KILL_QUERY_HARD);
     ha_abort_transaction(request_thd, granted_thd, TRUE);
   }
+
+  return wait;
 }
 
 /**
@@ -3933,18 +4008,17 @@ static void wsrep_abort_granted(THD* request_thd,
   * If requester is not TOI or applying it must wait for MDL to be released.
 
   @param  requestor_ctx        The MDL context of the requestor
-  @param  ticket               MDL ticket for the granted tickect
+  @param  ticket               MDL ticket for the requested lock
   @param  key                  The key of the object (data) being protected
-  @param  request_type         The requested lock type
+  @param  request_type         MDL-lock type
 
   @retval true                 Request thread should wait MDL-lock
   @retval false                Abort request thread
 */
-
 bool wsrep_handle_mdl_conflict(MDL_context *requestor_ctx,
                                const MDL_ticket *ticket,
                                const MDL_key *key,
-                               const enum_mdl_type request_type)
+                               enum_mdl_type request_type)
 {
   bool wait= true;
   THD *request_thd= requestor_ctx->get_thd();
@@ -4001,17 +4075,17 @@ bool wsrep_handle_mdl_conflict(MDL_context *requestor_ctx,
      ongoing FLUSH TABLES FOR EXPORT OR
      ongoing LOCK TABLES
   */
-    wsrep_handle_locked(request_thd, granted_thd, ticket, key);
+    wsrep_handle_locked(request_thd, granted_thd, ticket, key, request_type);
   }
   else if (wsrep_thd_is_BF(granted_thd, FALSE))
   {
     // Granted thread is either TOI or applying
-    wsrep_handle_granted_bf(request_thd, granted_thd, ticket, key);
+    wait= wsrep_handle_granted_bf(request_thd, granted_thd, ticket, key, request_type);
   }
   else
   {
     // Granted thread is not brute-force thread, we can abort it
-    wsrep_abort_granted(request_thd, granted_thd, ticket, key);
+    wait= wsrep_abort_granted(request_thd, granted_thd, ticket, key, request_type);
   }
 
   mysql_mutex_unlock(&granted_thd->LOCK_thd_data);
