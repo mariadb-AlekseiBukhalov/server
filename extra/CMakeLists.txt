@@ -63,7 +63,7 @@ IF(NOT CMAKE_CROSSCOMPILING AND NOT WITH_ASAN AND NOT WITH_MSAN AND TARGET maria
   SET(populate_plugin_dir)
   SET(plugin_load)
   LIST(APPEND populate_plugin_dir
-    COMMAND ${CMAKE_COMMAND} -E rm -rf "${my_plugin_dir}"
+    COMMAND ${CMAKE_COMMAND} -E remove_directory "${my_plugin_dir}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${my_plugin_dir}"
   )
   FOREACH(target ${dynamic_plugins})
