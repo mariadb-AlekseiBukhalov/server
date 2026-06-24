@@ -620,6 +620,7 @@ TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'INSERT INTO mysql.server_audit_f
 TIME,HOSTNAME,root,localhost,ID,ID,WRITE,mysql,server_audit_users,
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'INSERT INTO mysql.server_audit_users VALUES (\'%\',\'root\',\'query_ddl\')',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'SET GLOBAL server_audit_reload_filters=ON',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'create table t1(id int)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'drop table t1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'create procedure pr1() insert into test.t1 values ("foo", 42)',0
@@ -627,6 +628,7 @@ TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'create function fn1(i int) retur
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'drop procedure pr1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'drop function fn1',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'SET GLOBAL server_audit_reload_filters=ON',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'create table t1(id int)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'insert into t1 values (1), (2)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'select * from t1',0
@@ -638,6 +640,7 @@ TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'drop procedure pr1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'drop function fn1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'UPDATE mysql.server_audit_users SET filtername= \'query_dml\' where host=\'%\' and user=\'root\'',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'SET GLOBAL server_audit_reload_filters=ON',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'insert into t1 values (1), (2)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'select * from t1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'select 2',0
@@ -646,6 +649,7 @@ TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'/*! select 2*/',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'/*comment*/ select 2',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'UPDATE mysql.server_audit_users SET filtername= \'query_dcl\' where host=\'%\' and user=\'root\'',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'SET GLOBAL server_audit_reload_filters=ON',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'CREATE USER u1 IDENTIFIED BY *****',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'GRANT ALL ON sa_db TO u2 IDENTIFIED BY *****',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'SET PASSWORD \n# comment\nFOR u1 = PASSWORD(*****)',0
@@ -653,11 +657,13 @@ TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'SET PASSWORD FOR u1=<secret>',ID
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'CREATE USER u3 IDENTIFIED BY *****',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'drop user u1, u2, u3',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'SET GLOBAL server_audit_reload_filters=ON',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'insert into t1 values (1), (2)',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,file_path=server_audit.log,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,rotate_size=1000000,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,file_rotations=9,0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,logging=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'set global server_audit_logging= on',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'UPDATE mysql.server_audit_users SET filtername= \'log_all\' where host=\'%\' and user=\'root\'',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,sa_db,reload_filters=ON,0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,sa_db,'SET GLOBAL server_audit_reload_filters=ON',0

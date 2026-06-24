@@ -170,12 +170,16 @@ TIME,HOSTNAME,user1,localhost,ID,ID,DROP,d1,t1,
 TIME,HOSTNAME,user1,localhost,ID,ID,READ,mysql,proc,
 TIME,HOSTNAME,user1,localhost,ID,ID,WRITE,mysql,proc,
 TIME,HOSTNAME,user1,localhost,ID,ID,WRITE,mysql,event,
+TIME,HOSTNAME,user2,localhost,ID,ID,QUERY,test,'SHOW STATUS LIKE "Server_audit_session_filter"',0
 TIME,HOSTNAME,user2,localhost,ID,0,AUDIT_CONFIG,test,reload_filters=ON,0
+TIME,HOSTNAME,user2,localhost,ID,ID,QUERY,test,'SET GLOBAL server_audit_reload_filters=ON',0
 TIME,HOSTNAME,user2,localhost,ID,ID,QUERY,test,'CREATE DATABASE d1',0
 TIME,HOSTNAME,user2,localhost,ID,ID,QUERY,test,'CREATE TABLE d1.t1 (id int)',0
 TIME,HOSTNAME,user2,localhost,ID,ID,QUERY,test,'DROP TABLE d1.t1',0
 TIME,HOSTNAME,user2,localhost,ID,ID,QUERY,test,'DROP DATABASE d1',0
+TIME,HOSTNAME,user3,localhost,ID,ID,QUERY,test,'SHOW STATUS LIKE "Server_audit_session_filter"',0
 TIME,HOSTNAME,user3,localhost,ID,0,AUDIT_CONFIG,test,reload_filters=ON,0
+TIME,HOSTNAME,user3,localhost,ID,ID,QUERY,test,'SET GLOBAL server_audit_reload_filters=ON',0
 TIME,HOSTNAME,user3,localhost,ID,ID,QUERY,test,'INSERT INTO d1.t1 VALUES (1)',0
 TIME,HOSTNAME,user3,localhost,ID,ID,QUERY,test,'UPDATE d1.t1 SET id=2',0
 TIME,HOSTNAME,user3,localhost,ID,ID,QUERY,test,'DELETE FROM d1.t1',0

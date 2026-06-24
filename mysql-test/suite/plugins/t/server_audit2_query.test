@@ -7,6 +7,7 @@ if (!$SERVER_AUDIT2_SO) {
 }
 
 --disable_ps2_protocol
+--disable_ps_protocol
 
 --source server_audit2_init.inc
 
@@ -96,3 +97,4 @@ SHOW STATUS LIKE "Server_audit_session_filter";
 --source server_audit2_commands.inc
 --source server_audit2_cleanup.inc
 --enable_ps2_protocol
+--enable_ps_protocol

@@ -358,42 +358,67 @@ TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'select * from test.t_doesnt_exist',ID
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'syntax_error_query',ID
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'UPDATE mysql.server_audit_users SET filtername= \'query_read\' where host=\'%\' and user=\'root\'',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET GLOBAL server_audit_reload_filters=ON',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SHOW STATUS LIKE "Server_audit_session_filter"',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SELECT 1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SELECT 1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SELECT * from d1.t1',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET PASSWORD FOR u1 = PASSWORD(*****)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'select * from test.t_doesnt_exist',ID
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'syntax_error_query',ID
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET GLOBAL server_audit_reload_filters=ON',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SHOW STATUS LIKE "Server_audit_session_filter"',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'INSERT INTO d1.t1 VALUES (1)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'UPDATE d1.t1 SET id=2',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'DELETE FROM d1.t1',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET PASSWORD FOR u1 = PASSWORD(*****)',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'syntax_error_query',ID
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'UPDATE mysql.server_audit_users SET filtername= \'query_dml\' where host=\'%\' and user=\'root\'',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET GLOBAL server_audit_reload_filters=ON',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SHOW STATUS LIKE "Server_audit_session_filter"',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SELECT 1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SELECT 1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'INSERT INTO d1.t1 VALUES (1)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SELECT * from d1.t1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'UPDATE d1.t1 SET id=2',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'DELETE FROM d1.t1',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET PASSWORD FOR u1 = PASSWORD(*****)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'select * from test.t_doesnt_exist',ID
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'syntax_error_query',ID
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'UPDATE mysql.server_audit_users SET filtername= \'query_ddl\' where host=\'%\' and user=\'root\'',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET GLOBAL server_audit_reload_filters=ON',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SHOW STATUS LIKE "Server_audit_session_filter"',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'CREATE DATABASE d1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'CREATE TABLE d1.t1 (id int)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'ALTER TABLE d1.t1 ADD COLUMN (id2 int)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'RENAME TABLE d1.t1 to d1.t2',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'DROP TABLE d1.t2',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'DROP DATABASE d1',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET PASSWORD FOR u1 = PASSWORD(*****)',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'syntax_error_query',ID
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET GLOBAL server_audit_reload_filters=ON',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SHOW STATUS LIKE "Server_audit_session_filter"',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'CREATE USER u1 IDENTIFIED BY *****',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'GRANT ALL ON *.* TO u1 IDENTIFIED BY *****',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET PASSWORD FOR u1 = PASSWORD(*****)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'drop user u1',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'syntax_error_query',ID
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET GLOBAL server_audit_reload_filters=ON',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SHOW STATUS LIKE "Server_audit_session_filter"',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'INSERT INTO d1.t1 VALUES (1)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'UPDATE d1.t1 SET id=2',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'DELETE FROM d1.t1',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET PASSWORD FOR u1 = PASSWORD(*****)',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'syntax_error_query',ID
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'UPDATE mysql.server_audit_users SET filtername= \'query_combined\' where host=\'%\' and user=\'root\'',0
 TIME,HOSTNAME,root,localhost,ID,0,AUDIT_CONFIG,,reload_filters=ON,0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET GLOBAL server_audit_reload_filters=ON',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SHOW STATUS LIKE "Server_audit_session_filter"',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'CREATE DATABASE d1',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'CREATE TABLE d1.t1 (id int)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'ALTER TABLE d1.t1 ADD COLUMN (id2 int)',0
@@ -404,3 +429,5 @@ TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'CREATE USER u1 IDENTIFIED BY *****',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'GRANT ALL ON *.* TO u1 IDENTIFIED BY *****',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'SET PASSWORD FOR u1 = PASSWORD(*****)',0
 TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'drop user u1',0
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'syntax_error_query',ID
+TIME,HOSTNAME,root,localhost,ID,ID,QUERY,,'uninstall plugin server_audit',0
