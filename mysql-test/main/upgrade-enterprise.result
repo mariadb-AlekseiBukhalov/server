@@ -1,0 +1,7 @@
+#
+# MENT-1712: mariadb_upgrade running when upgrading from community
+# server to same major version of enterprise server
+#
+# Check upgrade of the same ES version
+# Check upgrade of the same CS version
+# End of enterprise tests

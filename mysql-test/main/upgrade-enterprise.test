@@ -1,0 +1,31 @@
+
+
+--echo #
+--echo # MENT-1712: mariadb_upgrade running when upgrading from community
+--echo # server to same major version of enterprise server
+--echo #
+--let $MYSQLD_DATADIR= `select @@datadir`
+
+# Construct corresponding ES version from current
+--let $ver=`SELECT VERSION()`
+# remove suffix like -debug and so on
+--let $ver=$(regexp_replace("$ver",'-MariaDB.*', '-MariaDB'))
+# remove enterprise counter suffix (EE) XX.YY.ZZ-EE-MariaDB
+--let $cs_ver=$(regexp_replace("$ver",'-[0-9]+-', '-'))
+
+# Write current version to the upgrade file
+--write_line "$ver" $MYSQLD_DATADIR/mariadb_upgrade_info
+# 1 - no upgrade
+--echo # Check upgrade of the same ES version
+--error 1
+--exec $MYSQL_UPGRADE --check-if-upgrade-is-needed  --silent
+
+--remove_file $MYSQLD_DATADIR/mariadb_upgrade_info
+
+# Write write CS version to the upgrade file
+--write_line "$cs_ver" $MYSQLD_DATADIR/mariadb_upgrade_info
+--echo # Check upgrade of the same CS version
+--exec $MYSQL_UPGRADE --check-if-upgrade-is-needed  --silent
+--remove_file $MYSQLD_DATADIR/mariadb_upgrade_info
+
+--echo # End of enterprise tests

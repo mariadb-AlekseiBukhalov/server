@@ -874,6 +874,19 @@ static int upgrade_already_done(int silent)
         "lower version is not supported!",
         upgrade_from_version, version);
   }
+
+  s= strchr(upgrade_from_version, '-');
+  if (s)
+  {
+    s++;
+    /* only Enterprise version has numbers after first dash */
+    if (!(s[0] >= '0' && s[0] <= '9' ))
+    {
+      verbose("Upgrade from community to Enterprise Server version. Check required!");
+      return 3;
+    }
+  }
+
   if (!silent)
   {
     if (strcmp(upgrade_from_version, version))

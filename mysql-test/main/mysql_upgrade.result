@@ -1961,10 +1961,10 @@ Empty or non existent ...mariadb_upgrade_info. Assuming mysql_upgrade has to be 
 # MDEV-27279: mariadb_upgrade check-if-upgrade with minor version change
 #
 Looking for 'mariadb' as: mariadb
-This installation of MariaDB is already upgraded to X.Y.0-MariaDB.
-There is no need to run mariadb-upgrade again for X.Y.Z-MariaDB, because they're both X.Y.
-This installation of MariaDB is already upgraded to X.Y.0-MariaDB.
-There is no need to run mariadb-upgrade again for X.Y.Z-MariaDB, because they're both X.Y.
+This installation of MariaDB is already upgraded to X.Y.0-1-MariaDB.
+There is no need to run mariadb-upgrade again for X.Y.Z-MariaDB, because they're both X.Y.Z-MariaDB.
+This installation of MariaDB is already upgraded to X.Y.0-1-MariaDB.
+There is no need to run mariadb-upgrade again for X.Y.Z-MariaDB, because they're both X.Y.Z-MariaDB.
 You can use --force if you still want to run mariadb-upgrade
 #
 # MDEV-27279: mariadb_upgrade check-if-upgrade with major version change
