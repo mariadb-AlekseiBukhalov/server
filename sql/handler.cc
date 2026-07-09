@@ -2321,7 +2321,7 @@ int ha_rollback_trans(THD *thd, bool all)
 {
   int error=0;
   THD_TRANS *trans=all ? &thd->transaction->all : &thd->transaction->stmt;
-  Ha_trx_info *ha_info= trans->ha_list, *ha_info_next;
+  Ha_trx_info *ha_info_start= trans->ha_list;
   /*
     "real" is a nick name for a transaction for which a commit will
     make persistent changes. E.g. a 'stmt' transaction inside a 'all'
@@ -2399,7 +2399,7 @@ int ha_rollback_trans(THD *thd, bool all)
       (void) wsrep_before_rollback(thd, all);
 #endif /* WITH_WSREP */
 
-  if (ha_info)
+  if (ha_info_start)
   {
     /* Close all cursors that can not survive ROLLBACK */
     if (is_real_trans)                          /* not a statement commit */
@@ -2411,8 +2411,9 @@ int ha_rollback_trans(THD *thd, bool all)
       rollbacker and any transaction that depends on it. This guarantees
       the execution time dependency identifies binlog ordering.
     */
-    for (error= run_binlog_first(thd, all, trans, is_real_trans, false);
-         ha_info; ha_info= ha_info_next)
+    error= run_binlog_first(thd, all, trans, is_real_trans, false);
+    for (Ha_trx_info *ha_info= ha_info_start;
+         ha_info; ha_info= ha_info->next())
     {
       int err;
       transaction_participant *ht= ha_info->ht();
@@ -2430,11 +2431,42 @@ int ha_rollback_trans(THD *thd, bool all)
 #endif /* WITH_WSREP */
       }
       status_var_increment(thd->status_var.ha_rollback_count);
-      ha_info_next= ha_info->next();
-      ha_info->reset(); /* keep it conveniently zero-filled */
     }
     trans->ha_list= 0;
     trans->no_2pc=0;
+
+    /*
+      Statement backoff-restart.
+      Table plugins may resolve statement failures by a re-execution.
+      See the ruleset in THD::backoff_dispatch_safe documentation.
+    */
+    if (!all && thd->is_error() && !thd->transaction_rollback_request &&
+        thd->backoff_dispatch_safe())
+    {
+      for (Ha_trx_info *ha_info= ha_info_start; ha_info; ha_info= ha_info->next())
+      {
+        transaction_participant *tp= ha_info->ht();
+        if (hton2plugin[tp->slot]->plugin->type != MYSQL_STORAGE_ENGINE_PLUGIN)
+          continue;
+
+        uint stmt_error = thd->get_stmt_da()->sql_errno();
+        handlerton *ht = (handlerton*)tp;
+        if (ht->handle_backoff &&
+            ht->handle_backoff(thd, thd->ha_data[ht->slot].ha_ptr,
+                               stmt_error) == BA_BACKOFF_AND_RETRY)
+        {
+          thd->backoff_requested= true;
+          break;
+        }
+      }
+    }
+
+    for (Ha_trx_info *ha_info= ha_info_start, *ha_info_next;
+         ha_info; ha_info= ha_info_next)
+    {
+      ha_info_next= ha_info->next();
+      ha_info->reset(); /* keep it conveniently zero-filled */
+    }
   }
 
 #ifdef WITH_WSREP

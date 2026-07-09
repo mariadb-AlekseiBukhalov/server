@@ -4174,6 +4174,15 @@ public:
   */
   bool       transaction_rollback_request;
   /**
+    Set by the storage engine during the statement rollback if the
+    statement-level error is potentially recoverable by a statement retry.
+    See handlerton::handle_backoff.
+  */
+  bool backoff_requested;
+  size_t retry_count;
+
+  bool backoff_dispatch_safe() const;
+  /**
     TRUE if we are in a sub-statement and the current error can
     not be safely recovered until we left the sub-statement mode.
     In particular, disables activation of CONTINUE and EXIT
@@ -4262,6 +4271,7 @@ public:
   uint select_commands, update_commands, other_commands;
   ulonglong start_cpu_time;
   ulonglong start_bytes_received;
+  ulonglong start_bytes_sent;
 
   /* Used by the sys_var class to store temporary values */
   union
@@ -7820,6 +7830,13 @@ public:
   Identifies statements that can be explained with EXPLAIN.
 */
 #define CF_CAN_BE_EXPLAINED       (1U << 12)
+
+/**
+  Statement whose failure must never grant a backoff re-execution: it
+  absorbs execution errors into its reply or commits earlier work
+  mid-statement, so a re-dispatch would corrupt the exchange.
+*/
+#define CF_FORBIDS_BACKOFF        (1U << 13)
 
 /** Identifies statements which may generate an optimizer trace */
 #define CF_OPTIMIZER_TRACE        (1U << 14)

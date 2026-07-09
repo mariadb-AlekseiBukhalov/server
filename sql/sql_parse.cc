@@ -835,6 +835,21 @@ void init_update_queries(void)
   sql_command_flags[SQLCOM_ASSIGN_TO_KEYCACHE]|=  CF_HA_CLOSE;
 
   /*
+    No backoff re-execution: these absorb execution errors into their
+    reply (sql_do.cc, mysql_admin_table(), mysql_checksum_table()) or
+    commit earlier event groups mid-statement (rows_event_stmt_cleanup()).
+  */
+  sql_command_flags[SQLCOM_DO]|=                  CF_FORBIDS_BACKOFF;
+  sql_command_flags[SQLCOM_ANALYZE]|=             CF_FORBIDS_BACKOFF;
+  sql_command_flags[SQLCOM_CHECK]|=               CF_FORBIDS_BACKOFF;
+  sql_command_flags[SQLCOM_REPAIR]|=              CF_FORBIDS_BACKOFF;
+  sql_command_flags[SQLCOM_OPTIMIZE]|=            CF_FORBIDS_BACKOFF;
+  sql_command_flags[SQLCOM_ASSIGN_TO_KEYCACHE]|=  CF_FORBIDS_BACKOFF;
+  sql_command_flags[SQLCOM_PRELOAD_KEYS]|=        CF_FORBIDS_BACKOFF;
+  sql_command_flags[SQLCOM_CHECKSUM]|=            CF_FORBIDS_BACKOFF;
+  sql_command_flags[SQLCOM_BINLOG_BASE64_EVENT]|= CF_FORBIDS_BACKOFF;
+
+  /*
     Mark statements that always are disallowed in read-only
     transactions. Note that according to the SQL standard,
     even temporary table DDL should be disallowed.
@@ -1267,6 +1282,8 @@ dispatch_command_return do_command(THD *thd, bool blocking)
 
   /* Save for user statistics */
   thd->start_bytes_received= thd->status_var.bytes_received;
+  /* A snapshot of bytes sent is used to verify the statement retryablility */
+  thd->start_bytes_sent= thd->status_var.bytes_sent;
 
   /*
     Synchronization point for testing of KILL_CONNECTION.
@@ -1435,8 +1452,8 @@ dispatch_command_return do_command(THD *thd, bool blocking)
   DBUG_ASSERT(!thd->apc_target.is_enabled());
 
 resume:
-  return_value= dispatch_command(command, thd, packet+1,
-                                 (uint) (packet_length-1), blocking);
+  return_value= dispatch_command(command, thd, packet + 1,
+                                 packet_length - 1, blocking);
   if (return_value == DISPATCH_COMMAND_WOULDBLOCK)
   {
     /* Save current state, and resume later.*/
@@ -1627,6 +1644,8 @@ dispatch_command_return dispatch_command(enum enum_server_command command,
     goto resume;
   }
 
+  thd->retry_count= 0;
+
   /* keep it withing 1 byte */
   compile_time_assert(COM_END == 255);
 
@@ -1645,6 +1664,7 @@ dispatch_command_return dispatch_command(enum enum_server_command command,
   thd->m_statement_psi= MYSQL_REFINE_STATEMENT(thd->m_statement_psi,
                                                com_statement_info[command].
                                                m_key);
+  retry:
   /*
     We should always call reset_for_next_command() before a query.
     mysql_parse() will do this for queries. Ensure it's also done
@@ -2475,7 +2495,7 @@ resume:
     thd->reset_sp_cache= false;
   }
 
-  if (do_end_of_statement)
+  if (do_end_of_statement && likely(!thd->backoff_requested))
   {
     DBUG_ASSERT(thd->derived_tables == NULL &&
                (thd->open_tables == NULL ||
@@ -2511,26 +2531,28 @@ resume:
     delete_explain_query(thd->lex);
 
   THD_STAGE_INFO(thd, stage_cleaning_up);
-  thd->reset_query();
-
-  /* Performance Schema Interface instrumentation, end */
-  MYSQL_END_STATEMENT(thd->m_statement_psi, thd->get_stmt_da());
-  /* Reset values shown in processlist */
-  thd->examined_row_count_for_statement= thd->sent_row_count_for_statement= 0;
-  thd->mark_connection_idle();
-
-  thd->m_statement_psi= NULL;
+  free_root(thd->mem_root,MYF(MY_KEEP_PREALLOC));
   thd->m_digest= NULL;
 
-  thd->packet.shrink(thd->variables.net_buffer_length); // Reclaim some memory
-
-  thd->reset_kill_query();  /* Ensure that killed_errmsg is released */
+  /* Check that some variables are reset properly */
+  DBUG_ASSERT(thd->abort_on_warning == 0);
   /*
-    LEX::m_sql_cmd can point to Sql_cmd allocated on thd->mem_root.
-    Unlink it now, before freeing the root.
+    Reset limit_rows_examined_cnt as it may be used by general_log_write()
+    before next lex::start() call.
   */
-  thd->lex->m_sql_cmd= NULL;
-  free_root(thd->mem_root,MYF(MY_KEEP_PREALLOC));
+  thd->lex->limit_rows_examined_cnt= ULONGLONG_MAX;
+
+  if (unlikely(thd->backoff_requested) && !error && !net->error)
+  {
+    DBUG_ASSERT(thd->status_var.bytes_sent == thd->start_bytes_sent);
+    DBUG_ASSERT(thd->is_error());
+    thd->backoff_requested= false;
+    thd->clear_error(1);
+    THD_STAGE_INFO(thd, stage_starting);
+    thd->retry_count++;
+    goto retry;
+  }
+
   DBUG_EXECUTE_IF("print_allocated_thread_memory",
                   SAFEMALLOC_REPORT_MEMORY(sf_malloc_dbug_id()););
 
@@ -2549,15 +2571,23 @@ resume:
   }
   DEBUG_SYNC(thd,"dispatch_command_end");
   DEBUG_SYNC(thd,"dispatch_command_end2");
-
-  /* Check that some variables are reset properly */
-  DBUG_ASSERT(thd->abort_on_warning == 0);
   thd->lex->restore_set_statement_var();
+  thd->reset_kill_query();  /* Ensure that killed_errmsg is released */
   /*
-    Reset limit_rows_examined_cnt as it may be used by general_log_write()
-    before next lex::start() call.
+    LEX::m_sql_cmd can point to Sql_cmd allocated on thd->mem_root.
+    Unlink it now, before freeing the root.
   */
-  thd->lex->limit_rows_examined_cnt= ULONGLONG_MAX;
+  thd->lex->m_sql_cmd= NULL;
+  /* Performance Schema Interface instrumentation, end */
+  MYSQL_END_STATEMENT(thd->m_statement_psi, thd->get_stmt_da());
+  /* Reset values shown in processlist */
+  thd->examined_row_count_for_statement= thd->sent_row_count_for_statement= 0;
+  thd->mark_connection_idle();
+
+  thd->m_statement_psi= NULL;
+  thd->reset_query();
+  thd->packet.shrink(thd->variables.net_buffer_length); // Reclaim some memory
+
   DBUG_RETURN(error?DISPATCH_COMMAND_CLOSE_CONNECTION: DISPATCH_COMMAND_SUCCESS);
 }
 
@@ -7534,6 +7564,10 @@ void THD::reset_for_next_command(bool do_clear_error)
 
   used= 0;
   is_fatal_error= 0;
+
+  // Backoff request is reset before retry.
+  DBUG_ASSERT(!backoff_requested);
+
   variables.option_bits&= ~OPTION_BINLOG_THIS_STMT;
 
   /*
@@ -7949,10 +7983,11 @@ void mysql_parse(THD *thd, char *rawbuf, uint length,
 
     if (likely(!err))
     {
-      thd->m_statement_psi=
-        MYSQL_REFINE_STATEMENT(thd->m_statement_psi,
-                               sql_statement_info[thd->lex->sql_command].
-                               m_key);
+      if (likely(thd->retry_count == 0))
+        thd->m_statement_psi=
+          MYSQL_REFINE_STATEMENT(thd->m_statement_psi,
+                                 sql_statement_info[thd->lex->sql_command].
+                                 m_key);
 #ifndef NO_EMBEDDED_ACCESS_CHECKS
       if (mqh_used && thd->user_connect &&
 	  check_mqh(thd, lex->sql_command))

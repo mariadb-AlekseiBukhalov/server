@@ -673,6 +673,14 @@ extern PSI_statement_info com_statement_info[(uint) COM_END + 1];
 */
 extern PSI_statement_info stmt_info_rpl;
 
+/**
+  Statement instrumentation key for a new packet, before the command
+  is known. Started by the net after-header callback; also used for a
+  backoff re-execution, which do_command() dispatches without reading
+  a packet.
+*/
+extern PSI_statement_info stmt_info_new_packet;
+
 void init_sql_statement_info();
 void init_com_statement_info();
 #endif /* HAVE_PSI_STATEMENT_INTERFACE */

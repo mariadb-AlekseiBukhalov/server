@@ -718,6 +718,8 @@ THD::THD(my_thread_id id, bool is_wsrep_applier)
    failed_com_change_user(0),
    is_fatal_error(0),
    transaction_rollback_request(0),
+   backoff_requested(false),
+   retry_count(0),
    is_fatal_sub_stmt_error(false),
    in_lock_tables(0),
    bootstrap(0),
@@ -1397,6 +1399,7 @@ void THD::init()
   bzero((char *) &org_status_var, sizeof(org_status_var));
   status_in_global= 0;
   start_bytes_received= 0;
+  start_bytes_sent= 0;
   bzero(&m_last_commit_gtid, sizeof(m_last_commit_gtid));
   last_stmt= NULL;
   /* Reset status of last insert id */
@@ -1924,6 +1927,26 @@ THD::~THD()
   update_global_memory_status(status_var.global_memory_used);
   set_current_thd(orig_thd == this ? 0 : orig_thd);
   DBUG_VOID_RETURN;
+}
+
+/**
+  Check that re-dispatching the current statement is possible:
+  * the command is re-dispatchable
+  * the connection was neither killed nor broken
+  * nothing was flushed to the client since dispatch start.
+    (A flush that wrote nothing leaves bytes_sent unchanged but marks net.error)
+  * Only transactional tables are modified
+  * outside a stored routine: the retry
+    unit is the whole top-level statement (e.g. CALL), and earlier
+    instructions of the routine may have already committed.
+
+  Consulted before a backoff retry is granted, in ha_rollback_trans().
+*/
+bool THD::backoff_dispatch_safe() const
+{
+  return !transaction->stmt.modified_non_trans_table && !spcont &&
+        !(sql_command_flags() & CF_FORBIDS_BACKOFF) &&
+        !killed && !net.error && status_var.bytes_sent == start_bytes_sent;
 }
 
 

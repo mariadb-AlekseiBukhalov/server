@@ -1253,6 +1253,9 @@ typedef class st_select_lex SELECT_LEX;
 typedef class st_select_lex_unit SELECT_LEX_UNIT;
 typedef struct st_order ORDER;
 
+/* Answer of transaction_participant::handle_backoff() */
+enum enum_backoff_action { BA_NO_ACTION= 0, BA_BACKOFF_AND_RETRY };
+
 struct transaction_participant
 {
   /*
@@ -1751,6 +1754,18 @@ struct handlerton : public transaction_participant
                             my_bool signal) __attribute__((nonnull));
   int (*set_checkpoint)(handlerton *hton, const XID *xid);
   int (*get_checkpoint)(handlerton *hton, XID* xid);
+
+  /*
+    Grants the statement backoff based on the error provided by the statement.
+    The grant is not a promise: the server verifies the statement is
+    re-dispatchable at stmt rollback(ha_rollback_trans, all=false),
+    but doesn't guarantee it happens (usually in case of errors).
+
+    @return BA_BACKOFF_AND_RETRY makes the server re-execute the failed
+            statement instead of reporting the error to the client, e.g. after
+            the engine refreshed a stale remote schema.
+  */
+  enum_backoff_action (*handle_backoff)(THD *thd, void *trx, int error);
 };
 
 
