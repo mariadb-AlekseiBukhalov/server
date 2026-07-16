@@ -1378,7 +1378,9 @@ bool buf_pool_t::create() noexcept
 #else
     memory_unaligned= my_large_virtual_alloc(&size);
     if (memory_unaligned);
-# if defined __aarch64__ || defined __riscv || defined __mips__ || defined __loongarch64
+# if defined __aarch64__ || defined __riscv || defined __mips__ || \
+  defined __loongarch64 || \
+  defined __SANITIZE_THREAD__ || __has_feature(thread_sanitizer)
     else if (size_in_bytes_max_default != 0 &&
              size_in_bytes_max == size_in_bytes_max_default)
     {
@@ -1392,7 +1394,11 @@ bool buf_pool_t::create() noexcept
 
       On MIPS and LoongArch, the virtual addresses may be actually
       be narrower than 40 bits, but we do not have any real world
-      experience. */
+      experience.
+
+      Under ThreadSanitizer, the application address space is confined
+      to a few windows that cannot accommodate the 8 TiB default
+      reservation. */
 
       /* Let us aim for 128 GiB (a quarter of the 512 GiB), or the
       initial innodb_buffer_pool_size, whichever is greater. */
