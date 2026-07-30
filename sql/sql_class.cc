@@ -1946,7 +1946,8 @@ bool THD::backoff_dispatch_safe() const
 {
   return !transaction->stmt.modified_non_trans_table && !spcont &&
         !(sql_command_flags() & CF_FORBIDS_BACKOFF) &&
-        !killed && !net.error && status_var.bytes_sent == start_bytes_sent;
+        !killed && !net.error && status_var.bytes_sent == start_bytes_sent &&
+        net.write_pos == net.buff;
 }
 
 
