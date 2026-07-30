@@ -2440,8 +2440,7 @@ int ha_rollback_trans(THD *thd, bool all)
       Table plugins may resolve statement failures by a re-execution.
       See the ruleset in THD::backoff_dispatch_safe documentation.
     */
-    if (!all && thd->is_error() && !thd->transaction_rollback_request &&
-        thd->backoff_dispatch_safe())
+    if (!all && thd->is_error() && !thd->transaction_rollback_request)
     {
       for (Ha_trx_info *ha_info= ha_info_start; ha_info; ha_info= ha_info->next())
       {
@@ -2455,7 +2454,12 @@ int ha_rollback_trans(THD *thd, bool all)
             ht->handle_backoff(thd, thd->ha_data[ht->slot].ha_ptr,
                                stmt_error) == BA_BACKOFF_AND_RETRY)
         {
-          thd->backoff_requested= true;
+          if (thd->backoff_dispatch_safe())
+            thd->backoff_requested= true;
+          else
+            push_warning_printf(thd, Sql_condition::WARN_LEVEL_WARN, stmt_error,
+              "Statement backoff-restart is requested by engine %s, but it "
+              "cannot be done because of side-effects", hton_name(ht)->str);
           break;
         }
       }
