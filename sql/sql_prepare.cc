@@ -4552,7 +4552,12 @@ start_with_reprepare:
       goto reexecute;
     }
   }
-  reset_stmt_params(this);
+  /*
+    Long data arrived in its own command, so the packet the restart re-reads
+    parameters from does not carry it. Leave them all for that read.
+  */
+  if (likely(!thd->backoff_requested))
+    reset_stmt_params(this);
 #ifdef PROTECT_STATEMENT_MEMROOT
   if (!error)
   {
@@ -4775,14 +4780,17 @@ reexecute:
         goto reexecute;
     }
   }
-  reset_stmt_params(this);
+  /* Ditto - insert_bulk_params keeps long data out of the packet too. */
+  if (likely(!thd->backoff_requested))
+    reset_stmt_params(this);
   thd->set_bulk_execution(0);
   if (readbuff)
     my_free(readbuff);
   return error;
 
 err:
-  reset_stmt_params(this);
+  if (likely(!thd->backoff_requested))
+    reset_stmt_params(this);
   thd->set_bulk_execution(0);
   if (readbuff)
     my_free(readbuff);
