@@ -6359,6 +6359,7 @@ my_ok(THD *thd, ulonglong affected_rows_arg= 0, ulonglong id= 0,
 {
   thd->set_row_count_func(affected_rows_arg);
   thd->set_affected_rows(affected_rows_arg);
+  thd->protocol->flush_metadata();
   thd->get_stmt_da()->set_ok_status(affected_rows_arg, id, message);
 }
 
@@ -6369,6 +6370,7 @@ inline void
 my_eof(THD *thd)
 {
   thd->set_row_count_func(-1);
+  thd->protocol->flush_metadata();
   thd->get_stmt_da()->set_eof_status(thd);
 
   TRANSACT_TRACKER(add_trx_state(thd, TX_RESULT_SET));

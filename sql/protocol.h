@@ -52,6 +52,18 @@ protected:
   }
 #endif
   uint field_count;
+  /*
+    Result-set header built by send_result_set_metadata but not yet written:
+    one packet per column, plus what flush_metadata() needs to emit the
+    column count and the end-of-metadata marker. NULL fields means the
+    client caches metadata and asked for no column info.
+    Allocated on the arena of the statement it belongs to, so every free_root
+    of one is preceded by discard_stmt_metadata().
+  */
+  LEX_CSTRING *m_header_fields;
+  uint   m_header_flags;
+  uint   m_header_columns;
+  bool   m_header_pending;
   virtual bool net_store_data(const uchar *from, size_t length);
   virtual bool net_store_data_cs(const uchar *from, size_t length,
                       CHARSET_INFO *fromcs, CHARSET_INFO *tocs);
@@ -107,6 +119,24 @@ public:
   String *storage_packet() { return packet; }
   inline void free() { packet->free(); }
   virtual bool write();
+
+  /*
+    Post the staged result-set header.
+    Called before the first payload of the result set reaches the client,
+    so a statement that fails earlier leaves NET untouched and stays restartable
+    (see backoff_dispatch_safe).
+  */
+  bool flush_metadata();
+  /*
+    Same, for the statement's final packet: it is written through
+    thd->protocol, which a prepared statement has already switched back to
+    protocol_text while its header was staged on protocol_binary.
+  */
+  bool flush_stmt_metadata();
+
+  void discard_metadata() { m_header_fields= NULL; m_header_pending= false; }
+  void discard_stmt_metadata();
+  bool stmt_metadata_pending();
   inline  bool store(int from)
   { return store_long((longlong) from); }
   inline  bool store(uint32 from)

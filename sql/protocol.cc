@@ -687,10 +687,88 @@ bool Protocol::send_eof(uint server_status, uint statement_warn_count)
   Binary and text protocol do not differ in ERROR packet format.
 */
 
+bool Protocol::flush_metadata()
+{
+  if (likely(!m_header_pending))
+    return false;
+
+  m_header_pending= false;
+#ifdef EMBEDDED_LIBRARY
+  return false;
+#else
+  NET *net= &thd->net;
+  bool error= false;
+
+  if (m_header_flags & SEND_NUM_ROWS)
+  {
+    /*
+      Packet with number of columns.
+
+      Will also have a 1 byte column info indicator, in case
+      MARIADB_CLIENT_CACHE_METADATA client capability is set.
+    */
+    uchar buff[MAX_INT_WIDTH+1];
+    uchar *pos= net_store_length(buff, m_header_columns);
+    if (thd->client_capabilities & MARIADB_CLIENT_CACHE_METADATA)
+      *pos++= (uchar) (m_header_fields != NULL);
+
+    DBUG_ASSERT(pos <= buff + sizeof(buff));
+    error= my_net_write(net, buff, (size_t) (pos-buff));
+  }
+
+  for (uint i= 0; m_header_fields && i < m_header_columns; i++)
+    error= error || my_net_write(net, (const uchar*) m_header_fields[i].str,
+                                 m_header_fields[i].length);
+  m_header_fields= NULL;
+
+  if (error)
+    return true;
+
+  if (m_header_flags & SEND_EOF)
+  {
+    /* if it is new client do not send EOF packet */
+    if (!(thd->client_capabilities & CLIENT_DEPRECATE_EOF))
+    {
+      /*
+        Mark the end of meta-data result set, and store thd->server_status,
+        to show that there is no cursor.
+        Send no warning information, as it will be sent at statement end.
+      */
+      return write_eof_packet(thd, net, thd->server_status,
+                            thd->get_stmt_da()->current_statement_warn_count());
+    }
+  }
+  return false;
+#endif
+}
+
+
+bool Protocol::flush_stmt_metadata()
+{
+  return thd->protocol_text.flush_metadata() ||
+         thd->protocol_binary.flush_metadata();
+}
+
+
+void Protocol::discard_stmt_metadata()
+{
+  thd->protocol_text.discard_metadata();
+  thd->protocol_binary.discard_metadata();
+}
+
+
+bool Protocol::stmt_metadata_pending()
+{
+  return thd->protocol_text.m_header_pending ||
+         thd->protocol_binary.m_header_pending;
+}
+
+
 bool Protocol::send_error(uint sql_errno, const char *err_msg,
                           const char *sql_state)
 {
   DBUG_ENTER("Protocol::send_error");
+  flush_stmt_metadata();
   const bool retval= net_send_error_packet(thd, sql_errno, err_msg, sql_state);
   DBUG_RETURN(retval);
 }
@@ -789,6 +867,9 @@ void Protocol::init(THD *thd_arg)
   thd=thd_arg;
   packet= &thd->packet;
   convert= &thd->convert_buffer;
+  m_header_pending= false;
+  m_header_fields= NULL;
+  m_header_flags= m_header_columns= 0;
 #ifndef DBUG_OFF
   field_handlers= 0;
   field_pos= 0;
@@ -813,7 +894,7 @@ bool Protocol::flush()
 #ifndef EMBEDDED_LIBRARY
   bool error;
   thd->get_stmt_da()->set_overwrite_status(true);
-  error= net_flush(&thd->net);
+  error= flush_stmt_metadata() || net_flush(&thd->net);
   thd->get_stmt_da()->set_overwrite_status(false);
   return error;
 #else
@@ -1202,23 +1283,18 @@ bool Protocol::send_result_set_metadata(List<Item> *list, uint flags)
 
   bool send_column_info= should_send_column_info(thd, list, flags);
 
-  if (flags & SEND_NUM_ROWS)
-  {
-    /*
-      Packet with number of columns.
+  /* A header staged by an earlier call must reach the client before ours. */
+  if (unlikely(m_header_pending) && flush_metadata())
+    DBUG_RETURN(1);
 
-      Will also have a 1 byte column info indicator, in case
-      MARIADB_CLIENT_CACHE_METADATA client capability is set.
-    */
-    uchar buff[MAX_INT_WIDTH+1];
-    uchar *pos= net_store_length(buff, list->elements);
-    if (thd->client_capabilities & MARIADB_CLIENT_CACHE_METADATA)
-      *pos++= (uchar)send_column_info;
-
-    DBUG_ASSERT(pos <= buff + sizeof(buff));
-    if (my_net_write(&thd->net, buff, (size_t) (pos-buff)))
-      DBUG_RETURN(1);
-  }
+  /*
+    Everything the client sees before the first row is built here but written
+    by flush_metadata(). Items are gone by then, so the field packets are
+    materialized now; the rest is cheap enough to keep as values. Both status
+    and warning count are snapshot to send what an eager write would have.
+  */
+  m_header_flags= flags;
+  m_header_columns= list->elements;
 
   if (send_column_info)
   {
@@ -1226,7 +1302,9 @@ bool Protocol::send_result_set_metadata(List<Item> *list, uint flags)
     Item *item;
     Protocol_text prot(thd);
 
-    if (prot.allocate(thd->variables.net_buffer_length))
+    /* One reused buffer to build in, one arena bump per packet to keep it. */
+    if (prot.allocate(thd->variables.net_buffer_length) ||
+        !(m_header_fields= thd->alloc<LEX_CSTRING>(list->elements)))
       goto err;
 #ifndef DBUG_OFF
     field_handlers= thd->alloc<const Type_handler *>(list->elements);
@@ -1237,33 +1315,22 @@ bool Protocol::send_result_set_metadata(List<Item> *list, uint flags)
       prot.prepare_for_resend();
       if (prot.store_item_metadata(thd, item, pos))
         goto err;
-      if (prot.write())
-        DBUG_RETURN(1);
+      String *packet= prot.storage_packet();
+      m_header_fields[pos].length= packet->length();
+      if (!(m_header_fields[pos].str= (const char*)
+                thd->memdup(packet->ptr(), packet->length())))
+        goto err;
 #ifndef DBUG_OFF
       field_handlers[pos]= item->type_handler();
 #endif
     }
   }
+  m_header_pending= true;
 
-  if (flags & SEND_EOF)
-  {
-
-    /* if it is new client do not send EOF packet */
-    if (!(thd->client_capabilities & CLIENT_DEPRECATE_EOF))
-    {
-      /*
-        Mark the end of meta-data result set, and store thd->server_status,
-        to show that there is no cursor.
-        Send no warning information, as it will be sent at statement end.
-      */
-      if (write_eof_packet(thd, &thd->net, thd->server_status,
-                           thd->get_stmt_da()->current_statement_warn_count()))
-        DBUG_RETURN(1);
-    }
-  }
   DBUG_RETURN(prepare_for_send(list->elements));
 
 err:
+  discard_metadata();
   my_message(ER_OUT_OF_RESOURCES, ER_THD(thd, ER_OUT_OF_RESOURCES),
              MYF(0));	/* purecov: inspected */
   DBUG_RETURN(1);				/* purecov: inspected */
@@ -1312,6 +1379,9 @@ err:
 bool Protocol::write()
 {
   DBUG_ENTER("Protocol::write");
+  /* Rows are written by the protocol that staged the header. */
+  if (unlikely(m_header_pending) && flush_metadata())
+    DBUG_RETURN(TRUE);
   DBUG_RETURN(my_net_write(&thd->net, (uchar*) packet->ptr(),
                            packet->length()));
 }

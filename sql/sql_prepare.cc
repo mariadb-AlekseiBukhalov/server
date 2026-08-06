@@ -3799,6 +3799,12 @@ bool Select_fetch_protocol_binary::send_result_set_metadata(List<Item> &list, ui
   */
   thd->protocol= &protocol;
   rc= select_send::send_result_set_metadata(list, flags);
+  /*
+    Post it now: this Protocol is private to the cursor, so the statement-end
+    packets - written through thd->protocol - would never reach its header.
+  */
+  if (!rc)
+    rc= protocol.flush_metadata();
   thd->protocol= save_protocol;
 
   return rc;

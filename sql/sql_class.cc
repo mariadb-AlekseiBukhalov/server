@@ -3344,6 +3344,7 @@ void select_send::abort_result_set()
       otherwise the client will hang due to the violation of the
       client/server protocol.
     */
+    thd->protocol->flush_metadata();
     thd->spcont->end_partial_result_set= TRUE;
   }
   reset_for_next_ps_execution();

@@ -2531,6 +2531,9 @@ resume:
     delete_explain_query(thd->lex);
 
   THD_STAGE_INFO(thd, stage_cleaning_up);
+  /* Whatever staged a header ends with a packet that posts it, or is here. */
+  DBUG_ASSERT(thd->backoff_requested || !do_end_of_statement ||
+              !thd->protocol->stmt_metadata_pending());
   free_root(thd->mem_root,MYF(MY_KEEP_PREALLOC));
   thd->m_digest= NULL;
 
@@ -2547,6 +2550,8 @@ resume:
     DBUG_ASSERT(thd->status_var.bytes_sent == thd->start_bytes_sent);
     DBUG_ASSERT(thd->is_error());
     thd->backoff_requested= false;
+    /* The memroot a staged header sits on is gone, and the retry stages anew. */
+    thd->protocol->discard_stmt_metadata();
     thd->clear_error(1);
     THD_STAGE_INFO(thd, stage_starting);
     thd->retry_count++;
