@@ -172,14 +172,14 @@ IF(UNIX)
 
   # Default GCC flags
   IF(CMAKE_COMPILER_IS_GNUCC)
-    SET(COMMON_C_FLAGS               "-g -static-libgcc -fno-omit-frame-pointer -fno-strict-aliasing  -Wno-uninitialized")
+    SET(COMMON_C_FLAGS               "-g -fno-omit-frame-pointer -fno-strict-aliasing  -Wno-uninitialized")
     STRING(APPEND CMAKE_C_FLAGS_DEBUG          " ${COMMON_C_FLAGS}")
     STRING(APPEND CMAKE_C_FLAGS_RELWITHDEBINFO " -O3 ${COMMON_C_FLAGS}")
     # MariaDB uses -O3 for release builds
     STRING(REGEX REPLACE "-O2" "-O3" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
   ENDIF()
   IF(CMAKE_COMPILER_IS_GNUCXX)
-    SET(COMMON_CXX_FLAGS               "-g -static-libgcc -fno-omit-frame-pointer -fno-strict-aliasing -Wno-uninitialized")
+    SET(COMMON_CXX_FLAGS               "-g -fno-omit-frame-pointer -fno-strict-aliasing -Wno-uninitialized")
     STRING(APPEND CMAKE_CXX_FLAGS_DEBUG          " ${COMMON_CXX_FLAGS}")
     STRING(APPEND CMAKE_CXX_FLAGS_RELWITHDEBINFO " ${COMMON_CXX_FLAGS}")
     # MariaDB uses -O3 for release builds
