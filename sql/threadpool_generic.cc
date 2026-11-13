@@ -830,6 +830,10 @@ static TP_connection_generic * listener(worker_thread_t *current_thread,
         }
       }
     }
+    else if (thread_group->active_thread_count <= (int)threadpool_oversubscribe)
+    {
+      wake_thread(thread_group, false);
+    }
     mysql_mutex_unlock(&thread_group->mutex);
   }
 
@@ -1128,6 +1132,8 @@ static void queue_put(thread_group_t *thread_group, TP_connection_generic *conne
 
   if (thread_group->active_thread_count == 0)
     wake_or_create_thread(thread_group);
+  else if (thread_group->active_thread_count <= (int)threadpool_oversubscribe)
+    wake_thread(thread_group, false);
 
   DBUG_VOID_RETURN;
 }
