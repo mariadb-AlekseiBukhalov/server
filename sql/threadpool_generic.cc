@@ -115,6 +115,7 @@ struct pool_timer_t
 static pool_timer_t pool_timer;
 
 static void queue_put(thread_group_t *thread_group, TP_connection_generic *connection);
+static bool enqueue_wake_allowed(thread_group_t *thread_group);
 static void queue_put(thread_group_t *thread_group, native_event *ev, int cnt);
 static int  wake_thread(thread_group_t *thread_group,bool due_to_stall);
 static int  wake_or_create_thread(thread_group_t *thread_group, bool due_to_stall=false);
@@ -830,6 +831,10 @@ static TP_connection_generic * listener(worker_thread_t *current_thread,
         }
       }
     }
+    else if (enqueue_wake_allowed(thread_group) && !wake_thread(thread_group, false))
+    {
+      tp_stats.enqueue_wakes++;
+    }
     mysql_mutex_unlock(&thread_group->mutex);
   }
 
@@ -1037,6 +1042,7 @@ static int wake_thread(thread_group_t *thread_group,bool due_to_stall)
   if(thread)
   {
     thread->woken= true;
+    thread_group->woken_pending++;
     thread_group->waiting_threads.remove(thread);
     mysql_cond_signal(&thread->cond);
     TP_INCREMENT_GROUP_COUNTER(thread_group, wakes);
@@ -1128,6 +1134,8 @@ static void queue_put(thread_group_t *thread_group, TP_connection_generic *conne
 
   if (thread_group->active_thread_count == 0)
     wake_or_create_thread(thread_group);
+  else if (enqueue_wake_allowed(thread_group) && !wake_thread(thread_group, false))
+    tp_stats.enqueue_wakes++;
 
   DBUG_VOID_RETURN;
 }
@@ -1137,6 +1145,16 @@ static void queue_put(thread_group_t *thread_group, TP_connection_generic *conne
   Prevent too many threads executing at the same time,if the workload is
   not CPU bound.
 */
+
+static bool enqueue_wake_allowed(thread_group_t *thread_group)
+{
+  if (threadpool_wake_mode == 0 || thread_group->active_thread_count == 0)
+    return false;
+  int busy= thread_group->active_thread_count;
+  if (threadpool_wake_mode == 2)
+    busy+= thread_group->woken_pending;
+  return busy <= (int)threadpool_oversubscribe;
+}
 
 static bool too_many_threads(thread_group_t *thread_group)
 {
@@ -1176,6 +1194,7 @@ TP_connection_generic *get_event(worker_thread_t *current_thread,
   mysql_mutex_lock(&thread_group->mutex);
   DBUG_ASSERT(thread_group->active_thread_count >= 0);
 
+  bool resumed_by_wake= false;
   for(;;)
   {
     int err=0;
@@ -1230,6 +1249,8 @@ TP_connection_generic *get_event(worker_thread_t *current_thread,
 
 
     /* And now, finally sleep */
+    if (resumed_by_wake)
+      tp_stats.futile_wakeups++;
     current_thread->woken = false; /* wake() sets this to true */
 
     /*
@@ -1250,6 +1271,9 @@ TP_connection_generic *get_event(worker_thread_t *current_thread,
       err = mysql_cond_wait(&current_thread->cond, &thread_group->mutex);
     }
     thread_group->active_thread_count++;
+    resumed_by_wake= current_thread->woken;
+    if (current_thread->woken && thread_group->woken_pending > 0)
+      thread_group->woken_pending--;
 
     if (!current_thread->woken)
     {
@@ -1312,6 +1336,8 @@ void wait_end(thread_group_t *thread_group)
   DBUG_ENTER("wait_end");
   mysql_mutex_lock(&thread_group->mutex);
   thread_group->active_thread_count++;
+  if (thread_group->active_thread_count > 1 + (int)threadpool_oversubscribe)
+    tp_stats.overlimit_returns++;
   mysql_mutex_unlock(&thread_group->mutex);
   DBUG_VOID_RETURN;
 }

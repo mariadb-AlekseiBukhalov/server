@@ -4493,6 +4493,15 @@ Sys_threadpool_threadpool_prio_kickup_timer(
   VALID_RANGE(0, UINT_MAX), DEFAULT(1000), BLOCK_SIZE(1)
 );
 
+static Sys_var_on_access_global<Sys_var_uint,
+                                PRIV_SET_SYSTEM_GLOBAL_VAR_THREAD_POOL>
+Sys_threadpool_wake_mode(
+ "thread_pool_wake_mode",
+ "0 stock, 1 wake an idle worker on enqueue while active <= oversubscribe, 2 as 1 but counting woken workers that have not resumed yet",
+  GLOBAL_VAR(threadpool_wake_mode), CMD_LINE(REQUIRED_ARG),
+  VALID_RANGE(0, 2), DEFAULT(0), BLOCK_SIZE(1)
+);
+
 static Sys_var_on_access_global<Sys_var_mybool,
                                 PRIV_SET_SYSTEM_GLOBAL_VAR_THREAD_POOL>
 Sys_threadpool_exact_stats(

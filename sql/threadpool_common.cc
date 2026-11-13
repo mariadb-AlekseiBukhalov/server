@@ -45,6 +45,7 @@ uint threadpool_max_threads;
 uint threadpool_oversubscribe;
 uint threadpool_mode;
 uint threadpool_prio_kickup_timer;
+uint threadpool_wake_mode;
 uint threadpool_reshuffle_group_period;
 my_bool threadpool_exact_stats;
 my_bool threadpool_dedicated_listener;

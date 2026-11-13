@@ -7665,6 +7665,33 @@ static int show_threadpool_idle_threads(THD *, SHOW_VAR *var, void *buff,
 }
 
 
+static int show_threadpool_futile_wakeups(THD *, SHOW_VAR *var, void *buff,
+                                          system_status_var *, enum_var_type)
+{
+  var->type= SHOW_LONGLONG;
+  var->value= buff;
+  *(reinterpret_cast<ulonglong*>(buff))= tp_stats.futile_wakeups;
+  return 0;
+}
+
+static int show_threadpool_overlimit_returns(THD *, SHOW_VAR *var, void *buff,
+                                             system_status_var *, enum_var_type)
+{
+  var->type= SHOW_LONGLONG;
+  var->value= buff;
+  *(reinterpret_cast<ulonglong*>(buff))= tp_stats.overlimit_returns;
+  return 0;
+}
+
+static int show_threadpool_enqueue_wakes(THD *, SHOW_VAR *var, void *buff,
+                                         system_status_var *, enum_var_type)
+{
+  var->type= SHOW_LONGLONG;
+  var->value= buff;
+  *(reinterpret_cast<ulonglong*>(buff))= tp_stats.enqueue_wakes;
+  return 0;
+}
+
 static int show_threadpool_threads(THD *, SHOW_VAR *var, void *buff,
                                    system_status_var *, enum_var_type)
 {
@@ -7917,7 +7944,10 @@ SHOW_VAR status_vars[]= {
 #endif
   {"Tmp_space_used",           (char*) offsetof(STATUS_VAR, tmp_space_used), SHOW_LONGLONG_STATUS},
 #ifdef HAVE_POOL_OF_THREADS
+  {"Threadpool_enqueue_wakes", (char *) &show_threadpool_enqueue_wakes, SHOW_SIMPLE_FUNC},
+  {"Threadpool_futile_wakeups", (char *) &show_threadpool_futile_wakeups, SHOW_SIMPLE_FUNC},
   {"Threadpool_idle_threads",  (char *) &show_threadpool_idle_threads, SHOW_SIMPLE_FUNC},
+  {"Threadpool_overlimit_returns", (char *) &show_threadpool_overlimit_returns, SHOW_SIMPLE_FUNC},
   {"Threadpool_threads",       (char *) &show_threadpool_threads, SHOW_SIMPLE_FUNC},
 #endif
   {"Threads_cached",           (char*) &show_cached_thread_count, SHOW_SIMPLE_FUNC},

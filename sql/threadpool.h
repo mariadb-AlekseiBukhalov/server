@@ -26,6 +26,7 @@ extern uint threadpool_stall_limit;  /* time interval in milliseconds for stall 
 extern uint threadpool_max_threads;  /* Maximum threads in pool */
 extern uint threadpool_oversubscribe;  /* Maximum active threads in group */
 extern uint threadpool_prio_kickup_timer;  /* Time before low prio item gets prio boost */
+extern uint threadpool_wake_mode;
 extern my_bool threadpool_exact_stats; /* Better queueing time stats for information_schema, at small performance cost */
 extern my_bool threadpool_dedicated_listener; /* Listener thread does not pick up work items. */
 extern uint threadpool_reshuffle_group_period;
@@ -52,6 +53,9 @@ struct TP_STATISTICS
 {
   /* Current number of worker thread. */
   Atomic_counter<uint32_t> num_worker_threads;
+  Atomic_counter<uint64_t> futile_wakeups;
+  Atomic_counter<uint64_t> overlimit_returns;
+  Atomic_counter<uint64_t> enqueue_wakes;
 };
 
 extern TP_STATISTICS tp_stats;

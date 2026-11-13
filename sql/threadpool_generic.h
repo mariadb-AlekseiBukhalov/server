@@ -138,6 +138,7 @@ struct thread_group_t
   TP_file_handle  pollfd;
   int  thread_count;
   int  active_thread_count;
+  int  woken_pending;
   int  connection_count;
   /* Stats for the deadlock detection timer routine.*/
   int io_event_count;
